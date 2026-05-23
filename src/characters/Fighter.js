@@ -289,6 +289,15 @@ export class Fighter {
             p.y = Math.sin(orbitAngle) * orbitDist;
             // Add a little flicker
             p.alpha = 0.8 + Math.sin(elapsed * 20 + i) * 0.2;
+
+            // ── Sparkler Trail effect ────────────────
+            if (this.vfx && Math.random() < 0.5 * delta) {
+              // Convert local particle pos to world pos for emission
+              const worldX = this.body.x + p.x;
+              const worldY = this.body.y + p.y;
+              // Use triggerCollision as a base for sparks
+              this.vfx.triggerCollision(worldX, worldY);
+            }
           }
         });
       }
