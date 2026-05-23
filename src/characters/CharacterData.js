@@ -54,8 +54,8 @@ export const CHARACTERS = {
     },
     passive: {
       name: 'Kanten Senmyou Blessing',
-      description: 'Elemental skill grants +30% Normal Attack DMG and Cryo Infusion for 3s',
-      duration: 3000,
+      description: 'Elemental skill grants +30% Normal Attack DMG and Cryo Infusion for 4s',
+      duration: 4000,
       emoji: '⚔️'
     },
 
