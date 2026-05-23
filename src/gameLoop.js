@@ -284,11 +284,12 @@ export class GameLoop {
           // Vacuum particles: pull from outside the ring toward Ayaka
           if (Math.random() < 0.8 * delta) {
             const spawnAngle = Math.random() * Math.PI * 2;
-            const px = effect.owner.body.x + Math.cos(spawnAngle) * ringRadius;
-            const py = effect.owner.body.y + Math.sin(spawnAngle) * ringRadius;
+            const spawnR = ringRadius + 20 + Math.random() * 50;
+            const px = effect.owner.body.x + Math.cos(spawnAngle) * spawnR;
+            const py = effect.owner.body.y + Math.sin(spawnAngle) * spawnR;
             
-            // Trigger particle at current ring position
-            effect.owner.vfx.triggerCollision(px, py);
+            // Trigger multi-toned particles that are attracted to center
+            effect.owner.vfx.triggerVacuumParticles(px, py, effect.owner.body.x, effect.owner.body.y);
           }
         }
         return true;

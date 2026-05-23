@@ -189,6 +189,26 @@ export class CryoVFX {
     gfx.fill({ color: color, alpha: 0.05 + progress * 0.15 });
   }
 
+  triggerVacuumParticles(x, y, targetX, targetY) {
+    // Spawn multi-toned cryo particles (like Hyouka)
+    this._skill.emit(x, y, {
+      count: 2,
+      speedMin: 0.5,
+      speedMax: 2.0,
+      spreadAngle: Math.PI * 2,
+      lifetimeMin: 30,
+      lifetimeMax: 50,
+      sizeMin: 1.5,
+      sizeMax: 4.0,
+      gradient: CRYO_GRADIENT,
+      blendMode: 'add',
+      targetX: targetX,
+      targetY: targetY,
+      attractionForce: 0.15,
+      shrink: true,
+    });
+  }
+
   /**
    * Trigger the Hyouka ice bloom explosion.
    * A single, massive outward explosion of sharp ice spikes. No lingering/swirling effects!

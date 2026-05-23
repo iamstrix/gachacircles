@@ -44,6 +44,10 @@ function createParticleData() {
     endAlpha: 0,
     shrink: true,
     startSize: 3,
+    // Attraction properties
+    targetX: 0,
+    targetY: 0,
+    attractionForce: 0,
   };
 }
 
@@ -131,6 +135,9 @@ export class ParticleSystem {
       p.color = c.color;
       p.shrink = c.shrink;
       p.gravity = c.gravity;
+      p.targetX = c.targetX || 0;
+      p.targetY = c.targetY || 0;
+      p.attractionForce = c.attractionForce || 0;
       p.active = true;
 
       // Initialise Graphics visual
@@ -216,6 +223,20 @@ export class ParticleSystem {
 
       // Physics
       p.vy += (p.gravity ?? 0) * delta;
+
+      // Attraction / Black Hole logic
+      if (p.attractionForce !== 0) {
+        const dx = p.targetX - p.x;
+        const dy = p.targetY - p.y;
+        const distSq = dx * dx + dy * dy;
+        if (distSq > 1) {
+          const dist = Math.sqrt(distSq);
+          const force = p.attractionForce * delta;
+          p.vx += (dx / dist) * force;
+          p.vy += (dy / dist) * force;
+        }
+      }
+
       p.x += p.vx * delta;
       p.y += p.vy * delta;
 
