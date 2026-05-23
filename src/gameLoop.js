@@ -412,7 +412,12 @@ export class GameLoop {
     const dx = opponent.body.x - startX;
     const dy = opponent.body.y - startY;
     const angle = Math.atan2(dy, dx);
-    const speed = 8.5; // fly speed
+    const speed = 14.0; // Higher fly speed (snappier projectiles)
+
+    // Trigger spark effect muzzle flash originating from Yoimiya's circle
+    if (fighter.vfx) {
+      fighter.vfx.triggerCollision(startX, startY);
+    }
 
     // Create glowing arrow graphics
     const visual = new Graphics();
