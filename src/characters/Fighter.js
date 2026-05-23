@@ -40,6 +40,7 @@ export class Fighter {
     this.swingDuration = 0;    // Duration in ms
     this.visualOffset = { x: 0, y: 0, rotation: 0 };
     this.isInvincible = false;
+    this.slowMultiplier = 1.0;
 
     // Infusion visual (Yoimiya E)
     this.infusionParticles = [];

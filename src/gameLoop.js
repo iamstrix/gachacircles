@@ -56,14 +56,18 @@ export class GameLoop {
     this.elapsedTime += delta * 0.016; // Convert to seconds roughly
     const currentTime = performance.now();
 
+    // Reset temporary debuffs
+    this.fighter1.slowMultiplier = 1.0;
+    this.fighter2.slowMultiplier = 1.0;
+
     // Update collision cooldown
     if (this.collisionCooldown > 0) {
       this.collisionCooldown -= delta;
     }
 
     // Update physics positions
-    updatePosition(this.fighter1.body, delta);
-    updatePosition(this.fighter2.body, delta);
+    updatePosition(this.fighter1.body, delta * this.fighter1.slowMultiplier);
+    updatePosition(this.fighter2.body, delta * this.fighter2.slowMultiplier);
 
     // Apply Snappy Movement Damping to all fighters
     // This bleeds off high-velocity impulses (recoil, dashes, step-ins)
@@ -309,6 +313,7 @@ export class GameLoop {
         // Slow down by 50% more if enemy is inside
         if (isEnemyInside) {
           currentSpeed *= 0.5;
+          effect.target.slowMultiplier = 0.5; // Reduce enemy movement speed by 50%
         }
 
         effect.x += Math.cos(effect.angle) * currentSpeed * delta;
