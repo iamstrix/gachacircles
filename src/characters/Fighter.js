@@ -24,9 +24,9 @@ export class Fighter {
     this.alive = true;
     this.lastAttackTime = 0;
 
-    // Skills & Bursts cooldown timers (0 = ready!)
-    this.skillCDTimer = 0;
-    this.burstCDTimer = 0;
+    // Start fight with abilities on full cooldown
+    this.skillCDTimer = characterData.skillE.cooldown;
+    this.burstCDTimer = characterData.burstQ.cooldown;
     this.isInfused = false; // Yoimiya's E infusion
     this.infusionActiveTimer = 0;
 
