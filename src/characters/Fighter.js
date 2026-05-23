@@ -34,6 +34,12 @@ export class Fighter {
     this.passiveStacks = 0; // Yoimiya's stacks
     this.passiveTimer = 0; // duration tracking
 
+    // Ayaka Melee Combo State
+    this.comboIndex = 0;       // N1 to N5 (0-4)
+    this.swingProgress = 1.0;  // 0 to 1 (animation fraction)
+    this.swingDuration = 0;    // Duration in ms
+    this.visualOffset = { x: 0, y: 0, rotation: 0 };
+
     // Physics body
     this.body = {
       x: startX,
@@ -166,6 +172,58 @@ export class Fighter {
         // Face the opponent (front of bow is up-left in original image, i.e., 3 * PI / 4 offset)
         this.weaponSprite.rotation = angle + 3 * Math.PI / 4;
       }
+    } else if (this.id === 'ayaka') {
+      // ── Ayaka's Procedural Sword Animation ────────────────
+      const dx = opponent ? (opponent.body.x - this.body.x) : 0;
+      const dy = opponent ? (opponent.body.y - this.body.y) : 0;
+      const targetAngle = opponent ? Math.atan2(dy, dx) : this.weaponAngle;
+
+      // Update swing progress
+      if (this.swingProgress < 1.0) {
+        this.swingProgress += (delta * 16.67) / this.swingDuration;
+        if (this.swingProgress > 1.0) this.swingProgress = 1.0;
+      }
+
+      const p = this.swingProgress;
+      let offX = 0, offY = 0, offRot = 0;
+      let orbitDist = this.weaponOrbitRadius;
+
+      // Animation Logic per N-step
+      switch(this.comboIndex) {
+        case 0: // N1: Vertical/Diagonal Slash
+        case 1: // N2: Horizontal Slash
+          const sweep = (this.comboIndex === 0 ? 1 : -1) * Math.PI * 0.8;
+          offRot = (p - 0.5) * sweep;
+          orbitDist += Math.sin(p * Math.PI) * 25;
+          break;
+        case 2: // N3: Heavy Lunge
+          orbitDist += (p < 0.3 ? p * 150 : (1 - p) * 60);
+          offRot = Math.sin(p * Math.PI * 2) * 0.2;
+          break;
+        case 3: // N4: Triple Flurry (3 mini-swings)
+          const flurry = Math.sin(p * Math.PI * 3);
+          offRot = flurry * 0.6;
+          orbitDist += flurry * 15;
+          break;
+        case 4: // N5: Spin & Dash
+          offRot = p * Math.PI * 2;
+          orbitDist -= 10;
+          // Apply forward dash impulse in the first half of N5
+          if (p > 0.1 && p < 0.4 && opponent) {
+            const dashForce = 0.8;
+            this.body.vx += Math.cos(targetAngle) * dashForce;
+            this.body.vy += Math.sin(targetAngle) * dashForce;
+          }
+          break;
+      }
+
+      if (this.weaponSprite) {
+        const finalAngle = targetAngle + offRot;
+        this.weaponSprite.x = Math.cos(finalAngle) * orbitDist;
+        this.weaponSprite.y = Math.sin(finalAngle) * orbitDist;
+        // Try negative offset: tip outward.
+        this.weaponSprite.rotation = finalAngle - Math.PI / 4;
+      }
     } else {
       // Standard orbital behavior for Ayaka and others
       let currentOrbitSpeed = this.weaponOrbitSpeed;
@@ -177,8 +235,8 @@ export class Fighter {
       if (this.weaponSprite) {
         this.weaponSprite.x = Math.cos(this.weaponAngle) * this.weaponOrbitRadius;
         this.weaponSprite.y = Math.sin(this.weaponAngle) * this.weaponOrbitRadius;
-        // Rotate by Math.PI (180 degrees) relative to previous orientation to point hilt inward!
-        this.weaponSprite.rotation = this.weaponAngle - 3 * Math.PI / 4;
+        // Match offensive offset
+        this.weaponSprite.rotation = this.weaponAngle - Math.PI / 4;
       }
     }
 
@@ -246,6 +304,17 @@ export class Fighter {
   }
 
   /**
+   * Trigger a melee swing animation (Ayaka)
+   * @param {number} index - N-step index (0-4)
+   * @param {number} duration - Animation duration in ms
+   */
+  triggerMeleeSwing(index, duration) {
+    this.comboIndex = index;
+    this.swingProgress = 0;
+    this.swingDuration = duration;
+  }
+
+  /**
    * Take damage
    * @param {number} amount
    * @returns {{ died: boolean, actualDamage: number }}
@@ -299,9 +368,13 @@ export class Fighter {
       this.infusionActiveTimer = this.data.skillE.duration;
     }
 
-    // Trigger VFX E
-    if (this.vfx) {
-      this.vfx.triggerSkill(this.body.x, this.body.y);
+    // Trigger VFX E (Yoimiya's E triggers immediately, Ayaka's E triggers on bloom after 1 second)
+    if (this.vfx && this.id !== 'ayaka') {
+      if (this.id === 'yoimiya' && typeof this.vfx.triggerInfusion === 'function') {
+        this.vfx.triggerInfusion(this.body.x, this.body.y);
+      } else {
+        this.vfx.triggerSkill(this.body.x, this.body.y);
+      }
     }
 
     return true;

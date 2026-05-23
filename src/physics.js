@@ -116,7 +116,7 @@ export function resolveCollision(a, b, collision) {
   if (relVelNormal < 0) return;
 
   // Impulse magnitude (coefficient of restitution = 1.0 for perfect elastic)
-  const restitution = 0.95;
+  const restitution = 1.0;
   const impulse = (-(1 + restitution) * relVelNormal) / totalMass;
 
   // Apply impulse
@@ -125,9 +125,9 @@ export function resolveCollision(a, b, collision) {
   b.vx -= impulse * massA * nx;
   b.vy -= impulse * massA * ny;
 
-  // Ensure minimum speed (prevent circles from getting stuck)
-  enforceMinSpeed(a, 1.5);
-  enforceMinSpeed(b, 1.5);
+  // Ensure minimum speed (prevent circles from getting boring)
+  enforceMinSpeed(a, 2.0);
+  enforceMinSpeed(b, 2.0);
 }
 
 /**

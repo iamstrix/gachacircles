@@ -6,7 +6,7 @@
 // ─────────────────────────────────────────────────────────────
 import { Container } from 'pixi.js';
 import { ParticleSystem } from './ParticleSystem.js';
-import { CRYO_GRADIENT, CRYO_COLORS } from './ElementalColors.js';
+import { CRYO_GRADIENT, CRYO_COLORS, HYOUKA_BURST_GRADIENT } from './ElementalColors.js';
 
 export class CryoVFX {
   /**
@@ -123,6 +123,47 @@ export class CryoVFX {
   // ── Skill effect – Soumetsu ice cyclone ──────────────────
 
   /**
+   * Trigger the Hyouka ice bloom explosion.
+   * A single, massive outward explosion of sharp ice spikes. No lingering/swirling effects!
+   */
+  triggerHyoukaBurst(x, y) {
+    // Sharp radial spikes bursting outward — vivid icy-blue palette
+    this._burst.emit(x, y, {
+      count: 45, // high density for massive impact
+      speedMin: 3.5,
+      speedMax: 8.5, // fast explosive launch speed
+      spreadAngle: Math.PI * 2,
+      lifetimeMin: 25,
+      lifetimeMax: 45,
+      sizeMin: 3.0,
+      sizeMax: 7.0, // large ice spikes
+      startAlpha: 1.0,
+      endAlpha: 0.0,
+      gravity: 0.03, // fall down slightly
+      blendMode: 'normal',
+      gradient: HYOUKA_BURST_GRADIENT,
+      shrink: true,
+    });
+
+    // Secondary bright icy-blue flash cloud overlay
+    this._burst.emit(x, y, {
+      count: 15,
+      speedMin: 1.0,
+      speedMax: 3.0,
+      spreadAngle: Math.PI * 2,
+      lifetimeMin: 15,
+      lifetimeMax: 30,
+      sizeMin: 1.5,
+      sizeMax: 4.0,
+      startAlpha: 0.9,
+      endAlpha: 0,
+      blendMode: 'normal',
+      color: 0x4fc3f7, // vivid cryo sky-blue flash
+      shrink: true,
+    });
+  }
+
+  /**
    * Trigger the big ice cyclone skill at (x, y).
    * The effect self-animates over ~2 seconds via updateSkill().
    */
@@ -153,12 +194,18 @@ export class CryoVFX {
 
   /**
    * Call every frame. Drives the cyclone animation if active.
+   * Optionally tracks a moving target coordinate (x, y) if passed.
    */
-  updateSkill(delta) {
+  updateSkill(delta, x, y) {
     this._burst.update(delta);
     this._skill.update(delta);
 
     if (!this._skillActive) return;
+
+    if (x !== undefined && y !== undefined) {
+      this._skillX = x;
+      this._skillY = y;
+    }
 
     this._skillTimer += delta;
     this._skillAngle += 0.12 * delta;

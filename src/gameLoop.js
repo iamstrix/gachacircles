@@ -3,7 +3,7 @@
  * Orchestrates physics, combat, VFX, and UI updates.
  */
 
-import { Graphics } from 'pixi.js';
+import { Graphics, Sprite, Assets } from 'pixi.js';
 import { updatePosition, bounceOffWalls, checkCircleCollision, resolveCollision } from './physics.js';
 import { playSFX, preloadSFX, playSynthBounce, playSynthClash } from './utils/audio.js';
 
@@ -33,6 +33,7 @@ export class GameLoop {
     this.activeEffects = []; // Store active Q whirlwind effects, etc.
     this.projectiles = []; // Store active flying arrows, etc.
     this.scheduledArrows = []; // Scheduled timed arrow combo queue
+    this.scheduledMelee = []; // Scheduled timed melee hits (Ayaka)
 
     // Preload Yoimiya's 5 normal attack sound files
     for (let i = 1; i <= 5; i++) {
@@ -59,6 +60,17 @@ export class GameLoop {
     updatePosition(this.fighter1.body, delta);
     updatePosition(this.fighter2.body, delta);
 
+    // Apply "Snappy Recoil" damping to Yoimiya (Fighter 2)
+    // This quickly bleeds off the high-velocity recoil impulse
+    if (this.fighter2.id === 'yoimiya') {
+      const damping = 0.94; // Bleed 6% velocity per frame when over base speed
+      const speed = Math.sqrt(this.fighter2.body.vx ** 2 + this.fighter2.body.vy ** 2);
+      if (speed > 4.0) {
+        this.fighter2.body.vx *= Math.pow(damping, delta);
+        this.fighter2.body.vy *= Math.pow(damping, delta);
+      }
+    }
+
     // Wall bouncing
     const b1 = bounceOffWalls(this.fighter1.body, this.bounds);
     const b2 = bounceOffWalls(this.fighter2.body, this.bounds);
@@ -79,10 +91,21 @@ export class GameLoop {
     if (this.scheduledArrows) {
       this.scheduledArrows = this.scheduledArrows.filter(shot => {
         if (now >= shot.time) {
-          this._shootSingleArrow(shot.owner, shot.target, shot.sound);
+          this._shootSingleArrow(shot.owner, shot.target, shot.sound, shot.isFinalShot);
           return false; // remove from queue
         }
         return true; // keep in queue
+      });
+    }
+
+    // Process scheduled melee hits (Ayaka's N1-N5 sequence)
+    if (this.scheduledMelee) {
+      this.scheduledMelee = this.scheduledMelee.filter(hit => {
+        if (now >= hit.time) {
+          this._performMeleeHit(hit.owner, hit.target, hit.index, hit.duration);
+          return false;
+        }
+        return true;
       });
     }
 
@@ -187,6 +210,122 @@ export class GameLoop {
             this._endGame(effect.owner);
           }
         }
+      } else if (effect.type === 'hyouka') {
+        // Track Ayaka's circle center
+        effect.visual.x = effect.owner.body.x;
+        effect.visual.y = effect.owner.body.y;
+
+        if (effect.symbolSprite) {
+          effect.symbolSprite.x = effect.owner.body.x;
+          effect.symbolSprite.y = effect.owner.body.y;
+        }
+
+        // Dynamic visual effects: grow size and transition from light ice blue to a rising heavy darkness
+        const elapsed = 1.0 - effect.timer; // goes from 0.0 to 1.0 seconds
+        const progress = Math.min(1.0, elapsed / 1.0); // progress ratio from 0 to 1
+
+        const scale = Math.min(1.0, elapsed / 0.15); // Grow scale over first 150ms
+        effect.visual.scale.set(scale);
+
+        if (effect.symbolSprite) {
+          const popProgress = Math.min(1.0, elapsed / 0.35); // pop up over 350ms
+          const targetSize = 360; // match E skill's radius (radius 180px means diameter 360px!)
+          effect.symbolSprite.width = targetSize * popProgress;
+          effect.symbolSprite.height = targetSize * popProgress;
+          effect.symbolSprite.alpha = 0.75 * popProgress;
+          effect.symbolSprite.rotation = elapsed * 0.5; // slow spin
+        }
+
+        // Redraw radius circle in real-time to represent gathering dark frosty energy
+        effect.visual.clear();
+
+        // Linearly interpolate colors:
+        // Outline transitions from bright Cryo blue (0x4fc3f7) to deep navy shadow-blue (0x0d47a1)
+        const rOut = Math.round(79 * (1 - progress) + 13 * progress);
+        const gOut = Math.round(195 * (1 - progress) + 71 * progress);
+        const bOut = Math.round(247 * (1 - progress) + 161 * progress);
+        const outlineColor = (rOut << 16) | (gOut << 8) | bOut;
+
+        // Fill transitions from semi-transparent Cryo blue (0x80deea) to deep ominous frozen abyss blue/black (0x070c1e)
+        const rFill = Math.round(128 * (1 - progress) + 7 * progress);
+        const gFill = Math.round(222 * (1 - progress) + 12 * progress);
+        const bFill = Math.round(234 * (1 - progress) + 30 * progress);
+        const fillColor = (rFill << 16) | (gFill << 8) | bFill;
+
+        const fillAlpha = 0.06 + 0.39 * progress; // gets denser and darker
+        const strokeAlpha = 0.6 + 0.4 * progress; // gets fully opaque
+        const strokeWidth = 2 + 1.5 * progress; // stroke thickens as energy accumulates
+
+        effect.visual.circle(0, 0, 180);
+        effect.visual.fill({ color: fillColor, alpha: fillAlpha });
+        effect.visual.stroke({ color: outlineColor, width: strokeWidth, alpha: strokeAlpha });
+
+        // Draw inner target ring that fades out as energy condenses
+        effect.visual.circle(0, 0, 90);
+        effect.visual.stroke({ color: outlineColor, width: 1, alpha: 0.3 * (1 - progress) });
+
+        // Dynamic pulsing alpha animation overlay
+        effect.visual.alpha = 0.85 + Math.sin(performance.now() * 0.015) * 0.1;
+
+        // If 1 second has passed, execute the blooming ice explosion!
+        if (effect.timer <= 0) {
+          const dx = effect.target.body.x - effect.owner.body.x;
+          const dy = effect.target.body.y - effect.owner.body.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+
+          // Check if opponent is within the 180px radius
+          if (dist <= effect.radius) {
+            // Strong repel force (fling/launch opponent upward/away!)
+            const force = 10;
+            const angle = Math.atan2(dy, dx);
+            effect.target.body.vx += Math.cos(angle) * force;
+            effect.target.body.vy += Math.sin(angle) * force;
+
+            const damage = Math.round(effect.owner.data.damage * effect.owner.data.skillE.damageMultiplier);
+            const result = effect.target.takeDamage(damage);
+
+            if (this.damageNumbers) {
+              this.damageNumbers.spawn(
+                effect.target.body.x,
+                effect.target.body.y - 30,
+                damage,
+                effect.owner.element,
+                true
+              );
+            }
+
+            if (result.died) {
+              this._endGame(effect.owner);
+            }
+          }
+
+          // Trigger the beautiful Hyouka single-burst ice explosion at the location of Ayaka's circle (no lingering swirling particles!)
+          if (effect.owner.vfx) {
+            if (typeof effect.owner.vfx.triggerHyoukaBurst === 'function') {
+              effect.owner.vfx.triggerHyoukaBurst(effect.owner.body.x, effect.owner.body.y);
+            } else {
+              effect.owner.vfx.triggerSkill(effect.owner.body.x, effect.owner.body.y);
+            }
+          }
+
+          // Screen shake on bloom
+          this._screenShake();
+
+          // Clean up the Cryo symbol sprite instantly (no lingering fade on the field!)
+          if (effect.symbolSprite && effect.owner.vfx && effect.owner.vfx.container) {
+            effect.owner.vfx.container.removeChild(effect.symbolSprite);
+            effect.symbolSprite.destroy();
+          }
+
+          // Clean up the visual radius circle object from the owner's VFX container
+          if (effect.owner.vfx && effect.owner.vfx.container) {
+            effect.owner.vfx.container.removeChild(effect.visual);
+          } else {
+            this.stage.removeChild(effect.visual);
+          }
+          effect.visual.destroy();
+          return false; // remove effect from active list
+        }
       }
       return effect.timer > 0;
     });
@@ -201,12 +340,28 @@ export class GameLoop {
       if (this.fighter2.isInfused) {
         currentAttackSpeed *= 2.0; // Double attack speed during infusion!
       }
-      // 2-second base interval (2000ms) at base speed (2.5), which scales with attack speed: 5000 / speed
-      const cooldownMs = 5000 / currentAttackSpeed;
+      // 2-second base interval (2000ms) at base speed (2.5), which scales with attack speed: 5000 / speed.
+      // Begin the interval timer only after the last shot has been fired (the 7-arrow combo takes exactly 1400ms from first shot to last shot).
+      const comboDurationMs = 1400;
+      const baseIntervalMs = 5000 / currentAttackSpeed;
+      const cooldownMs = comboDurationMs + baseIntervalMs;
       
       if (currentTime - this.fighter2.lastAttackTime >= cooldownMs) {
         this.fighter2.registerAttack(currentTime);
         this._startYoimiyaArrowCombo(this.fighter2, this.fighter1);
+      }
+    }
+
+    // Auto standard attacks for Ayaka (melee Normal Attacks)
+    if (this.fighter1.id === 'ayaka' && this.fighter1.alive) {
+      const currentAttackSpeed = this.fighter1.data.attackSpeed;
+      const comboDurationMs = 1500; // Ayaka's N1-N5 string takes ~1.5s
+      const baseIntervalMs = 4000 / currentAttackSpeed;
+      const cooldownMs = comboDurationMs + baseIntervalMs;
+
+      if (currentTime - this.fighter1.lastAttackTime >= cooldownMs) {
+        this.fighter1.registerAttack(currentTime);
+        this._startAyakaMeleeCombo(this.fighter1, this.fighter2);
       }
     }
 
@@ -222,47 +377,16 @@ export class GameLoop {
    * Handle combat when circles collide
    */
   _handleCombat(collision, currentTime) {
-    // Apply damage from fighter1 to fighter2
-    if (this.fighter1.canAttack(currentTime)) {
+    // Note: Melee damage is now primarily handled by _performMeleeHit for Ayaka
+    // This section can remain for passive contact or adjusted behavior
+    
+    // Apply damage from fighter1 to fighter2 (Ayaka - passive contact damage reduced)
+    if (this.fighter1.canAttack(currentTime) && this.fighter1.id !== 'ayaka') {
       const damage = this.fighter1.getCurrentDamage();
-      const isCrit = (this.fighter1.id === 'ayaka' && this.fighter1.passiveTimer > 0) ||
-                     (this.fighter1.id === 'yoimiya' && this.fighter1.isInfused);
       const result = this.fighter2.takeDamage(damage);
-
       if (result.actualDamage > 0) {
         this.fighter1.registerAttack(currentTime);
-
-        // Trigger passive stack for Yoimiya
-        if (this.fighter1.id === 'yoimiya') {
-          this.fighter1.passiveStacks = Math.min(10, this.fighter1.passiveStacks + 1);
-          this.fighter1.passiveTimer = this.fighter1.data.passive.duration;
-        }
-
-        // Trigger collision VFX
-        if (this.fighter1.vfx) {
-          this.fighter1.vfx.triggerCollision(collision.contactX, collision.contactY);
-        }
-
-        // Spawn damage number
-        if (this.damageNumbers) {
-          this.damageNumbers.spawn(
-            collision.contactX,
-            collision.contactY - 20,
-            result.actualDamage,
-            this.fighter1.element,
-            isCrit
-          );
-        }
-
-        // Screen shake on skill/crit hits
-        if (isCrit) {
-          this._screenShake();
-        }
-
-        if (result.died) {
-          this._endGame(this.fighter1);
-          return;
-        }
+        // ...
       }
     }
 
@@ -321,42 +445,64 @@ export class GameLoop {
       const activated = fighter.activateSkill();
       if (activated) {
         if (fighter.id === 'ayaka') {
-          // Ayaka E: AoE damage + high repel push!
-          const dx = opponent.body.x - fighter.body.x;
-          const dy = opponent.body.y - fighter.body.y;
-          const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-
-          // Strong repel force
-          const force = 9;
-          opponent.body.vx += (dx / dist) * force;
-          opponent.body.vy += (dy / dist) * force;
-
-          const damage = Math.round(fighter.data.damage * fighter.data.skillE.damageMultiplier);
-          const result = opponent.takeDamage(damage);
-
-          if (this.damageNumbers) {
-            this.damageNumbers.spawn(
-              opponent.body.x,
-              opponent.body.y - 30,
-              damage,
-              fighter.element,
-              true
-            );
+          // Create the frost blooming ice radius visual indicator
+          const visual = new Graphics();
+          visual.circle(0, 0, 180);
+          visual.fill({ color: 0x80deea, alpha: 0.06 }); // very soft Cryo blue fill
+          visual.stroke({ color: 0x4fc3f7, width: 2, alpha: 0.6 }); // bold Cryo blue border
+          visual.circle(0, 0, 90);
+          visual.stroke({ color: 0x4fc3f7, width: 1, alpha: 0.3 }); // inner target ring
+          
+          visual.x = fighter.body.x;
+          visual.y = fighter.body.y;
+          
+          // Add to the fighter's VFX container so it renders beneath the character circles!
+          if (fighter.vfx && fighter.vfx.container) {
+            fighter.vfx.container.addChild(visual);
+          } else {
+            this.stage.addChild(visual);
           }
 
-          this._screenShake();
+          const effect = {
+            type: 'hyouka',
+            owner: fighter,
+            target: opponent,
+            timer: 1.0, // 1.0 second delay before bloom
+            radius: 180,
+            visual: visual,
+            symbolSprite: null
+          };
+          this.activeEffects.push(effect);
 
-          if (result.died) {
-            this._endGame(fighter);
-            return;
-          }
+          // Asynchronously load the cryo.png symbol so it doesn't block the loop
+          Assets.load('/cryo.png').then(texture => {
+            if (this.gameOver) return;
+            const sprite = new Sprite(texture);
+            sprite.anchor.set(0.5);
+            sprite.x = fighter.body.x;
+            sprite.y = fighter.body.y;
+            sprite.width = 0;
+            sprite.height = 0;
+            sprite.alpha = 0;
+            sprite.tint = 0x80deea; // Cryo light-cyan glow
+            
+            // Add to the fighter's VFX container so it renders beneath the character circles!
+            if (fighter.vfx && fighter.vfx.container) {
+              fighter.vfx.container.addChild(sprite);
+            } else {
+              this.stage.addChild(sprite);
+            }
+            effect.symbolSprite = sprite;
+          }).catch(err => console.warn('Could not load Cryo symbol:', err));
         } else if (fighter.id === 'yoimiya') {
-          // Yoimiya E: Infusion, triggers aura visual
-          if (fighter.vfx) {
-            fighter.vfx.triggerSkill(fighter.body.x, fighter.body.y);
+          // Yoimiya E: Infusion, triggers aura visual (VFX triggered inside activateSkill)
+          
+          // Do NOT call _startYoimiyaArrowCombo directly here to avoid double streams of arrows.
+          // Instead, if she is not already shooting, reset the cooldown so the auto standard attack loop fires immediately.
+          const isShooting = this.scheduledArrows && this.scheduledArrows.some(shot => shot.owner === fighter);
+          if (!isShooting) {
+            fighter.lastAttackTime = 0;
           }
-          // Start the sequential aa-a-a-aa-a arrow combo!
-          this._startYoimiyaArrowCombo(fighter, opponent);
         }
       }
     }
@@ -410,6 +556,85 @@ export class GameLoop {
   }
 
   /**
+   * Schedule Ayaka's Normal Attack sequence: 1-2-3-4(flurry)-5
+   */
+  _startAyakaMeleeCombo(fighter, opponent) {
+    const targetTime = performance.now();
+    
+    // Approximate delays: N1(0), N2(0.3s), N3(0.65s), N4(1.0s, flurry), N5(1.5s)
+    const steps = [
+      { delay: 0, index: 0, dur: 250 },
+      { delay: 300, index: 1, dur: 250 },
+      { delay: 650, index: 2, dur: 350 },
+      // N4 flurry (3 hits)
+      { delay: 1000, index: 3, dur: 350 },
+      { delay: 1080, index: 3, dur: 0 }, // phantom hits for flurry
+      { delay: 1160, index: 3, dur: 0 },
+      // N5 finisher
+      { delay: 1500, index: 4, dur: 500 }
+    ];
+
+    steps.forEach(step => {
+      this.scheduledMelee.push({
+        time: targetTime + step.delay,
+        owner: fighter,
+        target: opponent,
+        index: step.index,
+        duration: step.dur
+      });
+    });
+  }
+
+  /**
+   * Perform a single melee hit in a combo
+   */
+  _performMeleeHit(fighter, opponent, index, duration) {
+    if (!fighter.alive || !opponent.alive) return;
+
+    // Trigger animation in fighter
+    if (duration > 0) {
+      fighter.triggerMeleeSwing(index, duration);
+    }
+
+    // Check distance for damage (melee range)
+    const dx = opponent.body.x - fighter.body.x;
+    const dy = opponent.body.y - fighter.body.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    const range = fighter.body.radius + opponent.body.radius + 60;
+
+    if (dist < range) {
+      const damage = fighter.getCurrentDamage();
+      const isCrit = fighter.passiveTimer > 0;
+      const result = opponent.takeDamage(damage);
+
+      if (result.actualDamage > 0) {
+        // VFX
+        if (fighter.vfx) {
+          fighter.vfx.triggerCollision(
+            fighter.body.x + dx * 0.5,
+            fighter.body.y + dy * 0.5
+          );
+        }
+
+        // Damage Number
+        if (this.damageNumbers) {
+          this.damageNumbers.spawn(
+            opponent.body.x,
+            opponent.body.y - 20,
+            result.actualDamage,
+            fighter.element,
+            isCrit
+          );
+        }
+
+        if (result.died) {
+          this._endGame(fighter);
+        }
+      }
+    }
+  }
+
+  /**
    * Schedule Yoimiya's authentic Normal Attack sequence: aa - a - a - aa - a
    */
   _startYoimiyaArrowCombo(fighter, opponent) {
@@ -433,7 +658,8 @@ export class GameLoop {
         time: targetTime + delay,
         owner: fighter,
         target: opponent,
-        sound: sounds[index]
+        sound: sounds[index],
+        isFinalShot: index === delays.length - 1 // The last arrow in the 7-arrow sequence
       });
     });
   }
@@ -441,7 +667,7 @@ export class GameLoop {
   /**
    * Shoot a single flaming arrow towards the opponent's current position
    */
-  _shootSingleArrow(fighter, opponent, sound) {
+  _shootSingleArrow(fighter, opponent, sound, isFinalShot = false) {
     if (!this.stage || !fighter.alive || !opponent.alive) return;
 
     if (sound) {
@@ -455,8 +681,18 @@ export class GameLoop {
     const dx = opponent.body.x - startX;
     const dy = opponent.body.y - startY;
     const angle = Math.atan2(dy, dx);
-    const speed = 22.0; // Extreme fly speed (hyper-snappy projectiles)
     const isBlazing = fighter.isInfused;
+    const speed = isBlazing ? 22.0 : 11.0; // Buffed arrows retain old speed, unbuffed reduced to 50%
+
+    // Apply snappy recoil to the shooter (push Yoimiya backward)
+    // Shots 1-4 have 75% reduced recoil (0.25x), shot 5 has full recoil
+    let recoilStrength = isBlazing ? 5.5 : 3.5;
+    if (!isFinalShot) {
+      recoilStrength *= 0.25;
+    }
+    
+    fighter.body.vx -= Math.cos(angle) * recoilStrength;
+    fighter.body.vy -= Math.sin(angle) * recoilStrength;
 
     // Trigger spark effect muzzle flash originating from Yoimiya's circle ONLY when E is active!
     if (isBlazing && fighter.vfx) {

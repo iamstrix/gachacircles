@@ -18,12 +18,12 @@ export const CRYO_COLORS = {
 };
 
 export const PYRO_COLORS = {
-  white:    0xffffff,
-  gold:     0xffd966,
-  orange:   0xff8c32,
-  deepRed:  0xd42020,
-  accent:   0xffe066,  // bright accent for additive glow
-  dark:     0x7a1a1a,  // deep ember colour
+  white:       0xffffff,
+  brightGold:  0xffd54f,  // vibrant gold-orange
+  vividOrange: 0xff6d00,  // very saturated orange
+  bloodOrange: 0xdd2c00,  // deep reddish orange
+  accent:      0xffab40,  // bright amber accent
+  dark:        0x3e1100,  // deep charred brown-orange
 };
 
 /**
@@ -37,11 +37,25 @@ export const CRYO_GRADIENT = [
   { t: 1.0, color: CRYO_COLORS.deepBlue },
 ];
 
+/**
+ * Hyouka burst gradient — vivid, saturated cryo-blues that pop against the
+ * pastel arena. Starts with a bright icy-cyan flash, deepens through
+ * rich cryo-blue, and dies as a dark frosted navy.
+ */
+export const HYOUKA_BURST_GRADIENT = [
+  { t: 0.0, color: 0x4fc3f7 },   // vivid cryo sky-blue (bright flash)
+  { t: 0.2, color: 0x29b6f6 },   // rich icy-blue
+  { t: 0.5, color: 0x0288d1 },   // deep saturated cryo-blue
+  { t: 0.8, color: 0x01579b },   // dark cryo-blue
+  { t: 1.0, color: 0x0a2a4a },   // frosted navy-abyss
+];
+
 export const PYRO_GRADIENT = [
   { t: 0.0, color: PYRO_COLORS.white },
-  { t: 0.2, color: PYRO_COLORS.gold },
-  { t: 0.5, color: PYRO_COLORS.orange },
-  { t: 1.0, color: PYRO_COLORS.deepRed },
+  { t: 0.1, color: PYRO_COLORS.brightGold },
+  { t: 0.4, color: PYRO_COLORS.vividOrange },
+  { t: 0.8, color: PYRO_COLORS.bloodOrange },
+  { t: 1.0, color: PYRO_COLORS.dark },
 ];
 
 // ── Helpers ──────────────────────────────────────────────────

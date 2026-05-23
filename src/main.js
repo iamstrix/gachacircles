@@ -104,8 +104,8 @@ async function init() {
   app.ticker.add((ticker) => {
     gameLoop.update(ticker.deltaTime);
 
-    // Update VFX skill animations
-    cryoVFX.updateSkill(ticker.deltaTime);
+    // Update VFX skill animations (pass Ayaka's position so the ice cyclone tracks her circle center)
+    cryoVFX.updateSkill(ticker.deltaTime, fighter1.body.x, fighter1.body.y);
     pyroVFX.updateSkill(ticker.deltaTime);
   });
 

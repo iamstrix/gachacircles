@@ -72,6 +72,73 @@ export class PyroVFX {
   // ── Collision burst ──────────────────────────────────────
 
   /**
+   * Trigger the Pyro infusion (E skill) activation burst at (x, y).
+   * A sharp, focused burst of fiery orange particles.
+   */
+  triggerInfusion(x, y) {
+    // 1. Layer: Vivid Orange (Main body, high visibility)
+    this._burst.emit(x, y, {
+      count: 35,
+      speedMin: 4,
+      speedMax: 11,
+      spreadAngle: Math.PI * 2,
+      lifetimeMin: 25,
+      lifetimeMax: 50,
+      sizeMin: 4,
+      sizeMax: 8,
+      blendMode: 'normal', // Use normal to keep saturation on light background
+      color: PYRO_COLORS.vividOrange,
+      shrink: true,
+    });
+
+    // 2. Layer: Blood Orange (Deep contrast)
+    this._burst.emit(x, y, {
+      count: 25,
+      speedMin: 2,
+      speedMax: 8,
+      spreadAngle: Math.PI * 2,
+      lifetimeMin: 30,
+      lifetimeMax: 60,
+      sizeMin: 3,
+      sizeMax: 6,
+      blendMode: 'normal',
+      color: PYRO_COLORS.bloodOrange,
+      shrink: true,
+    });
+
+    // 3. Layer: Dark/Charred (Small, high contrast "embers")
+    this._burst.emit(x, y, {
+      count: 20,
+      speedMin: 1.5,
+      speedMax: 5,
+      spreadAngle: Math.PI * 2,
+      lifetimeMin: 40,
+      lifetimeMax: 70,
+      sizeMin: 2,
+      sizeMax: 4,
+      blendMode: 'normal',
+      color: PYRO_COLORS.dark,
+      shrink: true,
+    });
+    
+    // 4. Layer: Bright Flash (Additive glow)
+    this._burst.emit(x, y, {
+      count: 2,
+      speedMin: 0,
+      speedMax: 0,
+      lifetimeMin: 15,
+      lifetimeMax: 20,
+      sizeMin: 90,
+      sizeMax: 130,
+      startAlpha: 0.7,
+      endAlpha: 0,
+      blendMode: 'add',
+      color: PYRO_COLORS.brightGold,
+      shrink: true,
+    });
+  }
+
+  /**
    * Trigger a fire-spark burst at (x, y) on hit.
    */
   triggerCollision(x, y) {
