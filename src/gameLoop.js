@@ -3,6 +3,7 @@
  * Orchestrates physics, combat, VFX, and UI updates.
  */
 
+import { Graphics } from 'pixi.js';
 import { updatePosition, bounceOffWalls, checkCircleCollision, resolveCollision } from './physics.js';
 
 export class GameLoop {
@@ -13,12 +14,13 @@ export class GameLoop {
    * @param {Object} hud - HUD instance
    * @param {Object} damageNumbers - DamageNumbers instance
    */
-  constructor(fighter1, fighter2, bounds, hud, damageNumbers) {
+  constructor(fighter1, fighter2, bounds, hud, damageNumbers, stage) {
     this.fighter1 = fighter1;
     this.fighter2 = fighter2;
     this.bounds = bounds;
     this.hud = hud;
     this.damageNumbers = damageNumbers;
+    this.stage = stage;
 
     this.gameOver = false;
     this.winner = null;
@@ -28,6 +30,7 @@ export class GameLoop {
     this.onGameOver = null; // Callback
 
     this.activeEffects = []; // Store active Q whirlwind effects, etc.
+    this.projectiles = []; // Store active flying arrows, etc.
   }
 
   /**
@@ -58,6 +61,72 @@ export class GameLoop {
     if (collision.colliding) {
       resolveCollision(this.fighter1.body, this.fighter2.body, collision);
       this._handleCombat(collision, currentTime);
+    }
+
+    // Update active projectiles (Yoimiya's flaming arrows)
+    if (this.stage) {
+      this.projectiles = this.projectiles.filter(arrow => {
+        // Move arrow
+        arrow.x += Math.cos(arrow.angle) * arrow.speed * delta;
+        arrow.y += Math.sin(arrow.angle) * arrow.speed * delta;
+        
+        // Sync visual position
+        arrow.visual.x = arrow.x;
+        arrow.visual.y = arrow.y;
+
+        // Spawn fire particle trail behind flying arrow
+        if (arrow.owner.vfx) {
+          arrow.owner.vfx.updateAmbient(arrow.x, arrow.y, delta * 1.5);
+        }
+
+        // Out of bounds check
+        const padding = 15;
+        if (arrow.x < this.bounds.x - padding || 
+            arrow.x > this.bounds.x + this.bounds.width + padding ||
+            arrow.y < this.bounds.y - padding || 
+            arrow.y > this.bounds.y + this.bounds.height + padding) {
+          this.stage.removeChild(arrow.visual);
+          arrow.visual.destroy();
+          return false;
+        }
+
+        // Collision check with opponent
+        const dx = arrow.x - arrow.target.body.x;
+        const dy = arrow.y - arrow.target.body.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        
+        if (dist < arrow.target.body.radius + 5) {
+          // HIT!
+          const damage = Math.round(arrow.owner.data.damage * 0.75); // Arrow deals 75% of base damage
+          const result = arrow.target.takeDamage(damage);
+
+          // Pyro explosion burst VFX
+          if (arrow.owner.vfx) {
+            arrow.owner.vfx.triggerCollision(arrow.x, arrow.y);
+          }
+
+          if (this.damageNumbers) {
+            this.damageNumbers.spawn(
+              arrow.x,
+              arrow.y - 15,
+              damage,
+              arrow.owner.element,
+              false
+            );
+          }
+
+          if (result.died) {
+            this._endGame(arrow.owner);
+          }
+
+          // Clean up visual
+          this.stage.removeChild(arrow.visual);
+          arrow.visual.destroy();
+          return false;
+        }
+
+        return true;
+      });
     }
 
     // Update active burst/skill effects
@@ -244,6 +313,8 @@ export class GameLoop {
           if (fighter.vfx) {
             fighter.vfx.triggerSkill(fighter.body.x, fighter.body.y);
           }
+          // Spawn 3 horizontal-spread flaming arrows towards opponent!
+          this._spawnYoimiyaArrows(fighter, opponent);
         }
       }
     }
@@ -294,6 +365,59 @@ export class GameLoop {
         }
       }
     }
+  }
+
+  /**
+   * Spawn 3 horizontal-spread flaming arrows from Yoimiya towards opponent
+   */
+  _spawnYoimiyaArrows(fighter, opponent) {
+    if (!this.stage) return;
+
+    const startX = fighter.body.x;
+    const startY = fighter.body.y;
+
+    // Calculate angle towards target
+    const dx = opponent.body.x - startX;
+    const dy = opponent.body.y - startY;
+    const baseAngle = Math.atan2(dy, dx);
+
+    // Angles: straight at target, slightly to the left, slightly to the right
+    const angles = [baseAngle, baseAngle - 0.25, baseAngle + 0.25];
+    const speed = 7.5; // pixels per frame
+
+    angles.forEach(angle => {
+      // Create glowing arrow graphics
+      const visual = new Graphics();
+      
+      // Draw pointed arrow tip
+      visual.moveTo(-10, -2);
+      visual.lineTo(10, -2);
+      visual.lineTo(14, 0);
+      visual.lineTo(10, 2);
+      visual.lineTo(-10, 2);
+      visual.closePath();
+      visual.fill({ color: 0xff4500 }); // Red-orange main body
+      
+      // Draw fire core
+      visual.circle(6, 0, 3);
+      visual.fill({ color: 0xffaa00 }); // Golden yellow fire head
+      
+      visual.x = startX;
+      visual.y = startY;
+      visual.rotation = angle;
+      
+      this.stage.addChild(visual);
+
+      this.projectiles.push({
+        x: startX,
+        y: startY,
+        angle: angle,
+        speed: speed,
+        visual: visual,
+        owner: fighter,
+        target: opponent
+      });
+    });
   }
 
   /**

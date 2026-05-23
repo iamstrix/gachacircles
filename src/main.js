@@ -93,7 +93,7 @@ async function init() {
   hud.updateHP('pyro', yoimiyaData.hp, yoimiyaData.hp);
 
   // Create game loop
-  gameLoop = new GameLoop(fighter1, fighter2, ARENA, hud, damageNumbers);
+  gameLoop = new GameLoop(fighter1, fighter2, ARENA, hud, damageNumbers, app.stage);
 
   // Handle game over
   gameLoop.onGameOver = (winner) => {
