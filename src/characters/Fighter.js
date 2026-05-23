@@ -23,10 +23,16 @@ export class Fighter {
     this.maxHp = characterData.hp;
     this.alive = true;
     this.lastAttackTime = 0;
-    this.skillCooldownTimer = characterData.skillCooldown;
-    this.skillReady = false;
-    this.isUsingSkill = false;
-    this.skillActiveTimer = 0;
+
+    // Skills & Bursts cooldown timers (0 = ready!)
+    this.skillCDTimer = 0;
+    this.burstCDTimer = 0;
+    this.isInfused = false; // Yoimiya's E infusion
+    this.infusionActiveTimer = 0;
+
+    // Passives
+    this.passiveStacks = 0; // Yoimiya's stacks
+    this.passiveTimer = 0; // duration tracking
 
     // Physics body
     this.body = {
@@ -146,8 +152,13 @@ export class Fighter {
     this.container.x = this.body.x;
     this.container.y = this.body.y;
 
-    // Update weapon orbit
-    this.weaponAngle += this.weaponOrbitSpeed * delta * 0.016;
+    // Update weapon orbit speed visually (faster during Yoimiya's E infusion)
+    let currentOrbitSpeed = this.weaponOrbitSpeed;
+    if (this.id === 'yoimiya' && this.isInfused) {
+      currentOrbitSpeed *= 2.0;
+    }
+    this.weaponAngle += currentOrbitSpeed * delta * 0.016;
+
     if (this.weaponSprite) {
       this.weaponSprite.x = Math.cos(this.weaponAngle) * this.weaponOrbitRadius;
       this.weaponSprite.y = Math.sin(this.weaponAngle) * this.weaponOrbitRadius;
@@ -160,21 +171,32 @@ export class Fighter {
       this.circleGlow.scale.set(pulseScale);
     }
 
-    // Update skill cooldown
-    if (!this.skillReady && !this.isUsingSkill) {
-      this.skillCooldownTimer -= delta * 0.016;
-      if (this.skillCooldownTimer <= 0) {
-        this.skillReady = true;
-        this.skillCooldownTimer = 0;
+    // Cooldown ticks
+    if (this.skillCDTimer > 0) {
+      this.skillCDTimer -= delta * 0.016;
+      if (this.skillCDTimer < 0) this.skillCDTimer = 0;
+    }
+
+    if (this.burstCDTimer > 0) {
+      this.burstCDTimer -= delta * 0.016;
+      if (this.burstCDTimer < 0) this.burstCDTimer = 0;
+    }
+
+    // Yoimiya infusion duration tick
+    if (this.id === 'yoimiya' && this.isInfused) {
+      this.infusionActiveTimer -= delta * 16.67;
+      if (this.infusionActiveTimer <= 0) {
+        this.isInfused = false;
+        this.infusionActiveTimer = 0;
       }
     }
 
-    // Update active skill timer
-    if (this.isUsingSkill) {
-      this.skillActiveTimer -= delta * 16.67; // Convert to ms
-      if (this.skillActiveTimer <= 0) {
-        this.isUsingSkill = false;
-        this.skillActiveTimer = 0;
+    // Passive timers tick
+    if (this.passiveTimer > 0) {
+      this.passiveTimer -= delta * 16.67;
+      if (this.passiveTimer <= 0) {
+        this.passiveTimer = 0;
+        this.passiveStacks = 0; // Stacks expire
       }
     }
 
@@ -190,7 +212,11 @@ export class Fighter {
    * @returns {boolean}
    */
   canAttack(currentTime) {
-    const cooldownMs = 1000 / this.data.attackSpeed;
+    let currentAttackSpeed = this.data.attackSpeed;
+    if (this.id === 'yoimiya' && this.isInfused) {
+      currentAttackSpeed *= 2.0; // Double attack speed during infusion!
+    }
+    const cooldownMs = 1000 / currentAttackSpeed;
     return currentTime - this.lastAttackTime >= cooldownMs;
   }
 
@@ -239,18 +265,24 @@ export class Fighter {
   }
 
   /**
-   * Activate elemental skill
+   * Activate elemental skill (E)
    * @returns {boolean} true if skill was activated
    */
   activateSkill() {
-    if (!this.skillReady || this.isUsingSkill) return false;
+    if (this.skillCDTimer > 0) return false;
 
-    this.skillReady = false;
-    this.isUsingSkill = true;
-    this.skillActiveTimer = this.data.skill.duration;
-    this.skillCooldownTimer = this.data.skillCooldown;
+    this.skillCDTimer = this.data.skillE.cooldown;
 
-    // Trigger VFX
+    if (this.id === 'ayaka') {
+      // Ayaka's passive activates: NA dmg +30% for 3s
+      this.passiveTimer = this.data.passive.duration;
+    } else if (this.id === 'yoimiya') {
+      // Yoimiya's Pyro infusion activates for 4s
+      this.isInfused = true;
+      this.infusionActiveTimer = this.data.skillE.duration;
+    }
+
+    // Trigger VFX E
     if (this.vfx) {
       this.vfx.triggerSkill(this.body.x, this.body.y);
     }
@@ -259,20 +291,55 @@ export class Fighter {
   }
 
   /**
-   * Get current skill cooldown progress (0 to 1)
+   * Activate elemental burst (Q)
+   * @returns {boolean} true if burst was activated
    */
-  getSkillCooldownProgress() {
-    if (this.skillReady) return 1;
-    return 1 - (this.skillCooldownTimer / this.data.skillCooldown);
+  activateBurst() {
+    if (this.burstCDTimer > 0) return false;
+
+    this.burstCDTimer = this.data.burstQ.cooldown;
+
+    return true;
   }
 
   /**
-   * Get the damage this fighter deals (considering active skill)
+   * Get current skill (E) cooldown progress (0 to 1)
+   */
+  getSkillCooldownProgress() {
+    if (this.skillCDTimer <= 0) return 1;
+    return 1 - (this.skillCDTimer / this.data.skillE.cooldown);
+  }
+
+  /**
+   * Get current burst (Q) cooldown progress (0 to 1)
+   */
+  getBurstCooldownProgress() {
+    if (this.burstCDTimer <= 0) return 1;
+    return 1 - (this.burstCDTimer / this.data.burstQ.cooldown);
+  }
+
+  /**
+   * Get the damage this fighter deals (considering active skills and passives)
    */
   getCurrentDamage() {
-    if (this.isUsingSkill) {
-      return Math.round(this.data.damage * this.data.skill.damageMultiplier);
+    let dmg = this.data.damage;
+
+    if (this.id === 'ayaka') {
+      // Passive: Kanten Senmyou Blessing (+30% Normal Attack DMG)
+      if (this.passiveTimer > 0) {
+        dmg = Math.round(dmg * 1.30);
+      }
+    } else if (this.id === 'yoimiya') {
+      // Skill E Pyro Infusion (+50% DMG)
+      if (this.isInfused) {
+        dmg = Math.round(dmg * 1.50);
+      }
+      // Passive: Tricks of the Trouble-Maker (+2% DMG per stack, up to 10 stacks)
+      if (this.passiveStacks > 0) {
+        dmg = Math.round(dmg * (1 + this.passiveStacks * 0.02));
+      }
     }
-    return this.data.damage;
+
+    return dmg;
   }
 }

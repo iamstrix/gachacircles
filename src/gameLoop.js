@@ -26,6 +26,8 @@ export class GameLoop {
     this.collisionCooldown = 0; // Prevent rapid re-collision damage
 
     this.onGameOver = null; // Callback
+
+    this.activeEffects = []; // Store active Q whirlwind effects, etc.
   }
 
   /**
@@ -58,9 +60,44 @@ export class GameLoop {
       this._handleCombat(collision, currentTime);
     }
 
-    // Check for skill activation (auto-activate when ready)
-    this._checkSkillActivation(this.fighter1, this.fighter2);
-    this._checkSkillActivation(this.fighter2, this.fighter1);
+    // Update active burst/skill effects
+    this.activeEffects = this.activeEffects.filter(effect => {
+      effect.timer -= delta * 0.016;
+      if (effect.type === 'soumetsu') {
+        effect.tickTimer -= delta * 0.016;
+        if (effect.tickTimer <= 0) {
+          effect.tickTimer = 0.5; // Tick every 0.5s
+          
+          // Cyclone tracks opponent
+          const damage = Math.round(effect.owner.data.damage * effect.owner.data.burstQ.damageMultiplier);
+          const result = effect.target.takeDamage(damage);
+          
+          // Trigger Cryo swirl burst VFX where the opponent is
+          if (effect.owner.vfx) {
+            effect.owner.vfx.triggerCollision(effect.target.body.x, effect.target.body.y);
+          }
+          
+          if (this.damageNumbers) {
+            this.damageNumbers.spawn(
+              effect.target.body.x,
+              effect.target.body.y - 30,
+              damage,
+              effect.owner.element,
+              true
+            );
+          }
+          
+          if (result.died) {
+            this._endGame(effect.owner);
+          }
+        }
+      }
+      return effect.timer > 0;
+    });
+
+    // Check for skill and burst activation (auto-activate when ready)
+    this._checkAbilityActivation(this.fighter1, this.fighter2);
+    this._checkAbilityActivation(this.fighter2, this.fighter1);
 
     // Update fighters
     this.fighter1.update(delta, this.elapsedTime);
@@ -77,11 +114,18 @@ export class GameLoop {
     // Apply damage from fighter1 to fighter2
     if (this.fighter1.canAttack(currentTime)) {
       const damage = this.fighter1.getCurrentDamage();
-      const isCrit = this.fighter1.isUsingSkill;
+      const isCrit = (this.fighter1.id === 'ayaka' && this.fighter1.passiveTimer > 0) ||
+                     (this.fighter1.id === 'yoimiya' && this.fighter1.isInfused);
       const result = this.fighter2.takeDamage(damage);
 
       if (result.actualDamage > 0) {
         this.fighter1.registerAttack(currentTime);
+
+        // Trigger passive stack for Yoimiya
+        if (this.fighter1.id === 'yoimiya') {
+          this.fighter1.passiveStacks = Math.min(10, this.fighter1.passiveStacks + 1);
+          this.fighter1.passiveTimer = this.fighter1.data.passive.duration;
+        }
 
         // Trigger collision VFX
         if (this.fighter1.vfx) {
@@ -99,7 +143,7 @@ export class GameLoop {
           );
         }
 
-        // Screen shake on skill hits
+        // Screen shake on skill/crit hits
         if (isCrit) {
           this._screenShake();
         }
@@ -114,11 +158,18 @@ export class GameLoop {
     // Apply damage from fighter2 to fighter1
     if (this.fighter2.canAttack(currentTime)) {
       const damage = this.fighter2.getCurrentDamage();
-      const isCrit = this.fighter2.isUsingSkill;
+      const isCrit = (this.fighter2.id === 'ayaka' && this.fighter2.passiveTimer > 0) ||
+                     (this.fighter2.id === 'yoimiya' && this.fighter2.isInfused);
       const result = this.fighter1.takeDamage(damage);
 
       if (result.actualDamage > 0) {
         this.fighter2.registerAttack(currentTime);
+
+        // Trigger passive stack for Yoimiya
+        if (this.fighter2.id === 'yoimiya') {
+          this.fighter2.passiveStacks = Math.min(10, this.fighter2.passiveStacks + 1);
+          this.fighter2.passiveTimer = this.fighter2.data.passive.duration;
+        }
 
         // Trigger collision VFX
         if (this.fighter2.vfx) {
@@ -149,27 +200,34 @@ export class GameLoop {
   }
 
   /**
-   * Auto-activate skills when ready (simple AI)
+   * Auto-activate skills and bursts when ready (AI)
    */
-  _checkSkillActivation(fighter, opponent) {
-    if (fighter.skillReady && !fighter.isUsingSkill) {
-      // Activate skill — could add distance check for smarter AI later
+  _checkAbilityActivation(fighter, opponent) {
+    if (this.gameOver) return;
+
+    // ── Check Elemental Skill (E) ────────────────
+    if (fighter.skillCDTimer <= 0) {
       const activated = fighter.activateSkill();
       if (activated) {
-        // Apply skill AoE damage if opponent is within range
-        const dx = opponent.body.x - fighter.body.x;
-        const dy = opponent.body.y - fighter.body.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (fighter.id === 'ayaka') {
+          // Ayaka E: AoE damage + high repel push!
+          const dx = opponent.body.x - fighter.body.x;
+          const dy = opponent.body.y - fighter.body.y;
+          const dist = Math.sqrt(dx * dx + dy * dy) || 1;
 
-        if (dist < fighter.data.skill.aoeRadius) {
-          const skillDamage = Math.round(fighter.data.damage * fighter.data.skill.damageMultiplier);
-          const result = opponent.takeDamage(skillDamage);
+          // Strong repel force
+          const force = 9;
+          opponent.body.vx += (dx / dist) * force;
+          opponent.body.vy += (dy / dist) * force;
+
+          const damage = Math.round(fighter.data.damage * fighter.data.skillE.damageMultiplier);
+          const result = opponent.takeDamage(damage);
 
           if (this.damageNumbers) {
             this.damageNumbers.spawn(
               opponent.body.x,
               opponent.body.y - 30,
-              skillDamage,
+              damage,
               fighter.element,
               true
             );
@@ -179,6 +237,59 @@ export class GameLoop {
 
           if (result.died) {
             this._endGame(fighter);
+            return;
+          }
+        } else if (fighter.id === 'yoimiya') {
+          // Yoimiya E: Infusion, triggers aura visual
+          if (fighter.vfx) {
+            fighter.vfx.triggerSkill(fighter.body.x, fighter.body.y);
+          }
+        }
+      }
+    }
+
+    // ── Check Elemental Burst (Q) ────────────────
+    if (fighter.burstCDTimer <= 0) {
+      const activated = fighter.activateBurst();
+      if (activated) {
+        if (fighter.id === 'ayaka') {
+          // Ayaka Q: Soumetsu frost whirlwind ticks over 3 seconds tracking target
+          this.activeEffects.push({
+            type: 'soumetsu',
+            owner: fighter,
+            target: opponent,
+            timer: 3.0,
+            tickTimer: 0
+          });
+
+          if (fighter.vfx) {
+            fighter.vfx.triggerSkill(fighter.body.x, fighter.body.y);
+          }
+          this._screenShake();
+        } else if (fighter.id === 'yoimiya') {
+          // Yoimiya Q: Massive instant firework explosion
+          const damage = Math.round(fighter.data.damage * fighter.data.burstQ.damageMultiplier);
+          const result = opponent.takeDamage(damage);
+
+          if (fighter.vfx) {
+            fighter.vfx.triggerSkill(opponent.body.x, opponent.body.y);
+          }
+
+          if (this.damageNumbers) {
+            this.damageNumbers.spawn(
+              opponent.body.x,
+              opponent.body.y - 30,
+              damage,
+              fighter.element,
+              true
+            );
+          }
+
+          this._screenShake();
+
+          if (result.died) {
+            this._endGame(fighter);
+            return;
           }
         }
       }
@@ -194,20 +305,20 @@ export class GameLoop {
     this.hud.updateHP(this.fighter1.element, this.fighter1.hp, this.fighter1.maxHp);
     this.hud.updateHP(this.fighter2.element, this.fighter2.hp, this.fighter2.maxHp);
 
-    // Update skill cooldown indicators
-    if (this.fighter1.skillReady) {
-      this.hud.showSkillReady(this.fighter1.element);
-    } else {
-      const remaining = this.fighter1.skillCooldownTimer;
-      this.hud.updateSkillCooldown(this.fighter1.element, remaining, this.fighter1.data.skillCooldown);
-    }
+    // Update dynamic stats in footer
+    const ySpeed = this.fighter2.data.attackSpeed * (this.fighter2.isInfused ? 2.0 : 1.0);
+    this.hud.updateStats('cryo', this.fighter1.getCurrentDamage(), this.fighter1.data.attackSpeed);
+    this.hud.updateStats('pyro', this.fighter2.getCurrentDamage(), ySpeed);
 
-    if (this.fighter2.skillReady) {
-      this.hud.showSkillReady(this.fighter2.element);
-    } else {
-      const remaining = this.fighter2.skillCooldownTimer;
-      this.hud.updateSkillCooldown(this.fighter2.element, remaining, this.fighter2.data.skillCooldown);
-    }
+    // Update sidebar cooldown indicators
+    this.hud.updateAbilityCD('cryo', 'E', this.fighter1.skillCDTimer, this.fighter1.data.skillE.cooldown);
+    this.hud.updateAbilityCD('cryo', 'Q', this.fighter1.burstCDTimer, this.fighter1.data.burstQ.cooldown);
+    this.hud.updateAbilityCD('pyro', 'E', this.fighter2.skillCDTimer, this.fighter2.data.skillE.cooldown);
+    this.hud.updateAbilityCD('pyro', 'Q', this.fighter2.burstCDTimer, this.fighter2.data.burstQ.cooldown);
+
+    // Update passive indicators below circular icons
+    this.hud.updatePassiveState('cryo', this.fighter1.passiveTimer, 0);
+    this.hud.updatePassiveState('pyro', this.fighter2.passiveTimer, this.fighter2.passiveStacks);
   }
 
   /**

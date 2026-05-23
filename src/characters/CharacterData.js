@@ -33,17 +33,30 @@ export const CHARACTERS = {
     hp: 120,
     damage: 10,
     attackSpeed: 1.0,       // Attacks per second during collision
-    skillCooldown: 10,      // Seconds between skill activations
     speed: 3.0,             // Movement speed multiplier
 
-    // Skill
-    skill: {
+    // Skills & Burst
+    skillE: {
+      name: 'Kamisato Art: Hyouka',
+      description: 'Summons blooming ice dealing AoE Cryo damage and repelling opponents',
+      damageMultiplier: 2.0,
+      cooldown: 6,
+      emoji: '❄️'
+    },
+    burstQ: {
       name: 'Kamisato Art: Soumetsu',
-      description: 'Releases a freezing ice cyclone that deals massive AoE Cryo damage',
-      damageMultiplier: 3.5,
+      description: 'Releases a freezing ice cyclone that ticks continuous Cryo damage',
+      damageMultiplier: 1.2,
+      duration: 3000,       // ticks over 3s
       aoeRadius: 140,
-      duration: 2000,       // ms
-      emoji: '🌀',
+      cooldown: 15,
+      emoji: '🌀'
+    },
+    passive: {
+      name: 'Kanten Senmyou Blessing',
+      description: 'Elemental skill grants +30% Normal Attack DMG for 3s',
+      duration: 3000,
+      emoji: '⚔️'
     },
 
     // Visual config
@@ -70,18 +83,30 @@ export const CHARACTERS = {
     // Combat stats
     hp: 100,
     damage: 6,
-    attackSpeed: 2.5,       // Much faster — rapid fire arrows
-    skillCooldown: 8,       // Shorter cooldown
+    attackSpeed: 2.5,       // Faster base attacks
     speed: 3.5,             // Slightly faster movement
 
-    // Skill
-    skill: {
+    // Skills & Burst
+    skillE: {
+      name: 'Niwabi Fire-Dance',
+      description: 'Pyro infusion: deals +50% damage and doubles attack speed for 4s',
+      cooldown: 10,
+      duration: 4000,
+      emoji: '🔥'
+    },
+    burstQ: {
       name: 'Ryuukin Saxifrage',
-      description: 'Leaps into the air and unleashes a dazzling firework explosion',
+      description: 'Fires a rocket shower dealing massive instant AoE Pyro damage',
       damageMultiplier: 4.0,
-      aoeRadius: 130,
-      duration: 1500,       // ms
-      emoji: '🎆',
+      aoeRadius: 160,
+      cooldown: 15,
+      emoji: '🎆'
+    },
+    passive: {
+      name: 'Tricks of the Trouble-Maker',
+      description: 'Normal attacks stack +2% damage up to 10 stacks (max +20%) for 3s',
+      duration: 3000,
+      emoji: '🎯'
     },
 
     // Visual config

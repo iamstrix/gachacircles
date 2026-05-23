@@ -106,17 +106,136 @@ function injectStyles() {
     .ghud-stat-val.cryo { color: #00bcd4; }
     .ghud-stat-val.pyro { color: #ff3333; }
 
-    /* ── Skill Cooldown (Hidden to match simple aesthetic) ────────── */
-    .ghud-skill {
-      display: none !important;
+    /* ── Sidebars ────────────────────────── */
+    .ghud-sidebar {
+      position: absolute;
+      top: 120px;
+      width: 40px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      z-index: 1005;
+    }
+    .ghud-sidebar.left {
+      left: 12px;
+    }
+    .ghud-sidebar.right {
+      right: 12px;
+    }
+
+    /* ── Action Buttons ──────────────────── */
+    .ghud-action-btn {
+      position: relative;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: 2px solid #000;
+      background: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 2px 2px 0px rgba(0,0,0,0.15);
+      pointer-events: none;
+    }
+    .ghud-emoji {
+      font-size: 18px;
+    }
+
+    /* ── Cooldown Overlays ───────────────── */
+    .ghud-cd-svg {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      transform: rotate(-90deg);
+    }
+    .ghud-cd-bg {
+      fill: none;
+      stroke: transparent;
+    }
+    .ghud-cd-fg {
+      fill: none;
+      stroke-width: 4;
+      stroke-linecap: butt;
+      transition: stroke-dashoffset 0.1s linear;
+    }
+    .ghud-cd-fg.cryo {
+      stroke: rgba(0, 188, 212, 0.4);
+    }
+    .ghud-cd-fg.pyro {
+      stroke: rgba(255, 51, 51, 0.4);
+    }
+
+    .ghud-cd-text {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 900;
+      color: #000;
+      -webkit-text-stroke: 0.5px #fff;
+      text-shadow: 1px 1px 0px #fff;
+    }
+
+    /* ── Key Badges ──────────────────────── */
+    .ghud-btn-key {
+      position: absolute;
+      bottom: -4px;
+      right: -4px;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      border: 1.5px solid #000;
+      background: #ffd54f;
+      color: #000;
+      font-size: 8px;
+      font-weight: 900;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 1px 1px 0px rgba(0,0,0,0.15);
+    }
+
+    /* ── Passive Badges ──────────────────── */
+    .ghud-passive-badge {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-size: 9px;
+      font-weight: 900;
+      padding: 4px;
+      border-radius: 4px;
+      border: 1.5px solid #000;
+      background: #fff;
+      box-shadow: 2px 2px 0px rgba(0,0,0,0.15);
+      transition: all 0.3s ease;
+      white-space: nowrap;
+    }
+    .ghud-passive-badge.cryo {
+      border-color: #00bcd4;
+    }
+    .ghud-passive-badge.pyro {
+      border-color: #ff3333;
+    }
+    
+    .ghud-passive-active {
+      opacity: 1.0 !important;
+      animation: ghud-passive-pulse 0.8s ease-in-out infinite alternate;
+    }
+    
+    @keyframes ghud-passive-pulse {
+      from { transform: scale(1.0); }
+      to   { transform: scale(1.1); }
     }
   `;
   document.head.appendChild(style);
 }
 
 // ─────────────────────────────────────────────────────────────
-
-const CIRCUM = 2 * Math.PI * 13; // SVG circle radius = 13
 
 export class HUD {
   constructor() {
@@ -133,8 +252,10 @@ export class HUD {
     this._buildHP('pyro', 'right');
     this._buildStats('cryo', 'left');
     this._buildStats('pyro', 'right');
-    this._buildSkill('cryo', 'left');
-    this._buildSkill('pyro', 'right');
+    
+    // Build sidebars on left and right margins
+    this._buildSidebar('cryo', 'left');
+    this._buildSidebar('pyro', 'right');
   }
 
   // ── Build helpers ────────────────────────────────────────
@@ -189,37 +310,61 @@ export class HUD {
     this[`_stats_${element}`] = d;
   }
 
-  _buildSkill(element, side) {
-    const d = document.createElement('div');
-    d.className = `ghud-skill ${side}`;
-    d.innerHTML = `
-      <svg viewBox="0 0 32 32">
-        <circle class="ghud-skill-bg" cx="16" cy="16" r="13"/>
-        <circle class="ghud-skill-fg ${element}" cx="16" cy="16" r="13"
-                stroke-dasharray="${CIRCUM}"
-                stroke-dashoffset="0"/>
+  _buildSidebar(element, side) {
+    const bar = document.createElement('div');
+    bar.className = `ghud-sidebar ${side}`;
+
+    // E Skill Button
+    const eEmoji = element === 'cryo' ? '❄️' : '🔥';
+    const eBtn = this._createActionButton('E', eEmoji, element);
+    bar.appendChild(eBtn);
+    this[`_btn_${element}_E_fg`] = eBtn.querySelector('.ghud-cd-fg');
+    this[`_btn_${element}_E_text`] = eBtn.querySelector('.ghud-cd-text');
+
+    // Q Burst Button
+    const qEmoji = element === 'cryo' ? '🌀' : '🎆';
+    const qBtn = this._createActionButton('Q', qEmoji, element);
+    bar.appendChild(qBtn);
+    this[`_btn_${element}_Q_fg`] = qBtn.querySelector('.ghud-cd-fg');
+    this[`_btn_${element}_Q_text`] = qBtn.querySelector('.ghud-cd-text');
+
+    // Passive Badge
+    const passiveBadge = document.createElement('div');
+    passiveBadge.className = `ghud-passive-badge ${element}`;
+    passiveBadge.innerHTML = element === 'cryo' ? '⚔️' : '🎯';
+    passiveBadge.style.opacity = '0.2'; // Greyed out by default
+    bar.appendChild(passiveBadge);
+    this[`_badge_${element}`] = passiveBadge;
+
+    this.root.appendChild(bar);
+  }
+
+  _createActionButton(key, emoji, element) {
+    const btn = document.createElement('div');
+    btn.className = `ghud-action-btn ${element}`;
+    btn.innerHTML = `
+      <div class="ghud-emoji">${emoji}</div>
+      <svg viewBox="0 0 32 32" class="ghud-cd-svg">
+        <circle cx="16" cy="16" r="13" class="ghud-cd-bg"></circle>
+        <circle cx="16" cy="16" r="13" class="ghud-cd-fg ${element}"
+                stroke-dasharray="81.68"
+                stroke-dashoffset="0"></circle>
       </svg>
-      <div class="ghud-skill-label">E</div>
+      <div class="ghud-cd-text"></div>
+      <div class="ghud-btn-key">${key}</div>
     `;
-    this.root.appendChild(d);
-    this[`_skill_${element}_fg`] = d.querySelector('.ghud-skill-fg');
-    this[`_skill_${element}_label`] = d.querySelector('.ghud-skill-label');
-    this[`_skill_${element}_wrap`] = d;
+    return btn;
   }
 
   // ── Public API ───────────────────────────────────────────
 
   /**
-   * Update the HP bar for a fighter.
-   *
-   * @param {'cryo'|'pyro'} fighter
-   * @param {number} currentHP
-   * @param {number} maxHP
+   * Update the HP bar for a fighter (silent updates for hidden HUD)
    */
   updateHP(fighter, currentHP, maxHP) {
     const pct = Math.max(0, Math.min(100, (currentHP / maxHP) * 100));
-    this[`_hp_${fighter}_fill`].style.width = `${pct}%`;
-    this[`_hp_${fighter}_text`].textContent = `${Math.round(currentHP)} / ${Math.round(maxHP)}`;
+    if (this[`_hp_${fighter}_fill`]) this[`_hp_${fighter}_fill`].style.width = `${pct}%`;
+    if (this[`_hp_${fighter}_text`]) this[`_hp_${fighter}_text`].textContent = `${Math.round(currentHP)} / ${Math.round(maxHP)}`;
   }
 
   /**
@@ -239,41 +384,55 @@ export class HUD {
   }
 
   /**
-   * Show skill as "ready" with pulsing animation.
-   *
+   * Update ability cooldown overlays in sidebar
    * @param {'cryo'|'pyro'} fighter
+   * @param {'E'|'Q'} key
+   * @param {number} remaining
+   * @param {number} total
    */
-  showSkillReady(fighter) {
-    const fg = this[`_skill_${fighter}_fg`];
-    const label = this[`_skill_${fighter}_label`];
-    const wrap = this[`_skill_${fighter}_wrap`];
-    fg.style.strokeDashoffset = '0';
-    label.textContent = 'E';
-    wrap.classList.add('ghud-skill-ready');
+  updateAbilityCD(fighter, key, remaining, total) {
+    const fg = this[`_btn_${fighter}_${key}_fg`];
+    const txt = this[`_btn_${fighter}_${key}_text`];
+    if (!fg || !txt) return;
+
+    if (remaining <= 0) {
+      fg.style.strokeDashoffset = '0';
+      txt.textContent = '';
+    } else {
+      const frac = remaining / total;
+      // 81.68 is the full stroke dash array size. Sweep clockwise by subtracting remaining Cd
+      fg.style.strokeDashoffset = String(81.68 * frac);
+      txt.textContent = remaining.toFixed(1);
+    }
   }
 
   /**
-   * Update the circular cooldown indicator.
-   *
+   * Update passive status in sidebar
    * @param {'cryo'|'pyro'} fighter
-   * @param {number} remaining – seconds remaining
-   * @param {number} total     – total cooldown seconds
+   * @param {number} duration - timer duration left (for Ayaka)
+   * @param {number} stacks - passive stacks (Yoimiya only)
    */
-  updateSkillCooldown(fighter, remaining, total) {
-    const fg = this[`_skill_${fighter}_fg`];
-    const label = this[`_skill_${fighter}_label`];
-    const wrap = this[`_skill_${fighter}_wrap`];
+  updatePassiveState(fighter, duration, stacks) {
+    const badge = this[`_badge_${fighter}`];
+    if (!badge) return;
 
-    wrap.classList.remove('ghud-skill-ready');
-
-    if (remaining <= 0) {
-      this.showSkillReady(fighter);
-      return;
+    if (fighter === 'cryo') {
+      if (duration > 0) {
+        badge.classList.add('ghud-passive-active');
+        badge.textContent = `⚔️ ${(duration / 1000).toFixed(1)}s`;
+      } else {
+        badge.classList.remove('ghud-passive-active');
+        badge.textContent = '⚔️ Off';
+      }
+    } else if (fighter === 'pyro') {
+      if (stacks > 0) {
+        badge.classList.add('ghud-passive-active');
+        badge.textContent = `🎯 x${stacks}`;
+      } else {
+        badge.classList.remove('ghud-passive-active');
+        badge.textContent = '🎯 x0';
+      }
     }
-
-    const frac = remaining / total; // 1 = full cd, 0 = ready
-    fg.style.strokeDashoffset = String(CIRCUM * (1 - frac));
-    label.textContent = `${Math.ceil(remaining)}`;
   }
 
   /** Remove the HUD from the DOM. */
