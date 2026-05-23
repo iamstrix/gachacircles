@@ -225,16 +225,16 @@ export class GameLoop {
             return g;
           };
 
-          // Generate an ultra-messy hurricane of 50 independent blades - adjusted to 175 size (+75%)
+          // Generate an ultra-messy hurricane of 65 independent blades - condensed for high density
           // Included darker tones for contrast against light background
           const cryoColors = [0x5ed4fc, 0xb4e1fa, 0xffffff, 0x9df0ff, 0x1a6dd4, 0x0c3366];
-          for (let k = 0; k < 50; k++) {
-            const r = 40 + Math.random() * 135;      // Adjusted radii (max ~175)
-            const t = 2 + Math.random() * 10;      // Thicker blades for massive scale
+          for (let k = 0; k < 65; k++) {
+            const r = 30 + Math.random() * 90;       // Condensed radii (max ~120)
+            const t = 1.5 + Math.random() * 8;      // Balanced thickness
             const len = 0.2 + Math.random() * 2.5; // Varying arc length
-            const speed = (0.125 + Math.random() * 0.375) * (Math.random() > 0.5 ? 1 : -1); // Halved spin speed (was 0.25-0.75)
+            const speed = (0.1 + Math.random() * 0.3) * (Math.random() > 0.5 ? 1 : -1); // Slightly slower spin
             const color = cryoColors[Math.floor(Math.random() * cryoColors.length)];
-            const alpha = 0.1 + Math.random() * 0.45; // Lower alpha for large scale density
+            const alpha = 0.15 + Math.random() * 0.45; // Lower alpha for large scale density
             
             const blade = drawBlade(r, t, len, color, alpha, speed);
             blade.rotation = Math.random() * Math.PI * 2;
@@ -302,7 +302,7 @@ export class GameLoop {
       } 
       else if (effect.type === 'soumetsu_vortex') {
         // Phase 2: Vortex Movement & Damage
-        let currentSpeed = 1.8; // Base speed
+        let currentSpeed = 0.9; // Base speed (was 1.8)
         const distToEnemy = Math.sqrt((effect.x - effect.target.body.x)**2 + (effect.y - effect.target.body.y)**2);
         const isEnemyInside = distToEnemy < 120; // 100 radius + some buffer
 
