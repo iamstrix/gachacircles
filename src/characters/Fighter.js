@@ -107,7 +107,7 @@ export class Fighter {
       const weaponTexture = await Assets.load(this.data.weaponSprite);
       this.weaponSprite = new Sprite(weaponTexture);
       this.weaponSprite.anchor.set(0.5);
-      const weaponSize = this.id === 'yoimiya' ? 85 : 75;
+      const weaponSize = this.id === 'yoimiya' ? 110 : 100;
       this.weaponSprite.width = weaponSize;
       this.weaponSprite.height = weaponSize;
       this.container.addChild(this.weaponSprite);
@@ -177,7 +177,8 @@ export class Fighter {
       if (this.weaponSprite) {
         this.weaponSprite.x = Math.cos(this.weaponAngle) * this.weaponOrbitRadius;
         this.weaponSprite.y = Math.sin(this.weaponAngle) * this.weaponOrbitRadius;
-        this.weaponSprite.rotation = this.weaponAngle + Math.PI / 4;
+        // Rotate by Math.PI (180 degrees) relative to previous orientation to point hilt inward!
+        this.weaponSprite.rotation = this.weaponAngle - 3 * Math.PI / 4;
       }
     }
 
