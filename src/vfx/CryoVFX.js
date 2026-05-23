@@ -123,6 +123,78 @@ export class CryoVFX {
   // ── Skill effect – Soumetsu ice cyclone ──────────────────
 
   /**
+   * Trigger the cast aura for Soumetsu.
+   */
+  triggerCastAura(x, y) {
+    // Dense frost mist at feet
+    this._skill.emit(x, y, {
+      count: 20,
+      speedMin: 0.2,
+      speedMax: 0.8,
+      spreadAngle: Math.PI * 2,
+      lifetimeMin: 40,
+      lifetimeMax: 80,
+      sizeMin: 2,
+      sizeMax: 5,
+      startAlpha: 0.6,
+      endAlpha: 0,
+      gravity: -0.01,
+      blendMode: 'add',
+      gradient: CRYO_GRADIENT,
+      shrink: true,
+    });
+  }
+
+  /**
+   * Draw the laser sight telegraph line.
+   * @param {Graphics} gfx
+   * @param {number} x1, y1 - Start
+   * @param {number} x2, y2 - End
+   * @param {number} progress - 0 to 1
+   */
+  drawSoumetsuTelegraph(gfx, x1, y1, x2, y2, progress) {
+    gfx.clear();
+    // Inner thin laser
+    gfx.moveTo(x1, y1);
+    gfx.lineTo(x2, y2);
+    gfx.stroke({ color: 0xffffff, width: 1 + progress * 2, alpha: 0.3 + progress * 0.5 });
+    
+    // Outer glow path
+    gfx.moveTo(x1, y1);
+    gfx.lineTo(x2, y2);
+    gfx.stroke({ color: 0x4fc3f7, width: 4 + progress * 8, alpha: 0.1 + progress * 0.2 });
+  }
+
+  /**
+   * Draw the contracting frost ring for Soumetsu cast.
+   * @param {Graphics} gfx
+   * @param {number} x, y
+   * @param {number} radius
+   * @param {number} progress - 0 to 1
+   */
+  drawSoumetsuRing(gfx, x, y, radius, progress) {
+    gfx.clear();
+    // Color transitions from light blue to dark ominous blue
+    // Light: 0x80deea -> Dark: 0x070c1e
+    const r = Math.round(128 * (1 - progress) + 7 * progress);
+    const g = Math.round(222 * (1 - progress) + 12 * progress);
+    const b = Math.round(234 * (1 - progress) + 30 * progress);
+    const color = (r << 16) | (g << 8) | b;
+    
+    gfx.circle(x, y, radius);
+    gfx.stroke({ color: color, width: 3 + progress * 5, alpha: 0.3 + progress * 0.5 });
+    
+    // Add some "gathering energy" spikes pointing inward
+    for (let i = 0; i < 12; i++) {
+      const angle = (i / 12) * Math.PI * 2 + progress * 2;
+      const len = 15 + progress * 25;
+      gfx.moveTo(x + Math.cos(angle) * radius, y + Math.sin(angle) * radius);
+      gfx.lineTo(x + Math.cos(angle) * (radius - len), y + Math.sin(angle) * (radius - len));
+      gfx.stroke({ color: color, width: 2, alpha: 0.2 + progress * 0.4 });
+    }
+  }
+
+  /**
    * Trigger the Hyouka ice bloom explosion.
    * A single, massive outward explosion of sharp ice spikes. No lingering/swirling effects!
    */

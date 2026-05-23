@@ -189,6 +189,10 @@ export class GameLoop {
         if (effect.timer <= 0) {
           // Transitions to Phase 2: Unleash Vortex
           this.stage.removeChild(effect.telegraph);
+          if (effect.ring) {
+            this.stage.removeChild(effect.ring);
+            effect.ring.destroy();
+          }
           effect.telegraph.destroy();
 
           const vortex = new Container();
@@ -252,8 +256,11 @@ export class GameLoop {
         effect.angle = Math.atan2(dy, dx);
 
         const progress = 1 - (effect.timer / 2.1);
+        const ringRadius = 250 * (1 - progress) + 40; // Starts at 250, closes to 40
+
         if (effect.owner.vfx) {
           const range = 800;
+          // Draw laser
           effect.owner.vfx.drawSoumetsuTelegraph(
             effect.telegraph,
             effect.owner.body.x,
@@ -262,6 +269,27 @@ export class GameLoop {
             effect.owner.body.y + Math.sin(effect.angle) * range,
             progress
           );
+          
+          // Draw contracting ring
+          if (effect.ring) {
+            effect.owner.vfx.drawSoumetsuRing(
+              effect.ring,
+              effect.owner.body.x,
+              effect.owner.body.y,
+              ringRadius,
+              progress
+            );
+          }
+
+          // Vacuum particles: pull from outside the ring toward Ayaka
+          if (Math.random() < 0.8 * delta) {
+            const spawnAngle = Math.random() * Math.PI * 2;
+            const px = effect.owner.body.x + Math.cos(spawnAngle) * ringRadius;
+            const py = effect.owner.body.y + Math.sin(spawnAngle) * ringRadius;
+            
+            // Trigger particle at current ring position
+            effect.owner.vfx.triggerCollision(px, py);
+          }
         }
         return true;
       } 
@@ -644,9 +672,11 @@ export class GameLoop {
       if (activated) {
         if (fighter.id === 'ayaka') {
           // Ayaka Q: Two-phase Soumetsu burst
-          // Phase 1: 2.1s Casting with Laser Telegraph
+          // Phase 1: 2.1s Casting with Laser Telegraph + Contracting Ring
           const telegraphGfx = new Graphics();
+          const ringGfx = new Graphics();
           this.stage.addChild(telegraphGfx);
+          this.stage.addChild(ringGfx);
 
           this.activeEffects.push({
             type: 'soumetsu_cast',
@@ -654,6 +684,7 @@ export class GameLoop {
             target: opponent,
             timer: 2.1,
             telegraph: telegraphGfx,
+            ring: ringGfx,
             angle: 0
           });
 
@@ -661,7 +692,8 @@ export class GameLoop {
             fighter.vfx.triggerCastAura(fighter.body.x, fighter.body.y);
           }
           this._screenShake();
-        } else if (fighter.id === 'yoimiya') {
+        }
+ else if (fighter.id === 'yoimiya') {
           // Yoimiya Q: Massive instant firework explosion
           const damage = Math.round(fighter.data.damage * fighter.data.burstQ.damageMultiplier);
           const result = opponent.takeDamage(damage);
