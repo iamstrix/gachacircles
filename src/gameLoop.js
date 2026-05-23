@@ -232,7 +232,7 @@ export class GameLoop {
             const r = 40 + Math.random() * 135;      // Adjusted radii (max ~175)
             const t = 2 + Math.random() * 10;      // Thicker blades for massive scale
             const len = 0.2 + Math.random() * 2.5; // Varying arc length
-            const speed = (0.25 + Math.random() * 0.75) * (Math.random() > 0.5 ? 1 : -1);
+            const speed = (0.125 + Math.random() * 0.375) * (Math.random() > 0.5 ? 1 : -1); // Halved spin speed (was 0.25-0.75)
             const color = cryoColors[Math.floor(Math.random() * cryoColors.length)];
             const alpha = 0.1 + Math.random() * 0.45; // Lower alpha for large scale density
             
