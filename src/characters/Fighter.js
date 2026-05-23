@@ -39,6 +39,7 @@ export class Fighter {
     this.swingProgress = 1.0;  // 0 to 1 (animation fraction)
     this.swingDuration = 0;    // Duration in ms
     this.visualOffset = { x: 0, y: 0, rotation: 0 };
+    this.isInvincible = false;
 
     // Physics body
     this.body = {
@@ -192,19 +193,33 @@ export class Fighter {
       switch(this.comboIndex) {
         case 0: // N1: Vertical/Diagonal Slash
         case 1: // N2: Horizontal Slash
-          const sweep = (this.comboIndex === 0 ? 1 : -1) * Math.PI * 0.8;
-          offRot = (p - 0.5) * sweep;
-          orbitDist += Math.sin(p * Math.PI) * 25;
-          break;
         case 2: // N3: Heavy Lunge
-          orbitDist += (p < 0.3 ? p * 150 : (1 - p) * 60);
-          offRot = Math.sin(p * Math.PI * 2) * 0.2;
-          break;
         case 3: // N4: Triple Flurry (3 mini-swings)
-          const flurry = Math.sin(p * Math.PI * 3);
-          offRot = flurry * 0.6;
-          orbitDist += flurry * 15;
+          const sweep = (this.comboIndex === 0 ? 1 : (this.comboIndex === 1 ? -1 : 0)) * Math.PI * 0.8;
+          
+          if (this.comboIndex === 3) {
+            // N4 flurry
+            const flurry = Math.sin(p * Math.PI * 3);
+            offRot = flurry * 0.6;
+            orbitDist += flurry * 15;
+          } else if (this.comboIndex === 2) {
+            // N3 lunge
+            orbitDist += (p < 0.3 ? p * 150 : (1 - p) * 60);
+            offRot = Math.sin(p * Math.PI * 2) * 0.2;
+          } else {
+            // N1/N2 sweeps
+            offRot = (p - 0.5) * sweep;
+            orbitDist += Math.sin(p * Math.PI) * 25;
+          }
+
+          // Apply slight forward impulse for all early hits (Step-in effect)
+          if (p > 0.05 && p < 0.25 && opponent) {
+            const stepForce = 0.15;
+            this.body.vx += Math.cos(targetAngle) * stepForce;
+            this.body.vy += Math.sin(targetAngle) * stepForce;
+          }
           break;
+
         case 4: // N5: Spin & Dash
           offRot = p * Math.PI * 2;
           orbitDist -= 10;
@@ -320,7 +335,7 @@ export class Fighter {
    * @returns {{ died: boolean, actualDamage: number }}
    */
   takeDamage(amount) {
-    if (!this.alive) return { died: false, actualDamage: 0 };
+    if (!this.alive || this.isInvincible) return { died: false, actualDamage: 0 };
 
     const actualDamage = Math.min(amount, this.hp);
     this.hp -= actualDamage;

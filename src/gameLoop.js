@@ -60,16 +60,17 @@ export class GameLoop {
     updatePosition(this.fighter1.body, delta);
     updatePosition(this.fighter2.body, delta);
 
-    // Apply "Snappy Recoil" damping to Yoimiya (Fighter 2)
-    // This quickly bleeds off the high-velocity recoil impulse
-    if (this.fighter2.id === 'yoimiya') {
+    // Apply Snappy Movement Damping to all fighters
+    // This bleeds off high-velocity impulses (recoil, dashes, step-ins)
+    [this.fighter1, this.fighter2].forEach(fighter => {
+      if (!fighter.alive) return;
       const damping = 0.94; // Bleed 6% velocity per frame when over base speed
-      const speed = Math.sqrt(this.fighter2.body.vx ** 2 + this.fighter2.body.vy ** 2);
-      if (speed > 4.0) {
-        this.fighter2.body.vx *= Math.pow(damping, delta);
-        this.fighter2.body.vy *= Math.pow(damping, delta);
+      const speed = Math.sqrt(fighter.body.vx ** 2 + fighter.body.vy ** 2);
+      if (speed > 4.5) {
+        fighter.body.vx *= Math.pow(damping, delta);
+        fighter.body.vy *= Math.pow(damping, delta);
       }
-    }
+    });
 
     // Wall bouncing
     const b1 = bounceOffWalls(this.fighter1.body, this.bounds);
