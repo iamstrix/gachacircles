@@ -31,6 +31,7 @@ export class GameLoop {
 
     this.activeEffects = []; // Store active Q whirlwind effects, etc.
     this.projectiles = []; // Store active flying arrows, etc.
+    this.scheduledArrows = []; // Scheduled timed arrow combo queue
   }
 
   /**
@@ -61,6 +62,18 @@ export class GameLoop {
     if (collision.colliding) {
       resolveCollision(this.fighter1.body, this.fighter2.body, collision);
       this._handleCombat(collision, currentTime);
+    }
+
+    // Process scheduled sequential arrow shots (Yoimiya's aa-a-a-aa-a sequence)
+    const now = performance.now();
+    if (this.scheduledArrows) {
+      this.scheduledArrows = this.scheduledArrows.filter(shot => {
+        if (now >= shot.time) {
+          this._shootSingleArrow(shot.owner, shot.target);
+          return false; // remove from queue
+        }
+        return true; // keep in queue
+      });
     }
 
     // Update active projectiles (Yoimiya's flaming arrows)
@@ -313,8 +326,8 @@ export class GameLoop {
           if (fighter.vfx) {
             fighter.vfx.triggerSkill(fighter.body.x, fighter.body.y);
           }
-          // Spawn 3 horizontal-spread flaming arrows towards opponent!
-          this._spawnYoimiyaArrows(fighter, opponent);
+          // Start the sequential aa-a-a-aa-a arrow combo!
+          this._startYoimiyaArrowCombo(fighter, opponent);
         }
       }
     }
@@ -368,55 +381,69 @@ export class GameLoop {
   }
 
   /**
-   * Spawn 3 horizontal-spread flaming arrows from Yoimiya towards opponent
+   * Schedule Yoimiya's authentic Normal Attack sequence: aa - a - a - aa - a
    */
-  _spawnYoimiyaArrows(fighter, opponent) {
-    if (!this.stage) return;
+  _startYoimiyaArrowCombo(fighter, opponent) {
+    const targetTime = performance.now();
+    
+    // Delays corresponding to the sequence:
+    // aa (0s, 0.1s) -> a (0.4s) -> a (0.7s) -> aa (1.0s, 1.1s) -> a (1.4s)
+    const delays = [0, 100, 400, 700, 1000, 1100, 1400];
+    
+    delays.forEach(delay => {
+      this.scheduledArrows.push({
+        time: targetTime + delay,
+        owner: fighter,
+        target: opponent
+      });
+    });
+  }
+
+  /**
+   * Shoot a single flaming arrow towards the opponent's current position
+   */
+  _shootSingleArrow(fighter, opponent) {
+    if (!this.stage || !fighter.alive || !opponent.alive) return;
 
     const startX = fighter.body.x;
     const startY = fighter.body.y;
 
-    // Calculate angle towards target
+    // Calculate angle towards target at the exact moment of firing!
     const dx = opponent.body.x - startX;
     const dy = opponent.body.y - startY;
-    const baseAngle = Math.atan2(dy, dx);
+    const angle = Math.atan2(dy, dx);
+    const speed = 8.5; // fly speed
 
-    // Angles: straight at target, slightly to the left, slightly to the right
-    const angles = [baseAngle, baseAngle - 0.25, baseAngle + 0.25];
-    const speed = 7.5; // pixels per frame
+    // Create glowing arrow graphics
+    const visual = new Graphics();
+    
+    // Draw pointed arrow tip
+    visual.moveTo(-10, -2);
+    visual.lineTo(10, -2);
+    visual.lineTo(14, 0);
+    visual.lineTo(10, 2);
+    visual.lineTo(-10, 2);
+    visual.closePath();
+    visual.fill({ color: 0xff4500 }); // Red-orange main body
+    
+    // Draw fire core
+    visual.circle(6, 0, 3);
+    visual.fill({ color: 0xffaa00 }); // Golden yellow fire head
+    
+    visual.x = startX;
+    visual.y = startY;
+    visual.rotation = angle;
+    
+    this.stage.addChild(visual);
 
-    angles.forEach(angle => {
-      // Create glowing arrow graphics
-      const visual = new Graphics();
-      
-      // Draw pointed arrow tip
-      visual.moveTo(-10, -2);
-      visual.lineTo(10, -2);
-      visual.lineTo(14, 0);
-      visual.lineTo(10, 2);
-      visual.lineTo(-10, 2);
-      visual.closePath();
-      visual.fill({ color: 0xff4500 }); // Red-orange main body
-      
-      // Draw fire core
-      visual.circle(6, 0, 3);
-      visual.fill({ color: 0xffaa00 }); // Golden yellow fire head
-      
-      visual.x = startX;
-      visual.y = startY;
-      visual.rotation = angle;
-      
-      this.stage.addChild(visual);
-
-      this.projectiles.push({
-        x: startX,
-        y: startY,
-        angle: angle,
-        speed: speed,
-        visual: visual,
-        owner: fighter,
-        target: opponent
-      });
+    this.projectiles.push({
+      x: startX,
+      y: startY,
+      angle: angle,
+      speed: speed,
+      visual: visual,
+      owner: fighter,
+      target: opponent
     });
   }
 
