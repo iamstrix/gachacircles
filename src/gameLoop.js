@@ -215,27 +215,20 @@ export class GameLoop {
             return g;
           };
 
-          // Generate a "messy" hurricane of 30 independent blades - scaled up by 50%
+          // Generate an ultra-messy hurricane of 50 independent blades
           const cryoColors = [0x5ed4fc, 0xb4e1fa, 0xffffff, 0x9df0ff, 0xe0f7fa];
-          for (let k = 0; k < 30; k++) {
-            const r = 20 + Math.random() * 55;      // Increased radii (was 15-65, now ~20-75)
-            const t = 1.5 + Math.random() * 8;     // Slightly thicker blades
-            const len = 0.3 + Math.random() * 2.0; 
-            const speed = (0.2 + Math.random() * 0.6) * (Math.random() > 0.5 ? 1 : -1);
+          for (let k = 0; k < 50; k++) {
+            const r = 15 + Math.random() * 60;      // Varying radii
+            const t = 1 + Math.random() * 6;       // Varying thickness
+            const len = 0.2 + Math.random() * 2.5; // Varying arc length
+            const speed = (0.25 + Math.random() * 0.75) * (Math.random() > 0.5 ? 1 : -1);
             const color = cryoColors[Math.floor(Math.random() * cryoColors.length)];
-            const alpha = 0.25 + Math.random() * 0.5; // Slightly more transparent blades
+            const alpha = 0.2 + Math.random() * 0.6;
             
             const blade = drawBlade(r, t, len, color, alpha, speed);
             blade.rotation = Math.random() * Math.PI * 2;
             vortex.addChild(blade);
           }
-
-          // Add a broad, soft light ambiance (glow core) - encompasses whole vortex
-          const coreGlow = new Graphics();
-          coreGlow.circle(0, 0, 75); // Expanded to cover full vortex radius
-          coreGlow.fill({ color: 0x9df0ff, alpha: 0.15 }); // More transparent (was 0.4)
-          coreGlow.blendMode = 'add';
-          vortex.addChild(coreGlow);
 
           this.stage.addChild(vortex);
 
@@ -277,13 +270,21 @@ export class GameLoop {
         effect.x += Math.cos(effect.angle) * speed * delta;
         effect.y += Math.sin(effect.angle) * speed * delta;
 
-        // Visual spin: independently rotate crescent layers
+        // Visual spin: independently rotate 50 blade layers
         effect.visual.x = effect.x;
         effect.visual.y = effect.y;
         if (effect.visual.children) {
           effect.visual.children.forEach(child => {
             child.rotation += (child.spinSpeed || 0.2) * delta;
           });
+        }
+
+        // Emit constant ice particles for "messy" blizzard feel
+        if (effect.owner.vfx && Math.random() < 0.6 * delta) {
+          effect.owner.vfx.triggerCollision(
+            effect.x + (Math.random() - 0.5) * 80,
+            effect.y + (Math.random() - 0.5) * 80
+          );
         }
 
         // Sticky logic: if close to enemy, stop moving
