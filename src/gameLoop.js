@@ -5,7 +5,7 @@
 
 import { Graphics } from 'pixi.js';
 import { updatePosition, bounceOffWalls, checkCircleCollision, resolveCollision } from './physics.js';
-import { playSFX, preloadSFX } from './utils/audio.js';
+import { playSFX, preloadSFX, playSynthBounce, playSynthClash } from './utils/audio.js';
 
 export class GameLoop {
   /**
@@ -60,13 +60,17 @@ export class GameLoop {
     updatePosition(this.fighter2.body, delta);
 
     // Wall bouncing
-    bounceOffWalls(this.fighter1.body, this.bounds);
-    bounceOffWalls(this.fighter2.body, this.bounds);
+    const b1 = bounceOffWalls(this.fighter1.body, this.bounds);
+    const b2 = bounceOffWalls(this.fighter2.body, this.bounds);
+    if (b1 || b2) {
+      playSynthBounce();
+    }
 
     // Circle-circle collision
     const collision = checkCircleCollision(this.fighter1.body, this.fighter2.body);
     if (collision.colliding) {
       resolveCollision(this.fighter1.body, this.fighter2.body, collision);
+      playSynthClash();
       this._handleCombat(collision, currentTime);
     }
 
