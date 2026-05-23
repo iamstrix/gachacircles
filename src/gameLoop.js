@@ -65,10 +65,6 @@ export class GameLoop {
       this.collisionCooldown -= delta;
     }
 
-    // Update physics positions
-    updatePosition(this.fighter1.body, delta * this.fighter1.slowMultiplier);
-    updatePosition(this.fighter2.body, delta * this.fighter2.slowMultiplier);
-
     // Apply Snappy Movement Damping to all fighters
     // This bleeds off high-velocity impulses (recoil, dashes, step-ins)
     [this.fighter1, this.fighter2].forEach(fighter => {
@@ -541,16 +537,36 @@ export class GameLoop {
       if (currentTime - this.fighter1.lastAttackTime >= cooldownMs) {
         this.fighter1.registerAttack(currentTime);
         this._startAyakaMeleeCombo(this.fighter1, this.fighter2);
+      return true;
       }
-    }
+      });
 
-    // Update fighters
-    this.fighter1.update(delta, this.elapsedTime, this.fighter2);
-    this.fighter2.update(delta, this.elapsedTime, this.fighter1);
+      // 4. Update physics positions (NOW respecting slowMultiplier set by activeEffects)
+      updatePosition(this.fighter1.body, delta * this.fighter1.slowMultiplier);
+      updatePosition(this.fighter2.body, delta * this.fighter2.slowMultiplier);
 
-    // Update HUD
-    this._updateHUD();
-  }
+      // 5. Wall bouncing
+      const b1 = bounceOffWalls(this.fighter1.body, this.bounds);
+      const b2 = bounceOffWalls(this.fighter2.body, this.bounds);
+      if (b1 || b2) {
+      playSynthBounce();
+      }
+
+      // 6. Circle-circle collision
+      const collision = checkCircleCollision(this.fighter1.body, this.fighter2.body);
+      if (collision.colliding) {
+      resolveCollision(this.fighter1.body, this.fighter2.body, collision);
+      playSynthClash();
+      this._handleCombat(collision, currentTime);
+      }
+
+      // Update fighters (Visual sync)
+      this.fighter1.update(delta, this.elapsedTime, this.fighter2);
+      this.fighter2.update(delta, this.elapsedTime, this.fighter1);
+
+      // Update HUD
+      this._updateHUD();
+      }
 
   /**
    * Handle combat when circles collide
