@@ -190,21 +190,22 @@ export class CryoVFX {
   }
 
   triggerVacuumParticles(x, y, targetX, targetY) {
-    // Spawn multi-toned cryo particles (like Hyouka)
+    // Use the diverse HYOUKA_BURST_GRADIENT for multi-toned feel
+    // Use 'normal' blendMode to keep saturation on light backgrounds
     this._skill.emit(x, y, {
       count: 2,
       speedMin: 0.5,
-      speedMax: 2.0,
+      speedMax: 2.5,
       spreadAngle: Math.PI * 2,
-      lifetimeMin: 30,
-      lifetimeMax: 50,
-      sizeMin: 1.5,
-      sizeMax: 4.0,
-      gradient: CRYO_GRADIENT,
-      blendMode: 'add',
+      lifetimeMin: 40,
+      lifetimeMax: 60,
+      sizeMin: 2.0,
+      sizeMax: 5.0,
+      gradient: HYOUKA_BURST_GRADIENT,
+      blendMode: 'normal',
       targetX: targetX,
       targetY: targetY,
-      attractionForce: 0.15,
+      attractionForce: 0.18,
       shrink: true,
     });
   }
