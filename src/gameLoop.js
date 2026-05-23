@@ -192,8 +192,8 @@ export class GameLoop {
     this._checkAbilityActivation(this.fighter2, this.fighter1);
 
     // Update fighters
-    this.fighter1.update(delta, this.elapsedTime);
-    this.fighter2.update(delta, this.elapsedTime);
+    this.fighter1.update(delta, this.elapsedTime, this.fighter2);
+    this.fighter2.update(delta, this.elapsedTime, this.fighter1);
 
     // Update HUD
     this._updateHUD();

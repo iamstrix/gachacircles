@@ -144,25 +144,41 @@ export class Fighter {
    * Update fighter state each frame
    * @param {number} delta - Frame delta multiplier
    * @param {number} elapsed - Total elapsed seconds
+   * @param {Fighter} [opponent] - Opponent fighter for target aiming
    */
-  update(delta, elapsed) {
+  update(delta, elapsed, opponent) {
     if (!this.alive) return;
 
     // Sync container position with physics body
     this.container.x = this.body.x;
     this.container.y = this.body.y;
 
-    // Update weapon orbit speed visually (faster during Yoimiya's E infusion)
-    let currentOrbitSpeed = this.weaponOrbitSpeed;
-    if (this.id === 'yoimiya' && this.isInfused) {
-      currentOrbitSpeed *= 2.0;
-    }
-    this.weaponAngle += currentOrbitSpeed * delta * 0.016;
+    // Update weapon orbit or aiming direction
+    if (this.id === 'yoimiya' && opponent) {
+      // Aim bow at opponent
+      const dx = opponent.body.x - this.body.x;
+      const dy = opponent.body.y - this.body.y;
+      const angle = Math.atan2(dy, dx);
 
-    if (this.weaponSprite) {
-      this.weaponSprite.x = Math.cos(this.weaponAngle) * this.weaponOrbitRadius;
-      this.weaponSprite.y = Math.sin(this.weaponAngle) * this.weaponOrbitRadius;
-      this.weaponSprite.rotation = this.weaponAngle + Math.PI / 4;
+      if (this.weaponSprite) {
+        this.weaponSprite.x = Math.cos(angle) * this.weaponOrbitRadius;
+        this.weaponSprite.y = Math.sin(angle) * this.weaponOrbitRadius;
+        // Face the opponent (front of bow is up-left in original image, i.e., 3 * PI / 4 offset)
+        this.weaponSprite.rotation = angle + 3 * Math.PI / 4;
+      }
+    } else {
+      // Standard orbital behavior for Ayaka and others
+      let currentOrbitSpeed = this.weaponOrbitSpeed;
+      if (this.id === 'yoimiya' && this.isInfused) {
+        currentOrbitSpeed *= 2.0;
+      }
+      this.weaponAngle += currentOrbitSpeed * delta * 0.016;
+
+      if (this.weaponSprite) {
+        this.weaponSprite.x = Math.cos(this.weaponAngle) * this.weaponOrbitRadius;
+        this.weaponSprite.y = Math.sin(this.weaponAngle) * this.weaponOrbitRadius;
+        this.weaponSprite.rotation = this.weaponAngle + Math.PI / 4;
+      }
     }
 
     // Pulse glow effect
