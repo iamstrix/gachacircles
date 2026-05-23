@@ -301,7 +301,7 @@ export class GameLoop {
           effect.hits++;
 
           const damage = Math.round(effect.owner.getCurrentDamage() * 0.4);
-          effect.target.takeDamage(damage);
+          const result = effect.target.takeDamage(damage);
 
           if (effect.owner.vfx) {
             effect.owner.vfx.triggerCollision(effect.x, effect.y);
@@ -309,12 +309,16 @@ export class GameLoop {
           if (this.damageNumbers) {
             this.damageNumbers.spawn(effect.x, effect.y - 30, damage, 'cryo', false);
           }
-        }
 
-        // Finale Bloom (The +1)
-        if (effect.timer <= 0) {
+          if (result.died) {
+            this._endGame(effect.owner);
+          }
+          }
+
+          // Finale Bloom (The +1)
+          if (effect.timer <= 0) {
           const bloomDmg = Math.round(effect.owner.getCurrentDamage() * 1.5);
-          effect.target.takeDamage(bloomDmg);
+          const result = effect.target.takeDamage(bloomDmg);
 
           if (effect.owner.vfx) {
             effect.owner.vfx.triggerHyoukaBurst(effect.x, effect.y);
@@ -324,7 +328,12 @@ export class GameLoop {
           }
           this._screenShake();
 
+          if (result.died) {
+            this._endGame(effect.owner);
+          }
+
           this.stage.removeChild(effect.visual);
+
           effect.visual.destroy();
           return false;
         }
