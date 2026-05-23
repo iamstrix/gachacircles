@@ -174,24 +174,19 @@ export class CryoVFX {
    */
   drawSoumetsuRing(gfx, x, y, radius, progress) {
     gfx.clear();
-    // Color transitions from light blue to dark ominous blue
-    // Light: 0x80deea -> Dark: 0x070c1e
-    const r = Math.round(128 * (1 - progress) + 7 * progress);
-    const g = Math.round(222 * (1 - progress) + 12 * progress);
-    const b = Math.round(234 * (1 - progress) + 30 * progress);
+    // Color transitions from light blue to dark ominous abyss
+    // Light: 0x4fc3f7 -> Dark: 0x050a14
+    const r = Math.round(79 * (1 - progress) + 5 * progress);
+    const g = Math.round(195 * (1 - progress) + 10 * progress);
+    const b = Math.round(247 * (1 - progress) + 20 * progress);
     const color = (r << 16) | (g << 8) | b;
     
+    // Draw the main contracting ring
     gfx.circle(x, y, radius);
-    gfx.stroke({ color: color, width: 3 + progress * 5, alpha: 0.3 + progress * 0.5 });
+    gfx.stroke({ color: color, width: 4 + progress * 6, alpha: 0.4 + progress * 0.6 });
     
-    // Add some "gathering energy" spikes pointing inward
-    for (let i = 0; i < 12; i++) {
-      const angle = (i / 12) * Math.PI * 2 + progress * 2;
-      const len = 15 + progress * 25;
-      gfx.moveTo(x + Math.cos(angle) * radius, y + Math.sin(angle) * radius);
-      gfx.lineTo(x + Math.cos(angle) * (radius - len), y + Math.sin(angle) * (radius - len));
-      gfx.stroke({ color: color, width: 2, alpha: 0.2 + progress * 0.4 });
-    }
+    // Optional: add a very faint fill that gets darker
+    gfx.fill({ color: color, alpha: 0.05 + progress * 0.15 });
   }
 
   /**
