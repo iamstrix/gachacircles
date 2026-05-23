@@ -197,6 +197,11 @@ export class GameLoop {
               if (this.damageNumbers) {
                 this.damageNumbers.spawn(arrow.x, arrow.y - 25, 'MELT!', 'cryo', true);
               }
+
+              // Apply heavy knockback to Ayaka even if she blocks! Blazing arrows are powerful.
+              const blockKnockback = 6.5;
+              arrow.target.body.vx += Math.cos(arrow.angle) * blockKnockback;
+              arrow.target.body.vy += Math.sin(arrow.angle) * blockKnockback;
             } else {
               // Standard physical deflect sparks
               if (arrow.target.vfx) {
@@ -1279,8 +1284,9 @@ export class GameLoop {
     });
 
     if (isBlazing && isFinalShot) {
-      // Fire 2 homing kindling sparks at wide angles (+/- 0.6 rad) that track the opponent from the sides/flanks!
-      for (let offset of [-0.6, 0.6]) {
+      // Fire 3 homing kindling sparks at wide angles (-0.8, 0, 0.8 rad) that track the opponent!
+      // They divert from original trajectory slowly then home in.
+      for (let offset of [-0.8, 0, 0.8]) {
         const sparkAngle = angle + offset;
         const sparkVisual = new Graphics();
         
@@ -1299,10 +1305,15 @@ export class GameLoop {
           x: startX,
           y: startY,
           angle: sparkAngle,
-          speed: speed * 0.85, // Curving sparks travel slightly slower for a staggered sweep!
+          speed: speed * 0.75, // Curving sparks travel slower for a dramatic sweep!
           visual: sparkVisual,
           owner: fighter,
           target: opponent,
+          isBlazing: true,
+          isKindlingSpark: true
+        });
+      }
+    }
           isBlazing: true,
           isKindlingSpark: true
         });
