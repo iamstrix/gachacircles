@@ -201,7 +201,8 @@ export class GameLoop {
       if (this.fighter2.isInfused) {
         currentAttackSpeed *= 2.0; // Double attack speed during infusion!
       }
-      const cooldownMs = 2500 / currentAttackSpeed; // Scored by attack speed
+      // 2-second base interval (2000ms) at base speed (2.5), which scales with attack speed: 5000 / speed
+      const cooldownMs = 5000 / currentAttackSpeed;
       
       if (currentTime - this.fighter2.lastAttackTime >= cooldownMs) {
         this.fighter2.registerAttack(currentTime);
