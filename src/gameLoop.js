@@ -225,16 +225,16 @@ export class GameLoop {
             return g;
           };
 
-          // Generate an ultra-messy hurricane of 65 independent blades - condensed for high density
+          // Generate an ultra-messy hurricane of 90 independent blades - scaled up +50% and denser
           // Included darker tones for contrast against light background
           const cryoColors = [0x5ed4fc, 0xb4e1fa, 0xffffff, 0x9df0ff, 0x1a6dd4, 0x0c3366];
-          for (let k = 0; k < 65; k++) {
-            const r = 30 + Math.random() * 90;       // Condensed radii (max ~120)
-            const t = 1.5 + Math.random() * 8;      // Balanced thickness
+          for (let k = 0; k < 90; k++) {
+            const r = 45 + Math.random() * 135;      // Increased radii (max ~180, was 120)
+            const t = 1.5 + Math.random() * 9;      // Balanced thickness
             const len = 0.2 + Math.random() * 2.5; // Varying arc length
-            const speed = (0.1 + Math.random() * 0.3) * (Math.random() > 0.5 ? 1 : -1); // Slightly slower spin
+            const speed = (0.1 + Math.random() * 0.3) * (Math.random() > 0.5 ? 1 : -1); 
             const color = cryoColors[Math.floor(Math.random() * cryoColors.length)];
-            const alpha = 0.15 + Math.random() * 0.45; // Lower alpha for large scale density
+            const alpha = 0.12 + Math.random() * 0.4; // Slightly lower alpha for high count
             
             const blade = drawBlade(r, t, len, color, alpha, speed);
             blade.rotation = Math.random() * Math.PI * 2;
@@ -304,7 +304,7 @@ export class GameLoop {
         // Phase 2: Vortex Movement & Damage
         let currentSpeed = 0.9; // Base speed (was 1.8)
         const distToEnemy = Math.sqrt((effect.x - effect.target.body.x)**2 + (effect.y - effect.target.body.y)**2);
-        const isEnemyInside = distToEnemy < 120; // 100 radius + some buffer
+        const isEnemyInside = distToEnemy < 180; // Increased to match 180 radius
 
         // Slow down by 50% more if enemy is inside
         if (isEnemyInside) {
@@ -314,7 +314,7 @@ export class GameLoop {
         effect.x += Math.cos(effect.angle) * currentSpeed * delta;
         effect.y += Math.sin(effect.angle) * currentSpeed * delta;
 
-        // Visual spin: independently rotate 50 blade layers
+        // Visual spin: independently rotate 90 blade layers
         effect.visual.x = effect.x;
         effect.visual.y = effect.y;
         if (effect.visual.children) {
@@ -323,11 +323,11 @@ export class GameLoop {
           });
         }
 
-        // Emit constant ice particles for "messy" blizzard feel - spread adjusted for 175 radius
+        // Emit constant ice particles for "messy" blizzard feel - spread adjusted for 180 radius
         if (effect.owner.vfx && Math.random() < 0.6 * delta) {
           effect.owner.vfx.triggerCollision(
-            effect.x + (Math.random() - 0.5) * 260, // Spread ~1.5x radius
-            effect.y + (Math.random() - 0.5) * 260
+            effect.x + (Math.random() - 0.5) * 320, // Spread ~1.8x radius
+            effect.y + (Math.random() - 0.5) * 320
           );
         }
 
