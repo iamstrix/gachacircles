@@ -138,7 +138,7 @@ function injectStyles() {
       align-items: center;
       justify-content: center;
       box-shadow: 2px 2px 0px rgba(0,0,0,0.15);
-      pointer-events: none;
+      pointer-events: auto;
     }
     .ghud-emoji {
       font-size: 22px; /* Larger emoji */
