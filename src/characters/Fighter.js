@@ -46,7 +46,7 @@ export class Fighter {
 
     // Weapon orbit state
     this.weaponAngle = Math.random() * Math.PI * 2;
-    this.weaponOrbitRadius = characterData.circleRadius + 20;
+    this.weaponOrbitRadius = this.id === 'yoimiya' ? characterData.circleRadius : (characterData.circleRadius + 20);
     this.weaponOrbitSpeed = 2.5; // radians per second
 
     // PixiJS display objects (initialized in createVisuals)
@@ -107,7 +107,7 @@ export class Fighter {
       const weaponTexture = await Assets.load(this.data.weaponSprite);
       this.weaponSprite = new Sprite(weaponTexture);
       this.weaponSprite.anchor.set(0.5);
-      const weaponSize = 40;
+      const weaponSize = this.id === 'yoimiya' ? 85 : 75;
       this.weaponSprite.width = weaponSize;
       this.weaponSprite.height = weaponSize;
       this.container.addChild(this.weaponSprite);
