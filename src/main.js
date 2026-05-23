@@ -15,17 +15,18 @@ import { DamageNumbers } from './ui/DamageNumbers.js';
 import './style.css';
 
 // Game constants
-const GAME_WIDTH = 450;
-const GAME_HEIGHT = 800;
+const GAME_WIDTH = 600;
+const GAME_HEIGHT = 600;
 const ARENA_PADDING_TOP = 55;
-const ARENA_PADDING_BOTTOM = 50;
+const ARENA_PADDING_BOTTOM = 65;
 
-// Arena bounds (slightly inset to avoid HUD overlap)
+// Arena bounds (perfect 1:1 square, centered horizontally)
+const ARENA_SIZE = 480;
 const ARENA = {
-  x: 10,
+  x: (GAME_WIDTH - ARENA_SIZE) / 2,
   y: ARENA_PADDING_TOP,
-  width: GAME_WIDTH - 20,
-  height: GAME_HEIGHT - ARENA_PADDING_TOP - ARENA_PADDING_BOTTOM,
+  width: ARENA_SIZE,
+  height: ARENA_SIZE,
 };
 
 let app;

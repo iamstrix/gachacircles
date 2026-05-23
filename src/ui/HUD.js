@@ -88,13 +88,13 @@ function injectStyles() {
       white-space: nowrap;
     }
     .ghud-stats.left {
-      left: 24px;
+      left: 60px;
       color: #00bcd4; /* cyan */
       -webkit-text-stroke: 1px #000;
       text-shadow: 1.5px 1.5px 0px #000;
     }
     .ghud-stats.right {
-      right: 24px;
+      right: 60px;
       color: #ff3333; /* red */
       -webkit-text-stroke: 1px #000;
       text-shadow: 1.5px 1.5px 0px #000;
