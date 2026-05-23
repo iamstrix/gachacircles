@@ -107,8 +107,8 @@ export class Fighter {
       const weaponTexture = await Assets.load(this.data.weaponSprite);
       this.weaponSprite = new Sprite(weaponTexture);
       this.weaponSprite.anchor.set(0.5);
-      const weaponSize = this.id === 'yoimiya' ? 110 : 100;
-      this.weaponSprite.width = weaponSize;
+      const weaponSize = this.id === 'yoimiya' ? 110 : 130;
+      this.weaponSprite.width = this.id === 'ayaka' ? -weaponSize : weaponSize; // Mirror sword horizontally so cutting edge leads
       this.weaponSprite.height = weaponSize;
       this.container.addChild(this.weaponSprite);
     } catch (e) {
