@@ -5,7 +5,7 @@
 
 import { Graphics, Sprite, Assets, Container } from 'pixi.js';
 import { updatePosition, bounceOffWalls, checkCircleCollision, resolveCollision } from './physics.js';
-import { playSFX, preloadSFX, playSynthBounce, playSynthClash } from './utils/audio.js';
+import { playSFX, preloadSFX, playSynthBounce, playSynthClash, playSynthDeflect } from './utils/audio.js';
 
 export class GameLoop {
   /**
@@ -33,6 +33,7 @@ export class GameLoop {
 
     this.activeEffects = []; // Store active Q whirlwind effects, etc.
     this.projectiles = []; // Store active flying arrows, etc.
+    this.shards = []; // Store tumbling sliced arrow shards
     this.scheduledArrows = []; // Scheduled timed arrow combo queue
     this.scheduledMelee = []; // Scheduled timed melee hits (Ayaka)
 
@@ -44,7 +45,7 @@ export class GameLoop {
     // Preload normal attack sound files for both characters
     for (let i = 1; i <= 5; i++) {
       preloadSFX(`/audio/yoimiya/yoimiya-na_${i}.mp3`);
-      preloadSFX(`/audio/ayaka/ayaka-na_${i}.mp3`);
+      preloadSFX(`/audio/ayaka/ayaka-na_${i}.wav`);
     }
 
     // Preload skill and burst sound files for Ayaka
@@ -116,6 +117,17 @@ export class GameLoop {
     // Update active projectiles (Yoimiya's flaming arrows)
     if (this.stage) {
       this.projectiles = this.projectiles.filter(arrow => {
+        // ── 0. Homing tracking for Yoimiya's Kindling Sparks ───────────
+        if (arrow.isKindlingSpark && arrow.target && arrow.target.alive) {
+          const targetAngle = Math.atan2(arrow.target.body.y - arrow.y, arrow.target.body.x - arrow.x);
+          let diff = targetAngle - arrow.angle;
+          while (diff < -Math.PI) diff += Math.PI * 2;
+          while (diff > Math.PI) diff -= Math.PI * 2;
+          
+          // Curve smoothly towards opponent center
+          arrow.angle += Math.sign(diff) * Math.min(Math.abs(diff), 0.085 * delta);
+        }
+
         // Move arrow
         arrow.x += Math.cos(arrow.angle) * arrow.speed * delta;
         arrow.y += Math.sin(arrow.angle) * arrow.speed * delta;
@@ -123,10 +135,34 @@ export class GameLoop {
         // Sync visual position
         arrow.visual.x = arrow.x;
         arrow.visual.y = arrow.y;
+        arrow.visual.rotation = arrow.angle;
+
+        // ── 1. Vortex Shield Check (Soumetsu shreds arrows) ────────────
+        const isInVortex = this.activeEffects && this.activeEffects.some(effect => {
+          if (effect.type === 'soumetsu_vortex') {
+            const vdx = arrow.x - effect.x;
+            const vdy = arrow.y - effect.y;
+            const vdist = Math.sqrt(vdx * vdx + vdy * vdy);
+            return vdist <= effect.radius;
+          }
+          return false;
+        });
+
+        if (isInVortex) {
+          // Shred arrow on contact with vortex
+          if (arrow.target.vfx) {
+            arrow.target.vfx.triggerCollision(arrow.x, arrow.y);
+          }
+          playSynthDeflect();
+          this.stage.removeChild(arrow.visual);
+          arrow.visual.destroy();
+          return false;
+        }
 
         // Spawn fire particle trail behind flying arrow only if it's a Blazing Arrow!
         if (arrow.isBlazing && arrow.owner.vfx) {
-          arrow.owner.vfx.updateAmbient(arrow.x, arrow.y, delta * 1.5);
+          const multiplier = arrow.isKindlingSpark ? 1.0 : 2.0;
+          arrow.owner.vfx.updateAmbient(arrow.x, arrow.y, delta * multiplier);
         }
 
         // Out of bounds check
@@ -145,18 +181,121 @@ export class GameLoop {
         const dy = arrow.y - arrow.target.body.y;
         const dist = Math.sqrt(dx * dx + dy * dy);
         
+        // ── 2. Active Parry Check (Melee Swing deflection - blocks physical arrows, and blocks blazing arrows if Cryo Imbued!) ──
+        if (dist < arrow.target.body.radius + 15) {
+          const isCryoImbued = (arrow.target.id === 'ayaka' && arrow.target.passiveTimer > 0);
+          const canParryBlazing = arrow.isBlazing && isCryoImbued;
+
+          if (arrow.target.id === 'ayaka' && arrow.target.swingProgress < 0.9 && (!arrow.isBlazing || canParryBlazing)) {
+            // PARRY! Sword deflects arrow
+            if (canParryBlazing) {
+              // Trigger spectacular Melt reaction visual clash!
+              if (arrow.target.vfx && typeof arrow.target.vfx.triggerMeltReaction === 'function') {
+                arrow.target.vfx.triggerMeltReaction(arrow.x, arrow.y);
+              }
+              // Spawn a bold floating elemental reaction text popup!
+              if (this.damageNumbers) {
+                this.damageNumbers.spawn(arrow.x, arrow.y - 25, 'MELT!', 'cryo', true);
+              }
+            } else {
+              // Standard physical deflect sparks
+              if (arrow.target.vfx) {
+                arrow.target.vfx.triggerCollision(arrow.x, arrow.y);
+              }
+            }
+            playSynthDeflect();
+            
+            // Spawn the anime-style sliced arrow shards!
+            this._spawnSlicedArrowShards(arrow.x, arrow.y, arrow.angle);
+
+            this.stage.removeChild(arrow.visual);
+            arrow.visual.destroy();
+            return false;
+          }
+        }
+
         if (dist < arrow.target.body.radius + 5) {
           // HIT!
-          let damage = Math.round(arrow.owner.getCurrentDamage() * 0.75); // Blazing arrow deals 75% of current infusion damage
-          if (!arrow.isBlazing) {
-            // Normal physical arrow deals half damage
-            damage = Math.round(damage * 0.5);
+          let damage;
+          if (arrow.isFireworkRocket) {
+            // Massive firework rocket hit!
+            damage = Math.round(arrow.owner.data.damage * arrow.owner.data.burstQ.damageMultiplier);
+            const result = arrow.target.takeDamage(damage);
+
+            // Apply heavy pyrotechnic knockback to Ayaka!
+            const force = 13.5;
+            arrow.target.body.vx += Math.cos(arrow.angle) * force;
+            arrow.target.body.vy += Math.sin(arrow.angle) * force;
+
+            // Trigger massive fireworks explosion visual and a piercing directional jet stream gust behind the enemy!
+            if (arrow.owner.vfx) {
+              arrow.owner.vfx.triggerSkill(arrow.x, arrow.y);
+              if (typeof arrow.owner.vfx.triggerUltimateHitGust === 'function') {
+                arrow.owner.vfx.triggerUltimateHitGust(arrow.x, arrow.y, arrow.angle);
+              }
+            }
+
+            // Screen shake
+            this._screenShake();
+
+            // Spawn damage numbers
+            if (this.damageNumbers) {
+              this.damageNumbers.spawn(arrow.x, arrow.y - 30, damage, arrow.owner.element, true);
+            }
+
+            // Apply the Aurous Blaze mark!
+            const circleGfx1 = new Graphics();
+            const circleGfx2 = new Graphics();
+
+            circleGfx1.circle(0, 0, 10);
+            circleGfx1.fill({ color: 0xff6d00, alpha: 0.15 });
+            circleGfx1.stroke({ color: 0xffab40, width: 2 });
+
+            circleGfx2.circle(0, 0, 10);
+            circleGfx2.fill({ color: 0xff6d00, alpha: 0.15 });
+            circleGfx2.stroke({ color: 0xffab40, width: 2 });
+
+            this.stage.addChild(circleGfx1);
+            this.stage.addChild(circleGfx2);
+
+            this.activeEffects.push({
+              type: 'aurous_blaze_mark',
+              owner: arrow.owner,
+              target: arrow.target,
+              timer: 10.0,
+              explosionCD: 2.0,
+              circle1: circleGfx1,
+              circle2: circleGfx2,
+              angleOffset: 0
+            });
+
+            if (result.died) {
+              this._endGame(arrow.owner);
+            }
+
+            // Clean up rocket projectile
+            this.stage.removeChild(arrow.visual);
+            arrow.visual.destroy();
+            return false;
+          }
+          else if (arrow.isKindlingSpark) {
+            damage = Math.round(arrow.owner.getCurrentDamage() * 0.25); // Kindling sparks deal 25% damage
+          } else {
+            damage = Math.round(arrow.owner.getCurrentDamage() * 0.75); // Blazing arrow deals 75%
+            if (!arrow.isBlazing) {
+              // Normal physical arrow deals half damage
+              damage = Math.round(damage * 0.5);
+            }
           }
           const result = arrow.target.takeDamage(damage);
 
           // Pyro explosion burst VFX only for Blazing Arrows!
           if (arrow.isBlazing && arrow.owner.vfx) {
-            arrow.owner.vfx.triggerCollision(arrow.x, arrow.y);
+            if (typeof arrow.owner.vfx.triggerBlazingCollision === 'function') {
+              arrow.owner.vfx.triggerBlazingCollision(arrow.x, arrow.y);
+            } else {
+              arrow.owner.vfx.triggerCollision(arrow.x, arrow.y);
+            }
           }
 
           if (this.damageNumbers) {
@@ -187,9 +326,121 @@ export class GameLoop {
     this.activeEffects = this.activeEffects.filter(effect => {
       effect.timer -= delta * 0.016;
 
-      if (effect.type === 'soumetsu_cast') {
+      if (effect.type === 'ryuukin_cast') {
+        if (effect.timer <= 0) {
+          effect.owner.isInvincible = false; // Turn off invincibility!
+          // Clean up the contracting ring!
+          if (effect.ring) {
+            if (effect.owner.vfx && effect.owner.vfx.container) {
+              effect.owner.vfx.container.removeChild(effect.ring);
+            } else {
+              this.stage.removeChild(effect.ring);
+            }
+            effect.ring.destroy();
+          }
+
+          // Transition to Phase 2: Fire the massive firework rocket!
+          this._shootFireworkRocket(effect.owner, effect.target);
+          return false; // Remove casting effect
+        }
+
+        // Spawn dense, swirling and crackling pyrotechnic windup sparkles around Yoimiya!
+        if (effect.owner.vfx && typeof effect.owner.vfx.triggerWindupSparks === 'function') {
+          effect.owner.vfx.triggerWindupSparks(effect.owner.body.x, effect.owner.body.y);
+        }
+
+        // Update the closing-in ring from orange to white!
+        if (effect.ring) {
+          const progress = Math.min(1.0, Math.max(0.0, 1 - (effect.timer / 1.0))); // 0 (start) to 1 (end)
+          
+          // Radius starts at 160px and closes to 30px (circle boundary)
+          const ringRadius = 160 * (1 - progress) + 30;
+          
+          // Interpolate color from orange (0xff6d00) to white (0xffffff)
+          const startR = 0xff, startG = 0x6d, startB = 0x00;
+          const endR = 0xff, endG = 0xff, endB = 0xff;
+          
+          const currentR = Math.round(startR + (endR - startR) * progress);
+          const currentG = Math.round(startG + (endG - startG) * progress);
+          const currentB = Math.round(startB + (endB - startB) * progress);
+          const currentColor = (currentR << 16) | (currentG << 8) | currentB;
+
+          effect.ring.clear();
+          effect.ring.circle(0, 0, ringRadius);
+          
+          // Elegant glow stroke that solidifies as it gets closer
+          const alpha = 0.35 + 0.65 * progress;
+          effect.ring.stroke({ color: currentColor, width: 3.0, alpha });
+          
+          effect.ring.x = effect.owner.body.x;
+          effect.ring.y = effect.owner.body.y;
+        }
+        return true;
+      }
+      else if (effect.type === 'aurous_blaze_mark') {
+        if (effect.timer <= 0 || !effect.target.alive) {
+          this.stage.removeChild(effect.circle1);
+          this.stage.removeChild(effect.circle2);
+          effect.circle1.destroy();
+          effect.circle2.destroy();
+          return false;
+        }
+
+        // Orbiting logic: two medium-sized orange circles circling her dynamically
+        effect.angleOffset += delta * 0.045; // Speed of orbit
+        const radius = 45; // Orbit distance around target circle
+        
+        effect.circle1.x = effect.target.body.x + Math.cos(effect.angleOffset) * radius;
+        effect.circle1.y = effect.target.body.y + Math.sin(effect.angleOffset) * radius;
+        
+        effect.circle2.x = effect.target.body.x + Math.cos(effect.angleOffset + Math.PI) * radius;
+        effect.circle2.y = effect.target.body.y + Math.sin(effect.angleOffset + Math.PI) * radius;
+
+        // Emit sizzling, burning particle trails from both orbiting circles on every frame!
+        if (effect.owner.vfx && typeof effect.owner.vfx.triggerMarkTrail === 'function') {
+          effect.owner.vfx.triggerMarkTrail(
+            effect.circle1.x, effect.circle1.y,
+            effect.circle2.x, effect.circle2.y
+          );
+        }
+
+        // Explosion tick logic: detonates every 2 seconds
+        effect.explosionCD -= delta * 0.016;
+        if (effect.explosionCD <= 0) {
+          effect.explosionCD = 2.0; // Reset CD
+
+          // DETONATION EXPLOSION!
+          const tickDmg = 16;
+          const result = effect.target.takeDamage(tickDmg);
+
+          // Trigger massive Pyrotechnic sparks burst!
+          if (effect.owner.vfx) {
+            effect.owner.vfx.triggerCollision(effect.target.body.x, effect.target.body.y);
+          }
+
+          // Play sharp metal firework pop synth!
+          playSynthDeflect();
+
+          if (this.damageNumbers) {
+            this.damageNumbers.spawn(
+              effect.target.body.x,
+              effect.target.body.y - 25,
+              tickDmg,
+              'pyro',
+              true // Styled Crit damage numbers!
+            );
+          }
+
+          if (result.died) {
+            this._endGame(effect.owner);
+          }
+        }
+        return true;
+      }
+      else if (effect.type === 'soumetsu_cast') {
         // Phase 1: Casting logic
         if (effect.timer <= 0) {
+          effect.owner.isInvincible = false; // Turn off invincibility!
           // Transitions to Phase 2: Unleash Vortex
           this.stage.removeChild(effect.telegraph);
           if (effect.ring) {
@@ -223,11 +474,11 @@ export class GameLoop {
             return g;
           };
 
-          // Generate an ultra-messy hurricane of 90 independent blades - scaled up +50% and denser
+          // Generate an ultra-messy hurricane of 90 independent blades - scaled to 75% of previous size (max 135px)
           // Included darker tones for contrast against light background
           const cryoColors = [0x5ed4fc, 0xb4e1fa, 0xffffff, 0x9df0ff, 0x1a6dd4, 0x0c3366];
           for (let k = 0; k < 90; k++) {
-            const r = 45 + Math.random() * 135;      // Increased radii (max ~180, was 120)
+            const r = 34 + Math.random() * 101;      // Max radius ~135px (75% of 180px)
             const t = 1.5 + Math.random() * 9;      // Balanced thickness
             const len = 0.2 + Math.random() * 2.5; // Varying arc length
             const speed = (0.1 + Math.random() * 0.3) * (Math.random() > 0.5 ? 1 : -1); 
@@ -248,6 +499,7 @@ export class GameLoop {
             x: effect.owner.body.x,
             y: effect.owner.body.y,
             visual: vortex,
+            radius: 135, // Set vortex radius to 75% of 180 (135px)
             hitTimer: 0,
             hits: 0
           });
@@ -259,7 +511,7 @@ export class GameLoop {
         const dy = effect.target.body.y - effect.owner.body.y;
         effect.angle = Math.atan2(dy, dx);
 
-        const progress = 1 - (effect.timer / 2.1);
+        const progress = 1 - (effect.timer / 1.6); // Divisor reduced to 1.6s
         const ringRadius = 250 * (1 - progress) + 40; // Starts at 250, closes to 40
 
         if (effect.owner.vfx) {
@@ -302,7 +554,7 @@ export class GameLoop {
         // Phase 2: Vortex Movement & Damage
         let currentSpeed = 0.9; // Base speed (was 1.8)
         const distToEnemy = Math.sqrt((effect.x - effect.target.body.x)**2 + (effect.y - effect.target.body.y)**2);
-        const isEnemyInside = distToEnemy < 180; // Increased to match 180 radius
+        const isEnemyInside = distToEnemy < 135; // Reduced to 75% of 180 (135px)
 
         // Slow down by 50% more if enemy is inside
         if (isEnemyInside) {
@@ -322,11 +574,11 @@ export class GameLoop {
           });
         }
 
-        // Emit constant ice particles for "messy" blizzard feel - spread adjusted for 180 radius
+        // Emit constant ice particles for "messy" blizzard feel - spread adjusted for 135 radius
         if (effect.owner.vfx && Math.random() < 0.6 * delta) {
           effect.owner.vfx.triggerCollision(
-            effect.x + (Math.random() - 0.5) * 320, // Spread ~1.8x radius
-            effect.y + (Math.random() - 0.5) * 320
+            effect.x + (Math.random() - 0.5) * 270, // Spread ~2x radius (2 * 135 = 270)
+            effect.y + (Math.random() - 0.5) * 270
           );
         }
 
@@ -561,6 +813,30 @@ export class GameLoop {
       this._handleCombat(collision, currentTime);
     }
 
+    // Update tumbling sliced shards
+    if (this.shards) {
+      this.shards = this.shards.filter(shard => {
+        shard.life -= delta * 0.016;
+        if (shard.life <= 0) {
+          this.stage.removeChild(shard.visual);
+          shard.visual.destroy();
+          return false;
+        }
+
+        // Apply movement physics
+        shard.x += shard.vx * delta * 0.6;
+        shard.y += shard.vy * delta * 0.6;
+
+        // Sync graphics representation
+        shard.visual.x = shard.x;
+        shard.visual.y = shard.y;
+        shard.visual.rotation += shard.rotSpeed * delta;
+        shard.visual.alpha = Math.max(0, shard.life / shard.maxLife);
+
+        return true;
+      });
+    }
+
     // Update fighters (Visual sync)
     this.fighter1.update(delta, this.elapsedTime, this.fighter2);
     this.fighter2.update(delta, this.elapsedTime, this.fighter1);
@@ -754,42 +1030,41 @@ export class GameLoop {
             type: 'soumetsu_cast',
             owner: fighter,
             target: opponent,
-            timer: 2.1,
+            timer: 1.6, // Windup reduced by 0.5s (from 2.1s to 1.6s) to sync with audio!
             telegraph: telegraphGfx,
             ring: ringGfx,
             angle: 0
           });
+
+          fighter.isInvincible = true; // Invincible during burst cast windup!
 
           if (fighter.vfx) {
             fighter.vfx.triggerCastAura(fighter.body.x, fighter.body.y);
           }
           this._screenShake();
         }
- else if (fighter.id === 'yoimiya') {
-          // Yoimiya Q: Massive instant firework explosion
-          const damage = Math.round(fighter.data.damage * fighter.data.burstQ.damageMultiplier);
-          const result = opponent.takeDamage(damage);
-
-          if (fighter.vfx) {
-            fighter.vfx.triggerSkill(opponent.body.x, opponent.body.y);
+        else if (fighter.id === 'yoimiya') {
+          // Yoimiya Q: Two-phase Ryuukin Saxifrage burst
+          // Phase 1: 1.0s Casting with sparkles and orange particles around her
+          const ringGfx = new Graphics();
+          if (fighter.vfx && fighter.vfx.container) {
+            fighter.vfx.container.addChild(ringGfx);
+          } else {
+            this.stage.addChild(ringGfx);
           }
 
-          if (this.damageNumbers) {
-            this.damageNumbers.spawn(
-              opponent.body.x,
-              opponent.body.y - 30,
-              damage,
-              fighter.element,
-              true
-            );
-          }
+          this.activeEffects.push({
+            type: 'ryuukin_cast',
+            owner: fighter,
+            target: opponent,
+            timer: 1.0,
+            ring: ringGfx
+          });
 
-          this._screenShake();
+          fighter.isInvincible = true; // Invincible during burst cast windup!
 
-          if (result.died) {
-            this._endGame(fighter);
-            return;
-          }
+          // Play cast audio/whistle
+          playSFX('/audio/yoimiya/yoimiya-na_4.mp3', 0.85);
         }
       }
     }
@@ -803,15 +1078,15 @@ export class GameLoop {
     
     // Approximate delays: N1(0), N2(0.3s), N3(0.65s), N4(1.0s, flurry), N5(1.5s)
     const steps = [
-      { delay: 0, index: 0, dur: 250, sound: '/audio/ayaka/ayaka-na_1.mp3' },
-      { delay: 300, index: 1, dur: 250, sound: '/audio/ayaka/ayaka-na_2.mp3' },
-      { delay: 650, index: 2, dur: 350, sound: '/audio/ayaka/ayaka-na_3.mp3' },
+      { delay: 0, index: 0, dur: 250, sound: '/audio/ayaka/ayaka-na_1.wav' },
+      { delay: 300, index: 1, dur: 250, sound: '/audio/ayaka/ayaka-na_2.wav' },
+      { delay: 650, index: 2, dur: 350, sound: '/audio/ayaka/ayaka-na_3.wav' },
       // N4 flurry (3 hits)
-      { delay: 1000, index: 3, dur: 350, sound: '/audio/ayaka/ayaka-na_4.mp3' },
+      { delay: 1000, index: 3, dur: 350, sound: '/audio/ayaka/ayaka-na_4.wav' },
       { delay: 1080, index: 3, dur: 0, sound: null }, // phantom hits for flurry
       { delay: 1160, index: 3, dur: 0, sound: null },
       // N5 finisher
-      { delay: 1500, index: 4, dur: 500, sound: '/audio/ayaka/ayaka-na_5.mp3' }
+      { delay: 1500, index: 4, dur: 500, sound: '/audio/ayaka/ayaka-na_5.wav' }
     ];
 
     steps.forEach(step => {
@@ -927,11 +1202,11 @@ export class GameLoop {
     const dy = opponent.body.y - startY;
     const angle = Math.atan2(dy, dx);
     const isBlazing = fighter.isInfused;
-    const speed = isBlazing ? 22.0 : 11.0; // Buffed arrows retain old speed, unbuffed reduced to 50%
+    const speed = isBlazing ? 33.0 : 16.5; // Buffed arrows retain old speed (+50%), unbuffed reduced to 50% (+50%)
 
     // Apply snappy recoil to the shooter (push Yoimiya backward)
-    // Shots 1-4 have 75% reduced recoil (0.25x), shot 5 has full recoil
-    let recoilStrength = isBlazing ? 8.5 : 5.5; // Increased (was 5.5 : 3.5)
+    // Buffed last shot has massive 16.5 recoil to create an epic escape impulse!
+    let recoilStrength = isBlazing ? (isFinalShot ? 16.5 : 8.5) : 5.5;
     if (!isFinalShot) {
       recoilStrength *= 0.25;
     }
@@ -1002,6 +1277,37 @@ export class GameLoop {
       target: opponent,
       isBlazing: isBlazing
     });
+
+    if (isBlazing && isFinalShot) {
+      // Fire 2 homing kindling sparks at wide angles (+/- 0.6 rad) that track the opponent from the sides/flanks!
+      for (let offset of [-0.6, 0.6]) {
+        const sparkAngle = angle + offset;
+        const sparkVisual = new Graphics();
+        
+        // Draw small elegant pyrotechnic fire sparkler orb
+        sparkVisual.circle(0, 0, 4.5);
+        sparkVisual.fill({ color: 0xffaa00 });
+        sparkVisual.stroke({ color: 0xff3d00, width: 1.5 });
+        
+        sparkVisual.x = startX;
+        sparkVisual.y = startY;
+        sparkVisual.rotation = sparkAngle;
+        
+        this.stage.addChild(sparkVisual);
+        
+        this.projectiles.push({
+          x: startX,
+          y: startY,
+          angle: sparkAngle,
+          speed: speed * 0.85, // Curving sparks travel slightly slower for a staggered sweep!
+          visual: sparkVisual,
+          owner: fighter,
+          target: opponent,
+          isBlazing: true,
+          isKindlingSpark: true
+        });
+      }
+    }
   }
 
   /**
@@ -1053,5 +1359,134 @@ export class GameLoop {
     if (this.onGameOver) {
       this.onGameOver(winner);
     }
+  }
+
+  /**
+   * Spawn two realistic, tumbling arrow shards (sliced in half) that fly
+   * outward to the sides and fade away, representing an anime-style sword cut!
+   */
+  _spawnSlicedArrowShards(x, y, angle) {
+    if (!this.stage) return;
+
+    // ── Shard 1: The Silver Metal Tip (Front Half) ────────────────────
+    const shardA = new Graphics();
+    shardA.moveTo(0, -1.5);
+    shardA.lineTo(8, -1.5);
+    shardA.lineTo(12, 0);
+    shardA.lineTo(8, 1.5);
+    shardA.lineTo(0, 1.5);
+    shardA.closePath();
+    shardA.fill({ color: 0x90a4ae }); // Silver steel tip
+
+    shardA.x = x;
+    shardA.y = y;
+    shardA.rotation = angle;
+    this.stage.addChild(shardA);
+
+    // ── Shard 2: The Wooden Feather Fletching (Back Half) ──────────────
+    const shardB = new Graphics();
+    shardB.moveTo(-10, -1.5);
+    shardB.lineTo(0, -1.5);
+    shardB.lineTo(0, 1.5);
+    shardB.lineTo(-10, 1.5);
+    shardB.closePath();
+    shardB.fill({ color: 0x90a4ae });
+
+    shardB.moveTo(-8, -4);
+    shardB.lineTo(-4, -1.5);
+    shardB.lineTo(-10, -1.5);
+    shardB.closePath();
+    shardB.fill({ color: 0x8d6e63 }); // Wooden brown feather fletch
+
+    shardB.moveTo(-8, 4);
+    shardB.lineTo(-4, 1.5);
+    shardB.lineTo(-10, 1.5);
+    shardB.closePath();
+    shardB.fill({ color: 0x8d6e63 });
+
+    shardB.x = x;
+    shardB.y = y;
+    shardB.rotation = angle;
+    this.stage.addChild(shardB);
+
+    // Perpendicular angles relative to arrow trajectory
+    const angleLeft = angle - Math.PI / 2;
+    const angleRight = angle + Math.PI / 2;
+
+    const baseSpeed = 4.0;
+    const forwardSpeed = 2.0;
+
+    // Store shards in loop queue
+    this.shards.push(
+      {
+        x: x,
+        y: y,
+        vx: Math.cos(angle) * forwardSpeed + Math.cos(angleLeft) * baseSpeed,
+        vy: Math.sin(angle) * forwardSpeed + Math.sin(angleLeft) * baseSpeed,
+        rotSpeed: 0.16,
+        visual: shardA,
+        life: 0.35,
+        maxLife: 0.35
+      },
+      {
+        x: x,
+        y: y,
+        vx: Math.cos(angle) * (forwardSpeed * 0.5) + Math.cos(angleRight) * baseSpeed,
+        vy: Math.sin(angle) * (forwardSpeed * 0.5) + Math.sin(angleRight) * baseSpeed,
+        rotSpeed: -0.16,
+        visual: shardB,
+        life: 0.35,
+        maxLife: 0.35
+      }
+    );
+  }
+
+  /**
+   * Shoot a massive firework rocket projectile that flies towards the enemy
+   */
+  _shootFireworkRocket(fighter, opponent) {
+    const startX = fighter.body.x;
+    const startY = fighter.body.y;
+    const dx = opponent.body.x - startX;
+    const dy = opponent.body.y - startY;
+    const angle = Math.atan2(dy, dx);
+
+    const visual = new Graphics();
+    // Draw a massive, beautiful golden firework rocket arrow
+    visual.moveTo(-15, -4);
+    visual.lineTo(15, -4);
+    visual.lineTo(22, 0);
+    visual.lineTo(15, 4);
+    visual.lineTo(-15, 4);
+    visual.closePath();
+    visual.fill({ color: 0xffaa00 }); // Saturated golden rocket
+    visual.stroke({ color: 0xff3d00, width: 2 }); // Vivid red border
+
+    // Draw fire tail/thrust core
+    visual.moveTo(-15, -2);
+    visual.lineTo(-25, 0);
+    visual.lineTo(-15, 2);
+    visual.closePath();
+    visual.fill({ color: 0xffffff });
+
+    visual.x = startX;
+    visual.y = startY;
+    visual.rotation = angle;
+    this.stage.addChild(visual);
+
+    this.projectiles.push({
+      x: startX,
+      y: startY,
+      angle: angle,
+      speed: 32.0, // Hyper fast rocket!
+      visual: visual,
+      owner: fighter,
+      target: opponent,
+      isBlazing: true,
+      isFireworkRocket: true
+    });
+
+    // Play a firework whistle launcher SFX!
+    playSFX('/audio/yoimiya/yoimiya-na_5.mp3', 0.85); // Crisp whistle launcher
   }
 }
