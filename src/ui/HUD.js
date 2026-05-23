@@ -82,7 +82,7 @@ function injectStyles() {
       position: absolute;
       bottom: 12px;
       display: flex;
-      font-size: 16px;
+      font-size: 12px;
       font-weight: 900;
       text-transform: uppercase;
       white-space: nowrap;

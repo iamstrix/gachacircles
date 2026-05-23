@@ -15,8 +15,8 @@ import { DamageNumbers } from './ui/DamageNumbers.js';
 import './style.css';
 
 // Game constants
-const GAME_WIDTH = 900;
-const GAME_HEIGHT = 600;
+const GAME_WIDTH = 450;
+const GAME_HEIGHT = 800;
 const ARENA_PADDING_TOP = 55;
 const ARENA_PADDING_BOTTOM = 50;
 
