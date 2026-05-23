@@ -3,6 +3,8 @@
 // Glassmorphism panels, health bars, stats, skill cooldowns.
 // ─────────────────────────────────────────────────────────────
 
+import { getCharacter } from '../characters/CharacterData.js';
+
 const CRYO_COLOR = '#5ed4fc';
 const CRYO_GRADIENT = 'linear-gradient(90deg, #5ed4fc, #1a6dd4)';
 const PYRO_COLOR = '#ff8c32';
@@ -231,6 +233,68 @@ function injectStyles() {
       from { transform: scale(1.0); }
       to   { transform: scale(1.1); }
     }
+
+    /* ── Retro Tooltip Cards ─────────────── */
+    .ghud-tooltip {
+      position: absolute;
+      bottom: 54px; /* Float directly above the action button */
+      left: 50%;
+      transform: translateX(-50%);
+      width: 220px;
+      padding: 10px;
+      border: 2px solid #000;
+      background: #fff;
+      box-shadow: 4px 4px 0px rgba(0,0,0,0.15);
+      display: none;
+      flex-direction: column;
+      gap: 4px;
+      z-index: 1020;
+      white-space: normal;
+      pointer-events: none;
+      text-align: left;
+    }
+    
+    .ghud-tooltip.cryo {
+      border-color: #00bcd4;
+    }
+    .ghud-tooltip.pyro {
+      border-color: #ff3333;
+    }
+
+    .ghud-action-btn:hover {
+      cursor: help;
+    }
+    .ghud-action-btn:hover .ghud-tooltip {
+      display: flex;
+    }
+
+    .ghud-tooltip-name {
+      font-size: 12px;
+      font-weight: 900;
+      color: #000;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    
+    .ghud-tooltip-cd {
+      font-size: 10px;
+      font-weight: 800;
+      color: #ffd54f;
+      -webkit-text-stroke: 0.3px #000;
+    }
+    .ghud-tooltip.cryo .ghud-tooltip-cd {
+      color: #00bcd4;
+    }
+    .ghud-tooltip.pyro .ghud-tooltip-cd {
+      color: #ff3333;
+    }
+    
+    .ghud-tooltip-desc {
+      font-size: 10px;
+      font-weight: 600;
+      color: #555;
+      line-height: 1.3;
+    }
   `;
   document.head.appendChild(style);
 }
@@ -311,19 +375,20 @@ export class HUD {
   }
 
   _buildSidebar(element, side) {
+    const charData = getCharacter(element === 'cryo' ? 'ayaka' : 'yoimiya');
     const bar = document.createElement('div');
     bar.className = `ghud-sidebar ${side}`;
 
     // E Skill Button
     const eEmoji = element === 'cryo' ? '❄️' : '🔥';
-    const eBtn = this._createActionButton('E', eEmoji, element);
+    const eBtn = this._createActionButton('E', eEmoji, element, charData.skillE);
     bar.appendChild(eBtn);
     this[`_btn_${element}_E_fg`] = eBtn.querySelector('.ghud-cd-fg');
     this[`_btn_${element}_E_text`] = eBtn.querySelector('.ghud-cd-text');
 
     // Q Burst Button
     const qEmoji = element === 'cryo' ? '🌀' : '🎆';
-    const qBtn = this._createActionButton('Q', qEmoji, element);
+    const qBtn = this._createActionButton('Q', qEmoji, element, charData.burstQ);
     bar.appendChild(qBtn);
     this[`_btn_${element}_Q_fg`] = qBtn.querySelector('.ghud-cd-fg');
     this[`_btn_${element}_Q_text`] = qBtn.querySelector('.ghud-cd-text');
@@ -339,7 +404,7 @@ export class HUD {
     this.root.appendChild(bar);
   }
 
-  _createActionButton(key, emoji, element) {
+  _createActionButton(key, emoji, element, abilityData) {
     const btn = document.createElement('div');
     btn.className = `ghud-action-btn ${element}`;
     btn.innerHTML = `
@@ -352,6 +417,13 @@ export class HUD {
       </svg>
       <div class="ghud-cd-text"></div>
       <div class="ghud-btn-key">${key}</div>
+      
+      <!-- Retro Tooltip Card -->
+      <div class="ghud-tooltip ${element}">
+        <div class="ghud-tooltip-name">${abilityData.name}</div>
+        <div class="ghud-tooltip-cd">Cooldown: ${abilityData.cooldown}s</div>
+        <div class="ghud-tooltip-desc">${abilityData.description}</div>
+      </div>
     `;
     return btn;
   }
