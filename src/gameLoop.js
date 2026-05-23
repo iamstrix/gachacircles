@@ -40,9 +40,10 @@ export class GameLoop {
     this.fighter1.lastAttackTime = startTime - 1000;
     this.fighter2.lastAttackTime = startTime - 1000;
 
-    // Preload Yoimiya's 5 normal attack sound files
+    // Preload normal attack sound files for both characters
     for (let i = 1; i <= 5; i++) {
-      preloadSFX(`/audio/na_${i}.mp3`);
+      preloadSFX(`/audio/yoimiya/na_${i}.mp3`);
+      preloadSFX(`/audio/ayaka/na_${i}.mp3`);
     }
   }
 
@@ -876,13 +877,13 @@ export class GameLoop {
     // aa (0s, 0.1s) -> a (0.4s) -> a (0.7s) -> aa (1.0s, 1.1s) -> a (1.4s)
     const delays = [0, 100, 400, 700, 1000, 1100, 1400];
     const sounds = [
-      '/audio/na_1.mp3', // segment 1 (aa)
+      '/audio/yoimiya/na_1.mp3', // segment 1 (aa)
       null,
-      '/audio/na_2.mp3', // segment 2 (a)
-      '/audio/na_3.mp3', // segment 3 (a)
-      '/audio/na_4.mp3', // segment 4 (aa)
+      '/audio/yoimiya/na_2.mp3', // segment 2 (a)
+      '/audio/yoimiya/na_3.mp3', // segment 3 (a)
+      '/audio/yoimiya/na_4.mp3', // segment 4 (aa)
       null,
-      '/audio/na_5.mp3'  // segment 5 (a)
+      '/audio/yoimiya/na_5.mp3'  // segment 5 (a)
     ];
     
     delays.forEach((delay, index) => {
