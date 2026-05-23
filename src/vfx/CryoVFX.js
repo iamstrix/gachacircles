@@ -154,15 +154,22 @@ export class CryoVFX {
    */
   drawSoumetsuTelegraph(gfx, x1, y1, x2, y2, progress) {
     gfx.clear();
+    
+    // Sync color with darkening ring: 0x4fc3f7 -> 0x050a14
+    const r = Math.round(79 * (1 - progress) + 5 * progress);
+    const g = Math.round(195 * (1 - progress) + 10 * progress);
+    const b = Math.round(247 * (1 - progress) + 20 * progress);
+    const color = (r << 16) | (g << 8) | b;
+
     // Inner thin laser
     gfx.moveTo(x1, y1);
     gfx.lineTo(x2, y2);
     gfx.stroke({ color: 0xffffff, width: 1 + progress * 2, alpha: 0.3 + progress * 0.5 });
     
-    // Outer glow path
+    // Outer glow path - now using darkening color
     gfx.moveTo(x1, y1);
     gfx.lineTo(x2, y2);
-    gfx.stroke({ color: 0x4fc3f7, width: 4 + progress * 8, alpha: 0.1 + progress * 0.2 });
+    gfx.stroke({ color: color, width: 4 + progress * 8, alpha: 0.1 + progress * 0.2 });
   }
 
   /**
