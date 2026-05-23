@@ -80,7 +80,7 @@ function injectStyles() {
     /* ── Stats ────────────────────────────── */
     .ghud-stats {
       position: absolute;
-      bottom: 12px;
+      bottom: 58px; /* Positioned directly above the action buttons */
       display: flex;
       font-size: 12px;
       font-weight: 900;
@@ -109,26 +109,26 @@ function injectStyles() {
     /* ── Sidebars ────────────────────────── */
     .ghud-sidebar {
       position: absolute;
-      top: 120px;
-      width: 40px;
+      bottom: 8px; /* Put them below the arena */
       display: flex;
-      flex-direction: column;
+      flex-direction: row; /* Horizontal row */
       align-items: center;
-      gap: 16px;
+      gap: 12px;
       z-index: 1005;
     }
     .ghud-sidebar.left {
-      left: 12px;
+      left: 60px;
     }
     .ghud-sidebar.right {
-      right: 12px;
+      right: 60px;
+      flex-direction: row-reverse; /* Mirrored layout on right side */
     }
 
     /* ── Action Buttons ──────────────────── */
     .ghud-action-btn {
       position: relative;
-      width: 36px;
-      height: 36px;
+      width: 44px; /* Larger action buttons */
+      height: 44px;
       border-radius: 50%;
       border: 2px solid #000;
       background: #fff;
@@ -139,7 +139,7 @@ function injectStyles() {
       pointer-events: none;
     }
     .ghud-emoji {
-      font-size: 18px;
+      font-size: 22px; /* Larger emoji */
     }
 
     /* ── Cooldown Overlays ───────────────── */
@@ -173,7 +173,7 @@ function injectStyles() {
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 11px;
+      font-size: 13px; /* Slightly larger countdown text */
       font-weight: 900;
       color: #000;
       -webkit-text-stroke: 0.5px #fff;
