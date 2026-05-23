@@ -3,7 +3,7 @@
  * Orchestrates physics, combat, VFX, and UI updates.
  */
 
-import { Graphics, Sprite, Assets } from 'pixi.js';
+import { Graphics, Sprite, Assets, Container } from 'pixi.js';
 import { updatePosition, bounceOffWalls, checkCircleCollision, resolveCollision } from './physics.js';
 import { playSFX, preloadSFX, playSynthBounce, playSynthClash } from './utils/audio.js';
 
@@ -182,35 +182,155 @@ export class GameLoop {
     // Update active burst/skill effects
     this.activeEffects = this.activeEffects.filter(effect => {
       effect.timer -= delta * 0.016;
-      if (effect.type === 'soumetsu') {
-        effect.tickTimer -= delta * 0.016;
-        if (effect.tickTimer <= 0) {
-          effect.tickTimer = 0.5; // Tick every 0.5s
+
+      if (effect.type === 'soumetsu_cast') {
+        // Phase 1: Casting logic
+        if (effect.timer <= 0) {
+          // Transitions to Phase 2: Unleash Vortex
+          this.stage.removeChild(effect.telegraph);
+          effect.telegraph.destroy();
+
+          const vortex = new Container();
           
-          // Cyclone tracks opponent
-          const damage = Math.round(effect.owner.data.damage * effect.owner.data.burstQ.damageMultiplier);
-          const result = effect.target.takeDamage(damage);
-          
-          // Trigger Cryo swirl burst VFX where the opponent is
-          if (effect.owner.vfx) {
-            effect.owner.vfx.triggerCollision(effect.target.body.x, effect.target.body.y);
-          }
-          
-          if (this.damageNumbers) {
-            this.damageNumbers.spawn(
-              effect.target.body.x,
-              effect.target.body.y - 30,
-              damage,
-              effect.owner.element,
-              true
+          // Helper to draw a sharp, tapered ice blade
+          const drawBlade = (r, t, len, color, alpha, speed) => {
+            const g = new Graphics();
+            const half = len / 2;
+            // Draw a sharp "eye" or "petal" shape curved along an arc
+            g.moveTo(Math.cos(-half) * r, Math.sin(-half) * r);
+            // Outer tapered edge
+            g.bezierCurveTo(
+              Math.cos(-half/2) * (r + t), Math.sin(-half/2) * (r + t),
+              Math.cos(half/2) * (r + t), Math.sin(half/2) * (r + t),
+              Math.cos(half) * r, Math.sin(half) * r
             );
+            // Inner tapered edge
+            g.bezierCurveTo(
+              Math.cos(half/2) * (r - t), Math.sin(half/2) * (r - t),
+              Math.cos(-half/2) * (r - t), Math.sin(-half/2) * (r - t),
+              Math.cos(-half) * r, Math.sin(-half) * r
+            );
+            g.fill({ color, alpha });
+            g.spinSpeed = speed;
+            return g;
+          };
+
+          // Generate a "messy" hurricane of 30 independent blades
+          const cryoColors = [0x5ed4fc, 0xb4e1fa, 0xffffff, 0x9df0ff, 0xe0f7fa];
+          for (let k = 0; k < 30; k++) {
+            const r = 15 + Math.random() * 50;      // Varying radii
+            const t = 1 + Math.random() * 6;       // Varying thickness
+            const len = 0.3 + Math.random() * 2.0; // Varying arc length
+            const speed = (0.2 + Math.random() * 0.6) * (Math.random() > 0.5 ? 1 : -1);
+            const color = cryoColors[Math.floor(Math.random() * cryoColors.length)];
+            const alpha = 0.3 + Math.random() * 0.6;
+            
+            const blade = drawBlade(r, t, len, color, alpha, speed);
+            blade.rotation = Math.random() * Math.PI * 2; // Random start orientation
+            vortex.addChild(blade);
           }
-          
-          if (result.died) {
-            this._endGame(effect.owner);
+
+          // Add a central light ambiance (glow core)
+          const coreGlow = new Graphics();
+          coreGlow.circle(0, 0, 30);
+          coreGlow.fill({ color: 0x9df0ff, alpha: 0.4 });
+          coreGlow.blendMode = 'add';
+          vortex.addChild(coreGlow);
+
+          this.stage.addChild(vortex);
+
+          // Return new effect state for Phase 2
+          Object.assign(effect, {
+            type: 'soumetsu_vortex',
+            timer: 5.0,
+            x: effect.owner.body.x,
+            y: effect.owner.body.y,
+            visual: vortex,
+            hitTimer: 0,
+            hits: 0
+          });
+          return true;
+        }
+
+        // Lock laser onto enemy
+        const dx = effect.target.body.x - effect.owner.body.x;
+        const dy = effect.target.body.y - effect.owner.body.y;
+        effect.angle = Math.atan2(dy, dx);
+
+        const progress = 1 - (effect.timer / 2.1);
+        if (effect.owner.vfx) {
+          const range = 800;
+          effect.owner.vfx.drawSoumetsuTelegraph(
+            effect.telegraph,
+            effect.owner.body.x,
+            effect.owner.body.y,
+            effect.owner.body.x + Math.cos(effect.angle) * range,
+            effect.owner.body.y + Math.sin(effect.angle) * range,
+            progress
+          );
+        }
+        return true;
+      } 
+      else if (effect.type === 'soumetsu_vortex') {
+        // Phase 2: Vortex Movement & Damage
+        const speed = 2.4; // Slow forward advance
+        effect.x += Math.cos(effect.angle) * speed * delta;
+        effect.y += Math.sin(effect.angle) * speed * delta;
+
+        // Visual spin: independently rotate crescent layers
+        effect.visual.x = effect.x;
+        effect.visual.y = effect.y;
+        if (effect.visual.children) {
+          effect.visual.children.forEach(child => {
+            child.rotation += (child.spinSpeed || 0.2) * delta;
+          });
+        }
+
+        // Sticky logic: if close to enemy, stop moving
+        const distToEnemy = Math.sqrt((effect.x - effect.target.body.x)**2 + (effect.y - effect.target.body.y)**2);
+        if (distToEnemy < 60) {
+          effect.x -= Math.cos(effect.angle) * speed * delta; // cancel movement
+          effect.y -= Math.sin(effect.angle) * speed * delta;
+        }
+
+        // Damage ticks (19 hits every 0.25s approx)
+        effect.hitTimer += delta * 0.016;
+        if (effect.hitTimer >= 0.25 && effect.hits < 19) {
+          effect.hitTimer = 0;
+          effect.hits++;
+
+          const damage = Math.round(effect.owner.getCurrentDamage() * 0.4);
+          effect.target.takeDamage(damage);
+
+          if (effect.owner.vfx) {
+            effect.owner.vfx.triggerCollision(effect.x, effect.y);
+          }
+          if (this.damageNumbers) {
+            this.damageNumbers.spawn(effect.x, effect.y - 30, damage, 'cryo', false);
           }
         }
-      } else if (effect.type === 'hyouka') {
+
+        // Finale Bloom (The +1)
+        if (effect.timer <= 0) {
+          const bloomDmg = Math.round(effect.owner.getCurrentDamage() * 1.5);
+          effect.target.takeDamage(bloomDmg);
+
+          if (effect.owner.vfx) {
+            effect.owner.vfx.triggerHyoukaBurst(effect.x, effect.y);
+          }
+          if (this.damageNumbers) {
+            this.damageNumbers.spawn(effect.x, effect.y - 30, bloomDmg, 'cryo', true);
+          }
+          this._screenShake();
+
+          this.stage.removeChild(effect.visual);
+          effect.visual.destroy();
+          return false;
+        }
+        return true;
+      }
+      else if (effect.type === 'hyouka') {
+
         // Track Ayaka's circle center
         effect.visual.x = effect.owner.body.x;
         effect.visual.y = effect.owner.body.y;
@@ -512,17 +632,22 @@ export class GameLoop {
       const activated = fighter.activateBurst();
       if (activated) {
         if (fighter.id === 'ayaka') {
-          // Ayaka Q: Soumetsu frost whirlwind ticks over 3 seconds tracking target
+          // Ayaka Q: Two-phase Soumetsu burst
+          // Phase 1: 2.1s Casting with Laser Telegraph
+          const telegraphGfx = new Graphics();
+          this.stage.addChild(telegraphGfx);
+
           this.activeEffects.push({
-            type: 'soumetsu',
+            type: 'soumetsu_cast',
             owner: fighter,
             target: opponent,
-            timer: 3.0,
-            tickTimer: 0
+            timer: 2.1,
+            telegraph: telegraphGfx,
+            angle: 0
           });
 
           if (fighter.vfx) {
-            fighter.vfx.triggerSkill(fighter.body.x, fighter.body.y);
+            fighter.vfx.triggerCastAura(fighter.body.x, fighter.body.y);
           }
           this._screenShake();
         } else if (fighter.id === 'yoimiya') {
