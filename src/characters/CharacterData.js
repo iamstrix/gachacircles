@@ -30,7 +30,7 @@ export const CHARACTERS = {
     weapon: WEAPONS.SWORD,
 
     // Combat stats
-    hp: 200,
+    hp: 500,
     damage: 10,
     attackSpeed: 1.0,       // Attacks per second during collision
     speed: 3.0,             // Movement speed multiplier
@@ -81,7 +81,7 @@ export const CHARACTERS = {
     weapon: WEAPONS.BOW,
 
     // Combat stats
-    hp: 200,
+    hp: 500,
     damage: 6,
     attackSpeed: 2.5,       // Faster base attacks
     speed: 3.5,             // Slightly faster movement
