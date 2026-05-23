@@ -29,12 +29,12 @@ function injectStyles() {
   style.id = 'gacha-hud-styles';
   style.textContent = `
     #gacha-hud {
-      position: fixed;
+      position: absolute;
       inset: 0;
       pointer-events: none;
       z-index: 1000;
       font-family: 'Outfit', sans-serif;
-      color: #fff;
+      color: #000;
       user-select: none;
     }
     #gacha-hud * {
@@ -47,156 +47,68 @@ function injectStyles() {
       top: 12px;
       left: 50%;
       transform: translateX(-50%);
-      padding: 8px 28px;
-      border-radius: 14px;
-      background: rgba(10, 10, 30, 0.55);
-      backdrop-filter: blur(14px);
-      -webkit-backdrop-filter: blur(14px);
-      border: 1px solid rgba(255,255,255,0.08);
       display: flex;
       align-items: center;
-      gap: 10px;
-      font-size: 18px;
-      font-weight: 700;
-      letter-spacing: 0.5px;
-      text-shadow: 0 0 10px rgba(0,0,0,0.6);
+      gap: 16px;
+      font-size: 24px;
+      font-weight: 900;
       white-space: nowrap;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
     }
     .ghud-name-cryo {
-      background: ${CRYO_GRADIENT};
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
+      color: #00bcd4; /* cyan */
+      -webkit-text-stroke: 1.5px #000;
+      text-shadow: 2px 2px 0px #000;
     }
     .ghud-name-pyro {
-      background: ${PYRO_GRADIENT};
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
+      color: #ff3333; /* red */
+      -webkit-text-stroke: 1.5px #000;
+      text-shadow: 2px 2px 0px #000;
     }
     .ghud-vs {
-      opacity: 0.7;
-      font-size: 14px;
+      color: #000;
+      font-size: 18px;
+      font-weight: 900;
     }
 
-    /* ── Health Bars ─────────────────────── */
+    /* ── Health Bars (Hidden to match simple aesthetic) ─────────────────────── */
     .ghud-hp-wrap {
-      position: absolute;
-      top: 58px;
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      width: 220px;
-    }
-    .ghud-hp-wrap.left  { left: 24px; }
-    .ghud-hp-wrap.right { right: 24px; text-align: right; }
-
-    .ghud-hp-label {
-      font-size: 12px;
-      font-weight: 600;
-      opacity: 0.7;
-      display: flex;
-      justify-content: space-between;
-    }
-    .ghud-hp-bar-bg {
-      width: 100%;
-      height: 14px;
-      border-radius: 7px;
-      background: rgba(255,255,255,0.08);
-      backdrop-filter: blur(6px);
-      -webkit-backdrop-filter: blur(6px);
-      overflow: hidden;
-      position: relative;
-      border: 1px solid rgba(255,255,255,0.06);
-    }
-    .ghud-hp-bar-fill {
-      height: 100%;
-      border-radius: 7px;
-      transition: width 0.35s cubic-bezier(.4,0,.2,1);
-      position: relative;
-    }
-    .ghud-hp-bar-fill.cryo { background: ${CRYO_GRADIENT}; box-shadow: 0 0 10px ${CRYO_COLOR}44; }
-    .ghud-hp-bar-fill.pyro { background: ${PYRO_GRADIENT}; box-shadow: 0 0 10px ${PYRO_COLOR}44; }
-
-    .ghud-hp-bar-fill::after {
-      content: '';
-      position: absolute;
-      top: 0; left: 0; right: 0;
-      height: 50%;
-      background: linear-gradient(180deg, rgba(255,255,255,0.25), transparent);
-      border-radius: 7px 7px 0 0;
+      display: none !important;
     }
 
     /* ── Stats ────────────────────────────── */
     .ghud-stats {
       position: absolute;
-      bottom: 18px;
+      bottom: 12px;
       display: flex;
-      gap: 14px;
-      padding: 6px 16px;
-      border-radius: 10px;
-      background: rgba(10, 10, 30, 0.5);
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
-      border: 1px solid rgba(255,255,255,0.06);
-      font-size: 12px;
-      font-weight: 600;
+      font-size: 16px;
+      font-weight: 900;
+      text-transform: uppercase;
+      white-space: nowrap;
     }
-    .ghud-stats.left  { left: 24px; }
-    .ghud-stats.right { right: 24px; }
+    .ghud-stats.left {
+      left: 24px;
+      color: #00bcd4; /* cyan */
+      -webkit-text-stroke: 1px #000;
+      text-shadow: 1.5px 1.5px 0px #000;
+    }
+    .ghud-stats.right {
+      right: 24px;
+      color: #ff3333; /* red */
+      -webkit-text-stroke: 1px #000;
+      text-shadow: 1.5px 1.5px 0px #000;
+    }
 
     .ghud-stat-val {
-      font-weight: 800;
+      font-weight: 900;
     }
-    .ghud-stat-val.cryo { color: ${CRYO_COLOR}; }
-    .ghud-stat-val.pyro { color: ${PYRO_COLOR}; }
+    .ghud-stat-val.cryo { color: #00bcd4; }
+    .ghud-stat-val.pyro { color: #ff3333; }
 
-    /* ── Skill Cooldown Indicator ────────── */
+    /* ── Skill Cooldown (Hidden to match simple aesthetic) ────────── */
     .ghud-skill {
-      position: absolute;
-      top: 90px;
-      width: 32px;
-      height: 32px;
-    }
-    .ghud-skill.left  { left: 250px; }
-    .ghud-skill.right { right: 250px; }
-
-    .ghud-skill svg {
-      width: 100%;
-      height: 100%;
-      transform: rotate(-90deg);
-    }
-    .ghud-skill-bg {
-      fill: none;
-      stroke: rgba(255,255,255,0.1);
-      stroke-width: 3;
-    }
-    .ghud-skill-fg {
-      fill: none;
-      stroke-width: 3;
-      stroke-linecap: round;
-      transition: stroke-dashoffset 0.15s linear;
-    }
-    .ghud-skill-fg.cryo { stroke: ${CRYO_COLOR}; filter: drop-shadow(0 0 4px ${CRYO_COLOR}88); }
-    .ghud-skill-fg.pyro { stroke: ${PYRO_COLOR}; filter: drop-shadow(0 0 4px ${PYRO_COLOR}88); }
-
-    .ghud-skill-label {
-      position: absolute;
-      inset: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 10px;
-      font-weight: 700;
-      text-shadow: 0 0 4px rgba(0,0,0,0.8);
-    }
-
-    .ghud-skill-ready {
-      animation: ghud-pulse 0.8s ease-in-out infinite alternate;
-    }
-    @keyframes ghud-pulse {
-      from { opacity: 0.7; transform: scale(1); }
-      to   { opacity: 1;   transform: scale(1.15); }
+      display: none !important;
     }
   `;
   document.head.appendChild(style);
@@ -213,7 +125,8 @@ export class HUD {
 
     this.root = document.createElement('div');
     this.root.id = 'gacha-hud';
-    document.body.appendChild(this.root);
+    const container = document.getElementById('game-container') || document.body;
+    container.appendChild(this.root);
 
     this._buildBanner();
     this._buildHP('cryo', 'left');
@@ -270,8 +183,7 @@ export class HUD {
     const d = document.createElement('div');
     d.className = `ghud-stats ${side}`;
     d.innerHTML = `
-      <div>DMG <span class="ghud-stat-val ${element}" data-stat="dmg">0</span></div>
-      <div>SPD <span class="ghud-stat-val ${element}" data-stat="spd">1.0x</span></div>
+      Damage/Speed: <span class="ghud-stat-val ${element}" data-stat="dmg">0</span> / <span class="ghud-stat-val ${element}" data-stat="spd">1.0x</span>
     `;
     this.root.appendChild(d);
     this[`_stats_${element}`] = d;

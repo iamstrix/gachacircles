@@ -4,7 +4,7 @@
  * Contains the circle, portrait, orbiting weapon, and glow effects.
  */
 
-import { Container, Graphics, Sprite, Assets } from 'pixi.js';
+import { Container, Graphics, Sprite, Assets, Text } from 'pixi.js';
 
 export class Fighter {
   /**
@@ -109,6 +109,26 @@ export class Fighter {
       console.warn(`Could not load weapon for ${this.id}:`, e);
     }
 
+    // HP text inside the circle
+    try {
+      this.hpText = new Text({
+        text: Math.round(this.hp).toString(),
+        style: {
+          fontFamily: 'Outfit',
+          fontSize: 22,
+          fontWeight: '900',
+          fill: 0xffffff,
+          stroke: { color: 0x000000, width: 4 },
+          align: 'center'
+        }
+      });
+      this.hpText.anchor.set(0.5);
+      this.hpText.y = 0; // Center it vertically
+      this.container.addChild(this.hpText);
+    } catch (e) {
+      console.warn(`Could not create HP text for ${this.id}:`, e);
+    }
+
     // Set initial position
     this.container.x = this.body.x;
     this.container.y = this.body.y;
@@ -193,6 +213,11 @@ export class Fighter {
     const actualDamage = Math.min(amount, this.hp);
     this.hp -= actualDamage;
 
+    // Update HP text
+    if (this.hpText) {
+      this.hpText.text = Math.round(this.hp).toString();
+    }
+
     // Visual hit feedback — brief red flash
     if (this.circleGraphics) {
       this.circleGraphics.tint = 0xff4444;
@@ -203,6 +228,9 @@ export class Fighter {
 
     if (this.hp <= 0) {
       this.hp = 0;
+      if (this.hpText) {
+        this.hpText.text = '0';
+      }
       this.alive = false;
       return { died: true, actualDamage };
     }

@@ -38,7 +38,7 @@ async function init() {
   await app.init({
     width: GAME_WIDTH,
     height: GAME_HEIGHT,
-    backgroundColor: 0x0a0a14,
+    backgroundColor: 0xa8f5b4,
     antialias: true,
     resolution: window.devicePixelRatio || 1,
     autoDensity: true,
@@ -117,34 +117,13 @@ async function init() {
 function createArenaBackground() {
   const bg = new Graphics();
 
-  // Arena floor — subtle dark gradient feel
+  // Arena floor — clean light mint/pastel green
   bg.rect(ARENA.x, ARENA.y, ARENA.width, ARENA.height);
-  bg.fill({ color: 0x0d0d1a, alpha: 0.6 });
+  bg.fill({ color: 0xe2fde6 });
 
-  // Subtle grid lines
-  const gridSize = 60;
-  for (let x = ARENA.x + gridSize; x < ARENA.x + ARENA.width; x += gridSize) {
-    bg.moveTo(x, ARENA.y);
-    bg.lineTo(x, ARENA.y + ARENA.height);
-  }
-  for (let y = ARENA.y + gridSize; y < ARENA.y + ARENA.height; y += gridSize) {
-    bg.moveTo(ARENA.x, y);
-    bg.lineTo(ARENA.x + ARENA.width, y);
-  }
-  bg.stroke({ color: 0xffffff, alpha: 0.03, width: 1 });
-
-  // Arena border
+  // Arena border — crisp solid black
   bg.rect(ARENA.x, ARENA.y, ARENA.width, ARENA.height);
-  bg.stroke({ color: 0xffffff, alpha: 0.08, width: 1 });
-
-  // Center line
-  bg.moveTo(GAME_WIDTH / 2, ARENA.y);
-  bg.lineTo(GAME_WIDTH / 2, ARENA.y + ARENA.height);
-  bg.stroke({ color: 0xffffff, alpha: 0.06, width: 1 });
-
-  // Center circle
-  bg.circle(GAME_WIDTH / 2, GAME_HEIGHT / 2, 50);
-  bg.stroke({ color: 0xffffff, alpha: 0.05, width: 1 });
+  bg.stroke({ color: 0x000000, width: 3 });
 
   app.stage.addChild(bg);
 }
