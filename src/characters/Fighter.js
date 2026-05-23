@@ -38,6 +38,7 @@ export class Fighter {
     this.comboIndex = 0;       // N1 to N5 (0-4)
     this.swingProgress = 1.0;  // 0 to 1 (animation fraction)
     this.swingDuration = 0;    // Duration in ms
+    this.hasHitThisSwing = false;
     this.visualOffset = { x: 0, y: 0, rotation: 0 };
     this.isInvincible = false;
     this.slowMultiplier = 1.0;
@@ -370,6 +371,7 @@ export class Fighter {
     this.comboIndex = index;
     this.swingProgress = 0;
     this.swingDuration = duration;
+    this.hasHitThisSwing = false;
   }
 
   /**

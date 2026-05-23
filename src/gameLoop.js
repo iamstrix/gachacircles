@@ -42,9 +42,13 @@ export class GameLoop {
 
     // Preload normal attack sound files for both characters
     for (let i = 1; i <= 5; i++) {
-      preloadSFX(`/audio/yoimiya/na_${i}.mp3`);
-      preloadSFX(`/audio/ayaka/na_${i}.mp3`);
+      preloadSFX(`/audio/yoimiya/yoimiya-na_${i}.mp3`);
+      preloadSFX(`/audio/ayaka/ayaka-na_${i}.mp3`);
     }
+
+    // Preload skill and burst sound files for Ayaka
+    preloadSFX('/audio/ayaka/ayaka-skill.mp3');
+    preloadSFX('/audio/ayaka/ayaka-ultimate.mp3');
   }
 
   /**
@@ -78,20 +82,7 @@ export class GameLoop {
       }
     });
 
-    // Wall bouncing
-    const b1 = bounceOffWalls(this.fighter1.body, this.bounds);
-    const b2 = bounceOffWalls(this.fighter2.body, this.bounds);
-    if (b1 || b2) {
-      playSynthBounce();
-    }
 
-    // Circle-circle collision
-    const collision = checkCircleCollision(this.fighter1.body, this.fighter2.body);
-    if (collision.colliding) {
-      resolveCollision(this.fighter1.body, this.fighter2.body, collision);
-      playSynthClash();
-      this._handleCombat(collision, currentTime);
-    }
 
     // Process scheduled sequential arrow shots (Yoimiya's aa-a-a-aa-a sequence)
     const now = performance.now();
@@ -109,7 +100,7 @@ export class GameLoop {
     if (this.scheduledMelee) {
       this.scheduledMelee = this.scheduledMelee.filter(hit => {
         if (now >= hit.time) {
-          this._performMeleeHit(hit.owner, hit.target, hit.index, hit.duration);
+          this._performMeleeHit(hit.owner, hit.target, hit.index, hit.duration, hit.sound);
           return false;
         }
         return true;
@@ -538,36 +529,35 @@ export class GameLoop {
       if (currentTime - this.fighter1.lastAttackTime >= cooldownMs) {
         this.fighter1.registerAttack(currentTime);
         this._startAyakaMeleeCombo(this.fighter1, this.fighter2);
-      return true;
       }
-      });
+    }
 
-      // 4. Update physics positions (NOW respecting slowMultiplier set by activeEffects)
-      updatePosition(this.fighter1.body, delta * this.fighter1.slowMultiplier);
-      updatePosition(this.fighter2.body, delta * this.fighter2.slowMultiplier);
+    // 4. Update physics positions (NOW respecting slowMultiplier set by activeEffects)
+    updatePosition(this.fighter1.body, delta * this.fighter1.slowMultiplier);
+    updatePosition(this.fighter2.body, delta * this.fighter2.slowMultiplier);
 
-      // 5. Wall bouncing
-      const b1 = bounceOffWalls(this.fighter1.body, this.bounds);
-      const b2 = bounceOffWalls(this.fighter2.body, this.bounds);
-      if (b1 || b2) {
+    // 5. Wall bouncing
+    const b1 = bounceOffWalls(this.fighter1.body, this.bounds);
+    const b2 = bounceOffWalls(this.fighter2.body, this.bounds);
+    if (b1 || b2) {
       playSynthBounce();
-      }
+    }
 
-      // 6. Circle-circle collision
-      const collision = checkCircleCollision(this.fighter1.body, this.fighter2.body);
-      if (collision.colliding) {
+    // 6. Circle-circle collision
+    const collision = checkCircleCollision(this.fighter1.body, this.fighter2.body);
+    if (collision.colliding) {
       resolveCollision(this.fighter1.body, this.fighter2.body, collision);
       playSynthClash();
       this._handleCombat(collision, currentTime);
-      }
+    }
 
-      // Update fighters (Visual sync)
-      this.fighter1.update(delta, this.elapsedTime, this.fighter2);
-      this.fighter2.update(delta, this.elapsedTime, this.fighter1);
+    // Update fighters (Visual sync)
+    this.fighter1.update(delta, this.elapsedTime, this.fighter2);
+    this.fighter2.update(delta, this.elapsedTime, this.fighter1);
 
-      // Update HUD
-      this._updateHUD();
-      }
+    // Update HUD
+    this._updateHUD();
+  }
 
   /**
    * Handle combat when circles collide
@@ -581,13 +571,18 @@ export class GameLoop {
                            this.fighter1.swingProgress < 0.6;
 
     // Apply damage from fighter1 (Ayaka) to fighter2 (Yoimiya)
-    if (isAyakaLunging || (this.fighter1.canAttack(currentTime) && this.fighter1.id !== 'ayaka')) {
+    // Fix: check hasHitThisSwing for lunging hits to prevent multi-hit stuttering
+    const canLungeHit = isAyakaLunging && !this.fighter1.hasHitThisSwing;
+    
+    if (canLungeHit || (this.fighter1.canAttack(currentTime) && this.fighter1.id !== 'ayaka')) {
       const damage = this.fighter1.getCurrentDamage();
       const isCrit = (this.fighter1.id === 'ayaka' && this.fighter1.passiveTimer > 0);
       const result = this.fighter2.takeDamage(damage);
 
       if (result.actualDamage > 0) {
-        if (!isAyakaLunging) {
+        if (isAyakaLunging) {
+          this.fighter1.hasHitThisSwing = true; // Block further hits this animation step
+        } else {
           this.fighter1.registerAttack(currentTime);
         }
 
@@ -669,6 +664,7 @@ export class GameLoop {
       const activated = fighter.activateSkill();
       if (activated) {
         if (fighter.id === 'ayaka') {
+          playSFX('/audio/ayaka/ayaka-skill.mp3');
           // Create the frost blooming ice radius visual indicator
           const visual = new Graphics();
           visual.circle(0, 0, 180);
@@ -736,6 +732,7 @@ export class GameLoop {
       const activated = fighter.activateBurst();
       if (activated) {
         if (fighter.id === 'ayaka') {
+          playSFX('/audio/ayaka/ayaka-ultimate.mp3');
           // Ayaka Q: Two-phase Soumetsu burst
           // Phase 1: 2.1s Casting with Laser Telegraph + Contracting Ring
           const telegraphGfx = new Graphics();
@@ -796,15 +793,15 @@ export class GameLoop {
     
     // Approximate delays: N1(0), N2(0.3s), N3(0.65s), N4(1.0s, flurry), N5(1.5s)
     const steps = [
-      { delay: 0, index: 0, dur: 250 },
-      { delay: 300, index: 1, dur: 250 },
-      { delay: 650, index: 2, dur: 350 },
+      { delay: 0, index: 0, dur: 250, sound: '/audio/ayaka/ayaka-na_1.mp3' },
+      { delay: 300, index: 1, dur: 250, sound: '/audio/ayaka/ayaka-na_2.mp3' },
+      { delay: 650, index: 2, dur: 350, sound: '/audio/ayaka/ayaka-na_3.mp3' },
       // N4 flurry (3 hits)
-      { delay: 1000, index: 3, dur: 350 },
-      { delay: 1080, index: 3, dur: 0 }, // phantom hits for flurry
-      { delay: 1160, index: 3, dur: 0 },
+      { delay: 1000, index: 3, dur: 350, sound: '/audio/ayaka/ayaka-na_4.mp3' },
+      { delay: 1080, index: 3, dur: 0, sound: null }, // phantom hits for flurry
+      { delay: 1160, index: 3, dur: 0, sound: null },
       // N5 finisher
-      { delay: 1500, index: 4, dur: 500 }
+      { delay: 1500, index: 4, dur: 500, sound: '/audio/ayaka/ayaka-na_5.mp3' }
     ];
 
     steps.forEach(step => {
@@ -813,7 +810,8 @@ export class GameLoop {
         owner: fighter,
         target: opponent,
         index: step.index,
-        duration: step.dur
+        duration: step.dur,
+        sound: step.sound
       });
     });
   }
@@ -821,8 +819,12 @@ export class GameLoop {
   /**
    * Perform a single melee hit in a combo
    */
-  _performMeleeHit(fighter, opponent, index, duration) {
+  _performMeleeHit(fighter, opponent, index, duration, sound) {
     if (!fighter.alive || !opponent.alive) return;
+
+    if (sound) {
+      playSFX(sound);
+    }
 
     // Trigger animation in fighter
     if (duration > 0) {
@@ -877,13 +879,13 @@ export class GameLoop {
     // aa (0s, 0.1s) -> a (0.4s) -> a (0.7s) -> aa (1.0s, 1.1s) -> a (1.4s)
     const delays = [0, 100, 400, 700, 1000, 1100, 1400];
     const sounds = [
-      '/audio/yoimiya/na_1.mp3', // segment 1 (aa)
+      '/audio/yoimiya/yoimiya-na_1.mp3', // segment 1 (aa)
       null,
-      '/audio/yoimiya/na_2.mp3', // segment 2 (a)
-      '/audio/yoimiya/na_3.mp3', // segment 3 (a)
-      '/audio/yoimiya/na_4.mp3', // segment 4 (aa)
+      '/audio/yoimiya/yoimiya-na_2.mp3', // segment 2 (a)
+      '/audio/yoimiya/yoimiya-na_3.mp3', // segment 3 (a)
+      '/audio/yoimiya/yoimiya-na_4.mp3', // segment 4 (aa)
       null,
-      '/audio/yoimiya/na_5.mp3'  // segment 5 (a)
+      '/audio/yoimiya/yoimiya-na_5.mp3'  // segment 5 (a)
     ];
     
     delays.forEach((delay, index) => {
