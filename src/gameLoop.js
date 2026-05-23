@@ -432,7 +432,7 @@ export class GameLoop {
     const dx = opponent.body.x - startX;
     const dy = opponent.body.y - startY;
     const angle = Math.atan2(dy, dx);
-    const speed = 14.0; // Higher fly speed (snappier projectiles)
+    const speed = 22.0; // Extreme fly speed (hyper-snappy projectiles)
 
     // Trigger spark effect muzzle flash originating from Yoimiya's circle
     if (fighter.vfx) {
