@@ -89,9 +89,9 @@ export const CHARACTERS = {
     // Skills & Burst
     skillE: {
       name: 'Niwabi Fire-Dance',
-      description: 'Pyro infusion: deals +50% damage and doubles attack speed for 4s',
+      description: 'Pyro infusion: deals +50% damage and doubles attack speed for 6s',
       cooldown: 10,
-      duration: 4000,
+      duration: 6000,
       emoji: '🔥'
     },
     burstQ: {
