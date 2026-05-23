@@ -95,44 +95,46 @@ export function playSynthBounce(volume = 0.18) {
 }
 
 /**
- * Synthesize a satisfying, heavy metallic strike clash sound in real-time
+ * Synthesize a highly satisfying, hollow resin pool ball "clack" sound in real-time
  * whenever two character circles collide.
- * Combines detuned ring-mod tone with a micro impact white-noise punch.
- * @param {number} [volume=0.35] - Playback volume
+ * Combines high-pitched resin transients with a resonant hollow wood-body tock.
+ * @param {number} [volume=0.38] - Playback volume
  */
-export function playSynthClash(volume = 0.35) {
+export function playSynthClash(volume = 0.38) {
   try {
     const ctx = getAudioContext();
     if (!ctx) return;
 
     const now = ctx.currentTime;
 
-    // 1. Core metallic sword strike tone (Triangle pitch-slide down)
+    // 1. High-frequency resin "clink" (sine wave)
     const osc1 = ctx.createOscillator();
     const gain1 = ctx.createGain();
-    osc1.type = 'triangle';
-    osc1.frequency.setValueAtTime(320, now);
-    osc1.frequency.linearRampToValueAtTime(120, now + 0.14);
-    gain1.gain.setValueAtTime(volume, now);
-    gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+    osc1.type = 'sine';
+    osc1.frequency.setValueAtTime(2100, now);
+    osc1.frequency.exponentialRampToValueAtTime(1400, now + 0.015);
+    
+    gain1.gain.setValueAtTime(volume * 0.8, now);
+    gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.022);
     
     osc1.connect(gain1);
     gain1.connect(ctx.destination);
 
-    // 2. High-frequency metallic ringing "clink" (Sine pitch-slide down)
+    // 2. Hollow pool ball body resonance (triangle wave)
     const osc2 = ctx.createOscillator();
     const gain2 = ctx.createGain();
-    osc2.type = 'sine';
-    osc2.frequency.setValueAtTime(950, now);
-    osc2.frequency.linearRampToValueAtTime(400, now + 0.08);
-    gain2.gain.setValueAtTime(volume * 0.3, now);
-    gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
-
+    osc2.type = 'triangle';
+    osc2.frequency.setValueAtTime(850, now);
+    osc2.frequency.exponentialRampToValueAtTime(600, now + 0.035);
+    
+    gain2.gain.setValueAtTime(volume * 0.4, now);
+    gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
+    
     osc2.connect(gain2);
     gain2.connect(ctx.destination);
 
-    // 3. Impact "crunch" (40ms white-noise puff for physics impact feel)
-    const bufferSize = ctx.sampleRate * 0.04;
+    // 3. Ultra-short impact transient (bandpass-filtered white noise)
+    const bufferSize = ctx.sampleRate * 0.012; // 12ms noise puff
     const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
     const data = buffer.getChannelData(0);
     for (let i = 0; i < bufferSize; i++) {
@@ -142,11 +144,17 @@ export function playSynthClash(volume = 0.35) {
     const noiseNode = ctx.createBufferSource();
     noiseNode.buffer = buffer;
     
-    const noiseGain = ctx.createGain();
-    noiseGain.gain.setValueAtTime(volume * 0.5, now);
-    noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.value = 1700; // Centered high-resonance wood/resin band
+    filter.Q.value = 9.0; // High Q for hollow acoustic tock
     
-    noiseNode.connect(noiseGain);
+    const noiseGain = ctx.createGain();
+    noiseGain.gain.setValueAtTime(volume * 0.95, now);
+    noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.01);
+    
+    noiseNode.connect(filter);
+    filter.connect(noiseGain);
     noiseGain.connect(ctx.destination);
 
     // Trigger all layers
@@ -154,10 +162,10 @@ export function playSynthClash(volume = 0.35) {
     osc2.start(now);
     noiseNode.start(now);
 
-    // Clean up nodes
-    osc1.stop(now + 0.16);
-    osc2.stop(now + 0.09);
-    noiseNode.stop(now + 0.05);
+    // Stop nodes
+    osc1.stop(now + 0.025);
+    osc2.stop(now + 0.045);
+    noiseNode.stop(now + 0.012);
   } catch (e) {
     console.debug('Synth clash failed:', e);
   }
