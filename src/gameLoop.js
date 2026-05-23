@@ -97,8 +97,8 @@ export class GameLoop {
         arrow.visual.x = arrow.x;
         arrow.visual.y = arrow.y;
 
-        // Spawn fire particle trail behind flying arrow
-        if (arrow.owner.vfx) {
+        // Spawn fire particle trail behind flying arrow only if it's a Blazing Arrow!
+        if (arrow.isBlazing && arrow.owner.vfx) {
           arrow.owner.vfx.updateAmbient(arrow.x, arrow.y, delta * 1.5);
         }
 
@@ -120,11 +120,15 @@ export class GameLoop {
         
         if (dist < arrow.target.body.radius + 5) {
           // HIT!
-          const damage = Math.round(arrow.owner.data.damage * 0.75); // Arrow deals 75% of base damage
+          let damage = Math.round(arrow.owner.getCurrentDamage() * 0.75); // Blazing arrow deals 75% of current infusion damage
+          if (!arrow.isBlazing) {
+            // Normal physical arrow deals half damage
+            damage = Math.round(damage * 0.5);
+          }
           const result = arrow.target.takeDamage(damage);
 
-          // Pyro explosion burst VFX
-          if (arrow.owner.vfx) {
+          // Pyro explosion burst VFX only for Blazing Arrows!
+          if (arrow.isBlazing && arrow.owner.vfx) {
             arrow.owner.vfx.triggerCollision(arrow.x, arrow.y);
           }
 
@@ -191,6 +195,20 @@ export class GameLoop {
     this._checkAbilityActivation(this.fighter1, this.fighter2);
     this._checkAbilityActivation(this.fighter2, this.fighter1);
 
+    // Auto standard attacks for Yoimiya (ranged Normal Attacks)
+    if (this.fighter2.id === 'yoimiya' && this.fighter2.alive) {
+      let currentAttackSpeed = this.fighter2.data.attackSpeed;
+      if (this.fighter2.isInfused) {
+        currentAttackSpeed *= 2.0; // Double attack speed during infusion!
+      }
+      const cooldownMs = 2500 / currentAttackSpeed; // Scored by attack speed
+      
+      if (currentTime - this.fighter2.lastAttackTime >= cooldownMs) {
+        this.fighter2.registerAttack(currentTime);
+        this._startYoimiyaArrowCombo(this.fighter2, this.fighter1);
+      }
+    }
+
     // Update fighters
     this.fighter1.update(delta, this.elapsedTime, this.fighter2);
     this.fighter2.update(delta, this.elapsedTime, this.fighter1);
@@ -247,8 +265,8 @@ export class GameLoop {
       }
     }
 
-    // Apply damage from fighter2 to fighter1
-    if (this.fighter2.canAttack(currentTime)) {
+    // Apply damage from fighter2 to fighter1 (only for melee fighters, not ranged Yoimiya)
+    if (this.fighter2.id !== 'yoimiya' && this.fighter2.canAttack(currentTime)) {
       const damage = this.fighter2.getCurrentDamage();
       const isCrit = (this.fighter2.id === 'ayaka' && this.fighter2.passiveTimer > 0) ||
                      (this.fighter2.id === 'yoimiya' && this.fighter2.isInfused);
@@ -437,27 +455,54 @@ export class GameLoop {
     const dy = opponent.body.y - startY;
     const angle = Math.atan2(dy, dx);
     const speed = 22.0; // Extreme fly speed (hyper-snappy projectiles)
+    const isBlazing = fighter.isInfused;
 
-    // Trigger spark effect muzzle flash originating from Yoimiya's circle
-    if (fighter.vfx) {
+    // Trigger spark effect muzzle flash originating from Yoimiya's circle ONLY when E is active!
+    if (isBlazing && fighter.vfx) {
       fighter.vfx.triggerCollision(startX, startY);
     }
 
-    // Create glowing arrow graphics
+    // Create arrow graphics
     const visual = new Graphics();
     
-    // Draw pointed arrow tip
-    visual.moveTo(-10, -2);
-    visual.lineTo(10, -2);
-    visual.lineTo(14, 0);
-    visual.lineTo(10, 2);
-    visual.lineTo(-10, 2);
-    visual.closePath();
-    visual.fill({ color: 0xff4500 }); // Red-orange main body
-    
-    // Draw fire core
-    visual.circle(6, 0, 3);
-    visual.fill({ color: 0xffaa00 }); // Golden yellow fire head
+    if (isBlazing) {
+      // ── Blazing Arrow (Pyro infused) ────────────────
+      // Draw pointed flaming arrow tip
+      visual.moveTo(-10, -2);
+      visual.lineTo(10, -2);
+      visual.lineTo(14, 0);
+      visual.lineTo(10, 2);
+      visual.lineTo(-10, 2);
+      visual.closePath();
+      visual.fill({ color: 0xff4500 }); // Red-orange main body
+      
+      // Draw fire core
+      visual.circle(6, 0, 3);
+      visual.fill({ color: 0xffaa00 }); // Golden yellow fire head
+    } else {
+      // ── Normal Arrow (Physical) ─────────────────────
+      // Draw pointed silver/iron arrow shaft and tip
+      visual.moveTo(-10, -1.5);
+      visual.lineTo(8, -1.5);
+      visual.lineTo(12, 0);
+      visual.lineTo(8, 1.5);
+      visual.lineTo(-10, 1.5);
+      visual.closePath();
+      visual.fill({ color: 0x90a4ae }); // Slate silver/iron main body
+      
+      // Draw brown wooden tail fletching (feathers)
+      visual.moveTo(-8, -4);
+      visual.lineTo(-4, -1.5);
+      visual.lineTo(-10, -1.5);
+      visual.closePath();
+      visual.fill({ color: 0x8d6e63 }); // Wooden brown fletching
+      
+      visual.moveTo(-8, 4);
+      visual.lineTo(-4, 1.5);
+      visual.lineTo(-10, 1.5);
+      visual.closePath();
+      visual.fill({ color: 0x8d6e63 });
+    }
     
     visual.x = startX;
     visual.y = startY;
@@ -472,7 +517,8 @@ export class GameLoop {
       speed: speed,
       visual: visual,
       owner: fighter,
-      target: opponent
+      target: opponent,
+      isBlazing: isBlazing
     });
   }
 
