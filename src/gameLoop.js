@@ -216,11 +216,11 @@ export class GameLoop {
             return g;
           };
 
-          // Generate an ultra-messy hurricane of 50 independent blades - adjusted to 80 size
+          // Generate an ultra-messy hurricane of 50 independent blades - adjusted to 100 size
           const cryoColors = [0x5ed4fc, 0xb4e1fa, 0xffffff, 0x9df0ff, 0xe0f7fa];
           for (let k = 0; k < 50; k++) {
-            const r = 20 + Math.random() * 60;      // Adjusted radii (max 80)
-            const t = 1.5 + Math.random() * 7;     // Balanced thickness
+            const r = 25 + Math.random() * 75;      // Adjusted radii (max 100)
+            const t = 1.5 + Math.random() * 8;     // Balanced thickness
             const len = 0.2 + Math.random() * 2.5; // Varying arc length
             const speed = (0.25 + Math.random() * 0.75) * (Math.random() > 0.5 ? 1 : -1);
             const color = cryoColors[Math.floor(Math.random() * cryoColors.length)];
@@ -280,11 +280,11 @@ export class GameLoop {
           });
         }
 
-        // Emit constant ice particles for "messy" blizzard feel - spread adjusted for 80 radius
+        // Emit constant ice particles for "messy" blizzard feel - spread adjusted for 100 radius
         if (effect.owner.vfx && Math.random() < 0.6 * delta) {
           effect.owner.vfx.triggerCollision(
-            effect.x + (Math.random() - 0.5) * 120, // Spread ~1.5x radius
-            effect.y + (Math.random() - 0.5) * 120
+            effect.x + (Math.random() - 0.5) * 150, // Spread ~1.5x radius
+            effect.y + (Math.random() - 0.5) * 150
           );
         }
 
