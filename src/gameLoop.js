@@ -5,6 +5,7 @@
 
 import { Graphics } from 'pixi.js';
 import { updatePosition, bounceOffWalls, checkCircleCollision, resolveCollision } from './physics.js';
+import { playSFX, preloadSFX } from './utils/audio.js';
 
 export class GameLoop {
   /**
@@ -32,6 +33,11 @@ export class GameLoop {
     this.activeEffects = []; // Store active Q whirlwind effects, etc.
     this.projectiles = []; // Store active flying arrows, etc.
     this.scheduledArrows = []; // Scheduled timed arrow combo queue
+
+    // Preload Yoimiya's 5 normal attack sound files
+    for (let i = 1; i <= 5; i++) {
+      preloadSFX(`/audio/na_${i}.mp3`);
+    }
   }
 
   /**
@@ -69,7 +75,7 @@ export class GameLoop {
     if (this.scheduledArrows) {
       this.scheduledArrows = this.scheduledArrows.filter(shot => {
         if (now >= shot.time) {
-          this._shootSingleArrow(shot.owner, shot.target);
+          this._shootSingleArrow(shot.owner, shot.target, shot.sound);
           return false; // remove from queue
         }
         return true; // keep in queue
@@ -389,12 +395,22 @@ export class GameLoop {
     // Delays corresponding to the sequence:
     // aa (0s, 0.1s) -> a (0.4s) -> a (0.7s) -> aa (1.0s, 1.1s) -> a (1.4s)
     const delays = [0, 100, 400, 700, 1000, 1100, 1400];
+    const sounds = [
+      '/audio/na_1.mp3', // segment 1 (aa)
+      null,
+      '/audio/na_2.mp3', // segment 2 (a)
+      '/audio/na_3.mp3', // segment 3 (a)
+      '/audio/na_4.mp3', // segment 4 (aa)
+      null,
+      '/audio/na_5.mp3'  // segment 5 (a)
+    ];
     
-    delays.forEach(delay => {
+    delays.forEach((delay, index) => {
       this.scheduledArrows.push({
         time: targetTime + delay,
         owner: fighter,
-        target: opponent
+        target: opponent,
+        sound: sounds[index]
       });
     });
   }
@@ -402,8 +418,12 @@ export class GameLoop {
   /**
    * Shoot a single flaming arrow towards the opponent's current position
    */
-  _shootSingleArrow(fighter, opponent) {
+  _shootSingleArrow(fighter, opponent, sound) {
     if (!this.stage || !fighter.alive || !opponent.alive) return;
+
+    if (sound) {
+      playSFX(sound);
+    }
 
     const startX = fighter.body.x;
     const startY = fighter.body.y;
