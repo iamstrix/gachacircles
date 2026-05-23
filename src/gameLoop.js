@@ -27,6 +27,7 @@ export class GameLoop {
     this.winner = null;
     this.elapsedTime = 0;
     this.collisionCooldown = 0; // Prevent rapid re-collision damage
+    this.soundCooldown = 0; // Rate-limit collision SFX
 
     this.onGameOver = null; // Callback
 
@@ -68,6 +69,11 @@ export class GameLoop {
     // Update collision cooldown
     if (this.collisionCooldown > 0) {
       this.collisionCooldown -= delta;
+    }
+
+    // Update sound cooldown
+    if (this.soundCooldown > 0) {
+      this.soundCooldown -= delta * 16.67;
     }
 
     // Apply Snappy Movement Damping to all fighters
@@ -539,15 +545,19 @@ export class GameLoop {
     // 5. Wall bouncing
     const b1 = bounceOffWalls(this.fighter1.body, this.bounds);
     const b2 = bounceOffWalls(this.fighter2.body, this.bounds);
-    if (b1 || b2) {
+    if ((b1 || b2) && this.soundCooldown <= 0) {
       playSynthBounce();
+      this.soundCooldown = 100; // 100ms throttle
     }
 
     // 6. Circle-circle collision
     const collision = checkCircleCollision(this.fighter1.body, this.fighter2.body);
     if (collision.colliding) {
       resolveCollision(this.fighter1.body, this.fighter2.body, collision);
-      playSynthClash();
+      if (this.soundCooldown <= 0) {
+        playSynthClash();
+        this.soundCooldown = 100;
+      }
       this._handleCombat(collision, currentTime);
     }
 
