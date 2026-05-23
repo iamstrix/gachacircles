@@ -301,7 +301,7 @@ export class GameLoop {
       } 
       else if (effect.type === 'soumetsu_vortex') {
         // Phase 2: Vortex Movement & Damage
-        const speed = 2.4; // Slow forward advance
+        const speed = 3.6; // Increased speed (was 2.4)
         effect.x += Math.cos(effect.angle) * speed * delta;
         effect.y += Math.sin(effect.angle) * speed * delta;
 
@@ -542,15 +542,43 @@ export class GameLoop {
    */
   _handleCombat(collision, currentTime) {
     // Note: Melee damage is now primarily handled by _performMeleeHit for Ayaka
-    // This section can remain for passive contact or adjusted behavior
-    
-    // Apply damage from fighter1 to fighter2 (Ayaka - passive contact damage reduced)
-    if (this.fighter1.canAttack(currentTime) && this.fighter1.id !== 'ayaka') {
+    // However, N5 lunge deals damage on contact during the dash phase
+    const isAyakaLunging = this.fighter1.id === 'ayaka' && 
+                           this.fighter1.comboIndex === 4 && 
+                           this.fighter1.swingProgress > 0.1 && 
+                           this.fighter1.swingProgress < 0.6;
+
+    // Apply damage from fighter1 (Ayaka) to fighter2 (Yoimiya)
+    if (isAyakaLunging || (this.fighter1.canAttack(currentTime) && this.fighter1.id !== 'ayaka')) {
       const damage = this.fighter1.getCurrentDamage();
+      const isCrit = (this.fighter1.id === 'ayaka' && this.fighter1.passiveTimer > 0);
       const result = this.fighter2.takeDamage(damage);
+
       if (result.actualDamage > 0) {
-        this.fighter1.registerAttack(currentTime);
-        // ...
+        if (!isAyakaLunging) {
+          this.fighter1.registerAttack(currentTime);
+        }
+
+        // Trigger collision VFX
+        if (this.fighter1.vfx) {
+          this.fighter1.vfx.triggerCollision(collision.contactX, collision.contactY);
+        }
+
+        // Spawn damage number
+        if (this.damageNumbers) {
+          this.damageNumbers.spawn(
+            collision.contactX,
+            collision.contactY - 20,
+            result.actualDamage,
+            this.fighter1.element,
+            isCrit
+          );
+        }
+
+        if (result.died) {
+          this._endGame(this.fighter1);
+          return;
+        }
       }
     }
 
