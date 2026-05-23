@@ -35,6 +35,11 @@ export class GameLoop {
     this.scheduledArrows = []; // Scheduled timed arrow combo queue
     this.scheduledMelee = []; // Scheduled timed melee hits (Ayaka)
 
+    // Initial delay: start attacking 1 second after game start
+    const startTime = performance.now();
+    this.fighter1.lastAttackTime = startTime - 1000;
+    this.fighter2.lastAttackTime = startTime - 1000;
+
     // Preload Yoimiya's 5 normal attack sound files
     for (let i = 1; i <= 5; i++) {
       preloadSFX(`/audio/na_${i}.mp3`);
@@ -514,10 +519,9 @@ export class GameLoop {
 
     // Auto standard attacks for Ayaka (melee Normal Attacks)
     if (this.fighter1.id === 'ayaka' && this.fighter1.alive) {
-      const currentAttackSpeed = this.fighter1.data.attackSpeed;
       const comboDurationMs = 1500; // Ayaka's N1-N5 string takes ~1.5s
-      const baseIntervalMs = 4000 / currentAttackSpeed;
-      const cooldownMs = comboDurationMs + baseIntervalMs;
+      const delayBetweenCombosMs = 1000; // Restart 1s after last attack finishes
+      const cooldownMs = comboDurationMs + delayBetweenCombosMs;
 
       if (currentTime - this.fighter1.lastAttackTime >= cooldownMs) {
         this.fighter1.registerAttack(currentTime);
