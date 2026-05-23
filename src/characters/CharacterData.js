@@ -40,7 +40,7 @@ export const CHARACTERS = {
       name: 'Kamisato Art: Hyouka',
       description: 'Summons blooming ice dealing AoE Cryo damage and repelling opponents',
       damageMultiplier: 2.0,
-      cooldown: 6,
+      cooldown: 8,
       emoji: '❄️'
     },
     burstQ: {
@@ -49,13 +49,13 @@ export const CHARACTERS = {
       damageMultiplier: 1.2,
       duration: 3000,       // ticks over 3s
       aoeRadius: 140,
-      cooldown: 15,
+      cooldown: 18,
       emoji: '🌀'
     },
     passive: {
       name: 'Kanten Senmyou Blessing',
-      description: 'Elemental skill grants +30% Normal Attack DMG for 6s',
-      duration: 6000,
+      description: 'Elemental skill grants +30% Normal Attack DMG and Cryo Infusion for 3s',
+      duration: 3000,
       emoji: '⚔️'
     },
 
