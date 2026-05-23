@@ -313,7 +313,7 @@ export class GameLoop {
         // Slow down by 50% more if enemy is inside
         if (isEnemyInside) {
           currentSpeed *= 0.5;
-          effect.target.slowMultiplier = 0.5; // Reduce enemy movement speed by 50%
+          effect.target.slowMultiplier = 0.2; // Reduce enemy movement speed by 80% (multiplier 0.2)
         }
 
         effect.x += Math.cos(effect.angle) * currentSpeed * delta;
