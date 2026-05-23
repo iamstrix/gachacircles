@@ -1,0 +1,268 @@
+// ─────────────────────────────────────────────────────────────
+// ParticleSystem.js – Lightweight, pooled particle emitter
+// built on plain PixiJS v8 Graphics inside a Container.
+// ─────────────────────────────────────────────────────────────
+import { Container, Graphics } from 'pixi.js';
+import { sampleGradient } from './ElementalColors.js';
+
+// ── Default emitter config ──────────────────────────────────
+const DEFAULT_CONFIG = {
+  count: 20,              // particles per burst
+  speedMin: 1,            // px / frame‐unit
+  speedMax: 4,
+  spreadAngle: Math.PI * 2, // full circle
+  angleCenter: -Math.PI / 2, // upward
+  lifetimeMin: 30,        // frames (at 60 fps ≈ 0.5 s)
+  lifetimeMax: 60,
+  sizeMin: 2,
+  sizeMax: 5,
+  startAlpha: 1,
+  endAlpha: 0,
+  gravity: 0,             // px / frame²
+  blendMode: 'normal',    // 'add' for glow
+  gradient: null,         // optional gradient array from ElementalColors
+  color: 0xffffff,        // fallback static colour
+  shrink: true,           // whether particles shrink over life
+};
+
+// ── Particle data (plain object – no class overhead) ────────
+function createParticleData() {
+  return {
+    x: 0, y: 0,
+    vx: 0, vy: 0,
+    life: 0, maxLife: 1,
+    size: 3,
+    color: 0xffffff,
+    alpha: 1,
+    blendMode: 'normal',
+    active: false,
+    // reference to its Graphics visual
+    gfx: null,
+    // config snapshot so we can shade over lifetime
+    gradient: null,
+    startAlpha: 1,
+    endAlpha: 0,
+    shrink: true,
+    startSize: 3,
+  };
+}
+
+// ─────────────────────────────────────────────────────────────
+export class ParticleSystem {
+  /**
+   * @param {object} opts
+   * @param {number} [opts.poolSize=300] – pre-allocated particles
+   */
+  constructor({ poolSize = 300 } = {}) {
+    /** Container that holds every particle graphic. Add this to your stage. */
+    this.container = new Container();
+    this.container.sortableChildren = false;
+    this.container.interactiveChildren = false;
+
+    /** @type {Array<object>} All particle data objects (pool). */
+    this._pool = [];
+
+    /** Active continuous emitter descriptors. */
+    this._continuousEmitters = [];
+
+    this._initPool(poolSize);
+  }
+
+  // ── Pool management ──────────────────────────────────────
+
+  _initPool(size) {
+    for (let i = 0; i < size; i++) {
+      const p = createParticleData();
+      const gfx = new Graphics();
+      gfx.circle(0, 0, 1).fill(0xffffff);
+      gfx.visible = false;
+      this.container.addChild(gfx);
+      p.gfx = gfx;
+      this._pool.push(p);
+    }
+  }
+
+  /** Get an inactive particle from the pool, or grow the pool. */
+  _acquire() {
+    for (let i = 0; i < this._pool.length; i++) {
+      if (!this._pool[i].active) return this._pool[i];
+    }
+    // Pool exhausted – grow by 50
+    const before = this._pool.length;
+    this._initPool(50);
+    return this._pool[before]; // first of the newly created batch
+  }
+
+  // ── Emit API ─────────────────────────────────────────────
+
+  /**
+   * Burst‐emit a set of particles at (x, y).
+   *
+   * @param {number} x
+   * @param {number} y
+   * @param {object} [cfg] – overrides merged with DEFAULT_CONFIG
+   */
+  emit(x, y, cfg = {}) {
+    const c = { ...DEFAULT_CONFIG, ...cfg };
+    const halfSpread = c.spreadAngle / 2;
+
+    for (let i = 0; i < c.count; i++) {
+      const p = this._acquire();
+      if (!p) break;
+
+      const angle = c.angleCenter + (Math.random() * 2 - 1) * halfSpread;
+      const speed = c.speedMin + Math.random() * (c.speedMax - c.speedMin);
+      const life = c.lifetimeMin + Math.random() * (c.lifetimeMax - c.lifetimeMin);
+      const size = c.sizeMin + Math.random() * (c.sizeMax - c.sizeMin);
+
+      p.x = x;
+      p.y = y;
+      p.vx = Math.cos(angle) * speed;
+      p.vy = Math.sin(angle) * speed;
+      p.life = life;
+      p.maxLife = life;
+      p.size = size;
+      p.startSize = size;
+      p.alpha = c.startAlpha;
+      p.startAlpha = c.startAlpha;
+      p.endAlpha = c.endAlpha;
+      p.blendMode = c.blendMode;
+      p.gradient = c.gradient;
+      p.color = c.color;
+      p.shrink = c.shrink;
+      p.gravity = c.gravity;
+      p.active = true;
+
+      // Initialise Graphics visual
+      const gfx = p.gfx;
+      gfx.visible = true;
+      gfx.position.set(x, y);
+      gfx.scale.set(size, size);
+      gfx.alpha = c.startAlpha;
+      gfx.blendMode = c.blendMode;
+
+      // Tint the circle to its birth colour
+      const birthColor = c.gradient ? sampleGradient(c.gradient, 0) : c.color;
+      gfx.tint = birthColor;
+    }
+  }
+
+  /**
+   * Start a continuous emitter that fires particles every frame.
+   *
+   * @param {number} x
+   * @param {number} y
+   * @param {object} [cfg]
+   * @param {number} [cfg.rate=1] – particles per frame
+   * @returns {object} handle – set handle.active = false to stop, or update handle.x / handle.y
+   */
+  emitContinuous(x, y, cfg = {}) {
+    const handle = {
+      x,
+      y,
+      active: true,
+      rate: cfg.rate ?? 1,
+      _accum: 0,
+      config: { ...DEFAULT_CONFIG, ...cfg, count: 1 },
+    };
+    this._continuousEmitters.push(handle);
+    return handle;
+  }
+
+  /**
+   * Stop and remove a continuous emitter.
+   */
+  stopContinuous(handle) {
+    if (handle) handle.active = false;
+  }
+
+  // ── Update loop ──────────────────────────────────────────
+
+  /**
+   * Call once per frame.
+   *
+   * @param {number} delta – Ticker delta (1 = 60 fps frame)
+   */
+  update(delta) {
+    // 1. Process continuous emitters
+    for (let i = this._continuousEmitters.length - 1; i >= 0; i--) {
+      const e = this._continuousEmitters[i];
+      if (!e.active) {
+        this._continuousEmitters.splice(i, 1);
+        continue;
+      }
+      e._accum += e.rate * delta;
+      while (e._accum >= 1) {
+        e._accum -= 1;
+        this.emit(e.x, e.y, e.config);
+      }
+    }
+
+    // 2. Update every active particle
+    for (let i = 0; i < this._pool.length; i++) {
+      const p = this._pool[i];
+      if (!p.active) continue;
+
+      p.life -= delta;
+
+      if (p.life <= 0) {
+        p.active = false;
+        p.gfx.visible = false;
+        continue;
+      }
+
+      // Fraction of life elapsed (0 = born, 1 = dead)
+      const f = 1 - p.life / p.maxLife;
+
+      // Physics
+      p.vy += (p.gravity ?? 0) * delta;
+      p.x += p.vx * delta;
+      p.y += p.vy * delta;
+
+      // Alpha fade
+      p.alpha = p.startAlpha + (p.endAlpha - p.startAlpha) * f;
+
+      // Size shrink
+      if (p.shrink) {
+        p.size = p.startSize * (1 - f * 0.7); // shrink to 30 %
+      }
+
+      // Colour gradient
+      if (p.gradient) {
+        p.color = sampleGradient(p.gradient, f);
+      }
+
+      // Sync Graphics
+      const gfx = p.gfx;
+      gfx.position.set(p.x, p.y);
+      gfx.scale.set(p.size, p.size);
+      gfx.alpha = Math.max(0, p.alpha);
+      gfx.tint = p.color;
+    }
+  }
+
+  // ── Utilities ────────────────────────────────────────────
+
+  /** Kill all active particles instantly. */
+  clear() {
+    for (const p of this._pool) {
+      p.active = false;
+      p.gfx.visible = false;
+    }
+    this._continuousEmitters.length = 0;
+  }
+
+  /** Number of currently active particles. */
+  get activeCount() {
+    let n = 0;
+    for (const p of this._pool) if (p.active) n++;
+    return n;
+  }
+
+  /** Destroy the system and free GPU resources. */
+  destroy() {
+    this.clear();
+    this.container.destroy({ children: true });
+    this._pool.length = 0;
+  }
+}

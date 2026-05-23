@@ -1,0 +1,480 @@
+/* ========================================
+   GACHA CIRCLES — Global Styles
+   ======================================== */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root {
+  /* Element Colors */
+  --cryo-primary: #4FC3F7;
+  --cryo-light: #B3E5FC;
+  --cryo-dark: #0288D1;
+  --cryo-glow: rgba(79, 195, 247, 0.4);
+  
+  --pyro-primary: #FF9800;
+  --pyro-light: #FFE082;
+  --pyro-dark: #E65100;
+  --pyro-glow: rgba(255, 152, 0, 0.4);
+  
+  /* UI Colors */
+  --bg-dark: #0a0a14;
+  --bg-card: rgba(20, 20, 40, 0.7);
+  --bg-glass: rgba(255, 255, 255, 0.05);
+  --border-glass: rgba(255, 255, 255, 0.1);
+  --text-primary: #f0f0f5;
+  --text-secondary: #8888aa;
+  --text-dim: #555577;
+  
+  /* Typography */
+  --font-main: 'Outfit', sans-serif;
+  
+  /* Sizing */
+  --game-width: 900px;
+  --game-height: 600px;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg-dark);
+  font-family: var(--font-main);
+  color: var(--text-primary);
+}
+
+body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: 
+    radial-gradient(ellipse at 20% 50%, rgba(79, 195, 247, 0.06) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 50%, rgba(255, 152, 0, 0.06) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 50%, rgba(30, 30, 60, 0.8) 0%, var(--bg-dark) 70%);
+}
+
+/* ========================================
+   Game Container
+   ======================================== */
+
+#game-container {
+  position: relative;
+  width: var(--game-width);
+  height: var(--game-height);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 
+    0 0 80px rgba(79, 195, 247, 0.08),
+    0 0 80px rgba(255, 152, 0, 0.08),
+    0 20px 60px rgba(0, 0, 0, 0.5),
+    inset 0 0 1px rgba(255, 255, 255, 0.1);
+}
+
+#game-canvas-wrapper {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+}
+
+#game-canvas-wrapper canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+#hud-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 10;
+  pointer-events: none;
+}
+
+#damage-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 20;
+  pointer-events: none;
+}
+
+/* ========================================
+   HUD — Top Banner
+   ======================================== */
+
+.hud-banner {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 12px 24px;
+  background: linear-gradient(180deg, rgba(10, 10, 20, 0.85) 0%, rgba(10, 10, 20, 0.4) 80%, transparent 100%);
+  z-index: 11;
+}
+
+.hud-banner__name {
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.hud-banner__name--cryo {
+  background: linear-gradient(135deg, var(--cryo-light), var(--cryo-primary));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-shadow: none;
+  filter: drop-shadow(0 0 8px var(--cryo-glow));
+}
+
+.hud-banner__name--pyro {
+  background: linear-gradient(135deg, var(--pyro-light), var(--pyro-primary));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-shadow: none;
+  filter: drop-shadow(0 0 8px var(--pyro-glow));
+}
+
+.hud-banner__vs {
+  font-size: 16px;
+  font-weight: 900;
+  color: var(--text-dim);
+  letter-spacing: 3px;
+}
+
+.hud-banner__element {
+  font-size: 22px;
+  filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.3));
+}
+
+/* ========================================
+   HUD — Health Bars
+   ======================================== */
+
+.hud-healthbar {
+  position: absolute;
+  bottom: 60px;
+  width: 300px;
+  z-index: 11;
+}
+
+.hud-healthbar--left {
+  left: 24px;
+}
+
+.hud-healthbar--right {
+  right: 24px;
+}
+
+.hud-healthbar__label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.hud-healthbar__name {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.hud-healthbar__hp-text {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.hud-healthbar__track {
+  width: 100%;
+  height: 10px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 5px;
+  overflow: hidden;
+  border: 1px solid var(--border-glass);
+  backdrop-filter: blur(4px);
+}
+
+.hud-healthbar__fill {
+  height: 100%;
+  border-radius: 5px;
+  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+}
+
+.hud-healthbar__fill--cryo {
+  background: linear-gradient(90deg, var(--cryo-dark), var(--cryo-primary), var(--cryo-light));
+  box-shadow: 0 0 12px var(--cryo-glow), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+.hud-healthbar__fill--pyro {
+  background: linear-gradient(90deg, var(--pyro-dark), var(--pyro-primary), var(--pyro-light));
+  box-shadow: 0 0 12px var(--pyro-glow), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+/* ========================================
+   HUD — Bottom Stats
+   ======================================== */
+
+.hud-stats {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 24px 14px;
+  background: linear-gradient(0deg, rgba(10, 10, 20, 0.85) 0%, rgba(10, 10, 20, 0.4) 80%, transparent 100%);
+  z-index: 11;
+}
+
+.hud-stats__group {
+  display: flex;
+  gap: 20px;
+}
+
+.hud-stats__item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.hud-stats__value {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.hud-stats__label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-dim);
+}
+
+/* ========================================
+   HUD — Skill Cooldown
+   ======================================== */
+
+.hud-skill-indicator {
+  position: absolute;
+  bottom: 76px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  border: 2px solid var(--border-glass);
+  backdrop-filter: blur(8px);
+  background: var(--bg-glass);
+  transition: all 0.3s ease;
+}
+
+.hud-skill-indicator--left {
+  left: 330px;
+}
+
+.hud-skill-indicator--right {
+  right: 330px;
+}
+
+.hud-skill-indicator--ready {
+  animation: skill-pulse 1.2s ease-in-out infinite;
+}
+
+.hud-skill-indicator--ready.hud-skill-indicator--cryo {
+  border-color: var(--cryo-primary);
+  box-shadow: 0 0 16px var(--cryo-glow);
+  color: var(--cryo-light);
+}
+
+.hud-skill-indicator--ready.hud-skill-indicator--pyro {
+  border-color: var(--pyro-primary);
+  box-shadow: 0 0 16px var(--pyro-glow);
+  color: var(--pyro-light);
+}
+
+@keyframes skill-pulse {
+  0%, 100% { transform: scale(1); opacity: 0.9; }
+  50% { transform: scale(1.1); opacity: 1; }
+}
+
+/* ========================================
+   Damage Numbers
+   ======================================== */
+
+.damage-number {
+  position: absolute;
+  font-family: var(--font-main);
+  font-weight: 900;
+  font-size: 22px;
+  pointer-events: none;
+  white-space: nowrap;
+  z-index: 25;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+  animation: damage-float 1s cubic-bezier(0.2, 0, 0.2, 1) forwards;
+}
+
+.damage-number--cryo {
+  color: var(--cryo-light);
+  text-shadow: 0 0 10px var(--cryo-glow), 0 2px 8px rgba(0, 0, 0, 0.6);
+}
+
+.damage-number--pyro {
+  color: var(--pyro-light);
+  text-shadow: 0 0 10px var(--pyro-glow), 0 2px 8px rgba(0, 0, 0, 0.6);
+}
+
+.damage-number--crit {
+  font-size: 32px;
+  animation: damage-float-crit 1.2s cubic-bezier(0.2, 0, 0.2, 1) forwards;
+}
+
+@keyframes damage-float {
+  0% {
+    transform: translateY(0) scale(0.5);
+    opacity: 0;
+  }
+  15% {
+    transform: translateY(-10px) scale(1.2);
+    opacity: 1;
+  }
+  30% {
+    transform: translateY(-20px) scale(1);
+  }
+  100% {
+    transform: translateY(-60px) scale(0.8);
+    opacity: 0;
+  }
+}
+
+@keyframes damage-float-crit {
+  0% {
+    transform: translateY(0) scale(0.3) rotate(-5deg);
+    opacity: 0;
+  }
+  10% {
+    transform: translateY(-10px) scale(1.4) rotate(3deg);
+    opacity: 1;
+  }
+  20% {
+    transform: translateY(-18px) scale(1.1) rotate(-1deg);
+  }
+  35% {
+    transform: translateY(-25px) scale(1);
+  }
+  100% {
+    transform: translateY(-80px) scale(0.7);
+    opacity: 0;
+  }
+}
+
+/* ========================================
+   Win/Lose Screen
+   ======================================== */
+
+.win-screen {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(5, 5, 15, 0.85);
+  backdrop-filter: blur(8px);
+  z-index: 50;
+  opacity: 0;
+  animation: win-fadein 0.8s ease forwards;
+}
+
+.win-screen__title {
+  font-size: 48px;
+  font-weight: 900;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+.win-screen__subtitle {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  letter-spacing: 2px;
+  margin-bottom: 32px;
+}
+
+.win-screen__restart {
+  padding: 12px 36px;
+  font-family: var(--font-main);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--text-primary);
+  background: var(--bg-glass);
+  border: 1px solid var(--border-glass);
+  border-radius: 8px;
+  cursor: pointer;
+  pointer-events: all;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(4px);
+}
+
+.win-screen__restart:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.25);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+}
+
+@keyframes win-fadein {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* ========================================
+   Screen Shake
+   ======================================== */
+
+.screen-shake {
+  animation: shake 0.3s ease-out;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translate(0, 0); }
+  10% { transform: translate(-4px, 2px); }
+  20% { transform: translate(4px, -2px); }
+  30% { transform: translate(-3px, -1px); }
+  40% { transform: translate(3px, 1px); }
+  50% { transform: translate(-2px, 2px); }
+  60% { transform: translate(2px, -1px); }
+  70% { transform: translate(-1px, 0px); }
+  80% { transform: translate(1px, 1px); }
+}
