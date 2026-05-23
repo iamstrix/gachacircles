@@ -508,7 +508,7 @@ export class GameLoop {
       // 2-second base interval (2000ms) at base speed (2.5), which scales with attack speed: 5000 / speed.
       // Begin the interval timer only after the last shot has been fired (the 7-arrow combo takes exactly 1400ms from first shot to last shot).
       const comboDurationMs = 1400;
-      const baseIntervalMs = 5000 / currentAttackSpeed;
+      const baseIntervalMs = 2500 / currentAttackSpeed; // Was 5000, halved for faster combo cycles
       const cooldownMs = comboDurationMs + baseIntervalMs;
       
       if (currentTime - this.fighter2.lastAttackTime >= cooldownMs) {
@@ -887,7 +887,7 @@ export class GameLoop {
 
     // Apply snappy recoil to the shooter (push Yoimiya backward)
     // Shots 1-4 have 75% reduced recoil (0.25x), shot 5 has full recoil
-    let recoilStrength = isBlazing ? 5.5 : 3.5;
+    let recoilStrength = isBlazing ? 8.5 : 5.5; // Increased (was 5.5 : 3.5)
     if (!isFinalShot) {
       recoilStrength *= 0.25;
     }
