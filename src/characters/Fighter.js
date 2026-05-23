@@ -41,6 +41,9 @@ export class Fighter {
     this.visualOffset = { x: 0, y: 0, rotation: 0 };
     this.isInvincible = false;
 
+    // Saltpeter Ring (Yoimiya E)
+    this.saltpeterRing = null;
+
     // Physics body
     this.body = {
       x: startX,
@@ -145,6 +148,23 @@ export class Fighter {
     // Set initial position
     this.container.x = this.body.x;
     this.container.y = this.body.y;
+
+    // ── Saltpeter Ring (Yoimiya only) ────────────────
+    if (this.id === 'yoimiya') {
+      this.saltpeterRing = new Graphics();
+      // Draw a bright golden ring with some "saltpeter" dashes
+      const r = this.data.circleRadius + 18;
+      this.saltpeterRing.circle(0, 0, r);
+      this.saltpeterRing.stroke({ color: 0xffd54f, width: 4, alpha: 0.8 });
+      // Add dashed accents for "saltpeter" texture
+      for(let i=0; i<8; i++) {
+        const a = (i/8) * Math.PI * 2;
+        this.saltpeterRing.arc(0, 0, r + 4, a, a + 0.4);
+        this.saltpeterRing.stroke({ color: 0xffab40, width: 2, alpha: 0.6 });
+      }
+      this.saltpeterRing.visible = false;
+      this.container.addChildAt(this.saltpeterRing, 0); // Put behind other elements
+    }
   }
 
   /**
@@ -257,8 +277,19 @@ export class Fighter {
 
     // Pulse glow effect
     if (this.circleGlow) {
-      const pulseScale = 1 + Math.sin(elapsed * 3) * 0.05;
+      const isInfused = this.isInfused;
+      const pulseScale = (isInfused ? 1.2 : 1) + Math.sin(elapsed * 3) * 0.05;
       this.circleGlow.scale.set(pulseScale);
+      this.circleGlow.alpha = isInfused ? 0.6 : 0.4;
+
+      // ── Saltpeter Ring logic (Yoimiya only) ────────────────
+      if (this.saltpeterRing) {
+        this.saltpeterRing.visible = isInfused;
+        if (isInfused) {
+          this.saltpeterRing.rotation += 0.04 * delta;
+          this.saltpeterRing.alpha = 0.7 + Math.sin(elapsed * 8) * 0.2;
+        }
+      }
     }
 
     // Cooldown ticks
