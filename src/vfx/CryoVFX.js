@@ -155,10 +155,10 @@ export class CryoVFX {
   drawSoumetsuTelegraph(gfx, x1, y1, x2, y2, progress) {
     gfx.clear();
     
-    // Sync color with darkening ring: 0x4fc3f7 -> 0x050a14
-    const r = Math.round(79 * (1 - progress) + 5 * progress);
-    const g = Math.round(195 * (1 - progress) + 10 * progress);
-    const b = Math.round(247 * (1 - progress) + 20 * progress);
+    // Sync color with brightening ring: Dark 0x050a14 -> Light 0x4fc3f7
+    const r = Math.round(5 * (1 - progress) + 79 * progress);
+    const g = Math.round(10 * (1 - progress) + 195 * progress);
+    const b = Math.round(20 * (1 - progress) + 247 * progress);
     const color = (r << 16) | (g << 8) | b;
 
     // Inner thin laser
@@ -166,7 +166,7 @@ export class CryoVFX {
     gfx.lineTo(x2, y2);
     gfx.stroke({ color: 0xffffff, width: 1 + progress * 2, alpha: 0.3 + progress * 0.5 });
     
-    // Outer glow path - now using darkening color
+    // Outer glow path
     gfx.moveTo(x1, y1);
     gfx.lineTo(x2, y2);
     gfx.stroke({ color: color, width: 4 + progress * 8, alpha: 0.1 + progress * 0.2 });
@@ -181,18 +181,18 @@ export class CryoVFX {
    */
   drawSoumetsuRing(gfx, x, y, radius, progress) {
     gfx.clear();
-    // Color transitions from light blue to dark ominous abyss
-    // Light: 0x4fc3f7 -> Dark: 0x050a14
-    const r = Math.round(79 * (1 - progress) + 5 * progress);
-    const g = Math.round(195 * (1 - progress) + 10 * progress);
-    const b = Math.round(247 * (1 - progress) + 20 * progress);
+    // Color transitions from dark ominous abyss to light blue
+    // Dark: 0x050a14 -> Light: 0x4fc3f7
+    const r = Math.round(5 * (1 - progress) + 79 * progress);
+    const g = Math.round(10 * (1 - progress) + 195 * progress);
+    const b = Math.round(20 * (1 - progress) + 247 * progress);
     const color = (r << 16) | (g << 8) | b;
     
     // Draw the main contracting ring
     gfx.circle(x, y, radius);
     gfx.stroke({ color: color, width: 4 + progress * 6, alpha: 0.4 + progress * 0.6 });
     
-    // Optional: add a very faint fill that gets darker
+    // Subtle brightening fill
     gfx.fill({ color: color, alpha: 0.05 + progress * 0.15 });
   }
 
