@@ -302,9 +302,17 @@ export class GameLoop {
       } 
       else if (effect.type === 'soumetsu_vortex') {
         // Phase 2: Vortex Movement & Damage
-        const speed = 1.8; // Slower forward advance (was 3.6)
-        effect.x += Math.cos(effect.angle) * speed * delta;
-        effect.y += Math.sin(effect.angle) * speed * delta;
+        let currentSpeed = 1.8; // Base speed
+        const distToEnemy = Math.sqrt((effect.x - effect.target.body.x)**2 + (effect.y - effect.target.body.y)**2);
+        const isEnemyInside = distToEnemy < 120; // 100 radius + some buffer
+
+        // Slow down by 50% more if enemy is inside
+        if (isEnemyInside) {
+          currentSpeed *= 0.5;
+        }
+
+        effect.x += Math.cos(effect.angle) * currentSpeed * delta;
+        effect.y += Math.sin(effect.angle) * currentSpeed * delta;
 
         // Visual spin: independently rotate 50 blade layers
         effect.visual.x = effect.x;
@@ -323,34 +331,35 @@ export class GameLoop {
           );
         }
 
-        // Sticky logic: if close to enemy, stop moving
-        const distToEnemy = Math.sqrt((effect.x - effect.target.body.x)**2 + (effect.y - effect.target.body.y)**2);
-        if (distToEnemy < 60) {
-          effect.x -= Math.cos(effect.angle) * speed * delta; // cancel movement
-          effect.y -= Math.sin(effect.angle) * speed * delta;
+        // Sticky logic: if very close to enemy, stop moving entirely
+        if (distToEnemy < 40) {
+          effect.x -= Math.cos(effect.angle) * currentSpeed * delta; // cancel movement
+          effect.y -= Math.sin(effect.angle) * currentSpeed * delta;
         }
 
         // Damage ticks (19 hits every 0.25s approx)
         effect.hitTimer += delta * 0.016;
         if (effect.hitTimer >= 0.25 && effect.hits < 19) {
           effect.hitTimer = 0;
-          effect.hits++;
 
-          const damage = Math.round(effect.owner.getCurrentDamage() * 0.4);
-          const result = effect.target.takeDamage(damage);
+          // Only deal damage if target is actually inside the vortex!
+          if (isEnemyInside) {
+            effect.hits++;
+            const damage = 10; // Ramped up to 10 (was 0.4x dmg)
+            const result = effect.target.takeDamage(damage);
 
-          if (effect.owner.vfx) {
-            effect.owner.vfx.triggerCollision(effect.x, effect.y);
-          }
-          if (this.damageNumbers) {
-            this.damageNumbers.spawn(effect.x, effect.y - 30, damage, 'cryo', false);
-          }
+            if (effect.owner.vfx) {
+              effect.owner.vfx.triggerCollision(effect.target.body.x, effect.target.body.y);
+            }
+            if (this.damageNumbers) {
+              this.damageNumbers.spawn(effect.target.body.x, effect.target.body.y - 30, damage, 'cryo', false);
+            }
 
-          if (result.died) {
-            this._endGame(effect.owner);
+            if (result.died) {
+              this._endGame(effect.owner);
+            }
           }
-          }
-
+        }
           // Finale Bloom (The +1)
           if (effect.timer <= 0) {
           const bloomDmg = Math.round(effect.owner.getCurrentDamage() * 1.5);
