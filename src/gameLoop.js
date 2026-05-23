@@ -226,7 +226,8 @@ export class GameLoop {
           };
 
           // Generate an ultra-messy hurricane of 50 independent blades - adjusted to 175 size (+75%)
-          const cryoColors = [0x5ed4fc, 0xb4e1fa, 0xffffff, 0x9df0ff, 0xe0f7fa];
+          // Included darker tones for contrast against light background
+          const cryoColors = [0x5ed4fc, 0xb4e1fa, 0xffffff, 0x9df0ff, 0x1a6dd4, 0x0c3366];
           for (let k = 0; k < 50; k++) {
             const r = 40 + Math.random() * 135;      // Adjusted radii (max ~175)
             const t = 2 + Math.random() * 10;      // Thicker blades for massive scale
@@ -301,7 +302,7 @@ export class GameLoop {
       } 
       else if (effect.type === 'soumetsu_vortex') {
         // Phase 2: Vortex Movement & Damage
-        const speed = 3.6; // Increased speed (was 2.4)
+        const speed = 1.8; // Slower forward advance (was 3.6)
         effect.x += Math.cos(effect.angle) * speed * delta;
         effect.y += Math.sin(effect.angle) * speed * delta;
 
