@@ -33,22 +33,16 @@ export class DevUI {
       this.gameLoop.fighter2.isInvincible = val;
     });
 
-    this.addNumericInput(group, 'HP Config (Integer)', 500, (val) => {
+    const savedHP = localStorage.getItem('dev-hp-config') || 500;
+    this.addNumericInput(group, 'HP Config (Integer)', savedHP, (val) => {
       const hp = parseInt(val, 10);
       if (isNaN(hp) || hp <= 0) return;
       
-      // Update both fighters
-      [this.gameLoop.fighter1, this.gameLoop.fighter2].forEach(f => {
-        f.hp = hp;
-        f.maxHp = hp;
-        if (f.hpText) f.hpText.text = hp.toString();
-      });
-
-      // Update HUD
-      if (this.gameLoop.hud) {
-        this.gameLoop.hud.updateHP('cryo', hp, hp);
-        this.gameLoop.hud.updateHP('pyro', hp, hp);
-      }
+      // Save to localStorage so it persists across the restart
+      localStorage.setItem('dev-hp-config', hp);
+      
+      // Full game restart
+      location.reload();
     });
   }
 

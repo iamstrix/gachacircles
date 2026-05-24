@@ -68,6 +68,14 @@ async function init() {
   const ayakaData = getCharacter('ayaka');
   const yoimiyaData = getCharacter('yoimiya');
 
+  // Override HP from dev storage if present
+  const devHP = localStorage.getItem('dev-hp-config');
+  if (devHP) {
+    const hp = parseInt(devHP, 10);
+    ayakaData.hp = hp;
+    yoimiyaData.hp = hp;
+  }
+
   const vel1 = randomVelocity(ayakaData.speed);
   const vel2 = randomVelocity(yoimiyaData.speed);
 
