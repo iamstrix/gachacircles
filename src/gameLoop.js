@@ -54,6 +54,7 @@ export class GameLoop {
     preloadSFX('/audio/yoimiya/ayaka-skill.mp3'); // Existing misnamed file or just preloading for safety
     preloadSFX('/audio/yoimiya/yoimiya-skill.wav');
     preloadSFX('/audio/yoimiya/yoimiya-ultimate.wav');
+    preloadSFX('/audio/circle-bounce.wav');
 
     // Preload parry sound effects
     for (let i = 1; i <= 4; i++) {
