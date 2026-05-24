@@ -58,11 +58,13 @@ export class GameLoop {
     preloadSFX('/audio/circle-bounce.wav');
     preloadSFX('/audio/winner-splash.wav');
 
-    // Preload parry sound effects
+    // Preload parry and hit sound effects
     for (let i = 1; i <= 4; i++) {
       preloadSFX(`/audio/ayaka/ayaka-parry_${i}.wav`);
     }
     preloadSFX('/audio/ayaka/ayaka-parry_infused.wav');
+    preloadSFX('/audio/ayaka/ayaka-hit.wav');
+    preloadSFX('/audio/ayaka/ayaka-hit_infused.wav');
 
     // ── Bouncing Watermark Setup ──────────────────
     const style = new TextStyle({
@@ -1092,6 +1094,13 @@ export class GameLoop {
       const result = this.fighter2.takeDamage(damage);
 
       if (result.actualDamage > 0) {
+        if (this.fighter1.id === 'ayaka') {
+          if (this.fighter1.passiveTimer > 0) {
+            playSFX('/audio/ayaka/ayaka-hit_infused.wav', 0.9);
+          } else {
+            playSFX('/audio/ayaka/ayaka-hit.wav', 0.85);
+          }
+        }
         if (this.fighter1.passiveTimer > 0) {
           this.fighter1.stats.damageDealt.enhancedNormal += result.actualDamage;
         } else {
@@ -1393,6 +1402,13 @@ export class GameLoop {
       const result = opponent.takeDamage(damage);
 
       if (result.actualDamage > 0) {
+        if (fighter.id === 'ayaka') {
+          if (fighter.passiveTimer > 0) {
+            playSFX('/audio/ayaka/ayaka-hit_infused.wav', 0.9);
+          } else {
+            playSFX('/audio/ayaka/ayaka-hit.wav', 0.85);
+          }
+        }
         if (fighter.passiveTimer > 0) {
           fighter.stats.damageDealt.enhancedNormal += result.actualDamage;
         } else {
