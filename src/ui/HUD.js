@@ -46,13 +46,13 @@ function injectStyles() {
     /* ── Top Banner ──────────────────────── */
     .ghud-banner {
       position: absolute;
-      top: 16px; /* Positioned nicely in the expanded top header */
+      top: 10px; /* Shifted up slightly to fit enlarged typography perfectly */
       left: 50%;
       transform: translateX(-50%);
       display: flex;
       align-items: center;
       gap: 16px;
-      font-size: 28px; /* Enlarged premium sizing */
+      font-size: 32px; /* Sizable, premium character names */
       font-weight: 900;
       white-space: nowrap;
       letter-spacing: 0.5px;
@@ -67,14 +67,14 @@ function injectStyles() {
     }
     .ghud-vs {
       color: #000;
-      font-size: 18px; /* Enlarged VS separator */
+      font-size: 20px; /* Sizable VS separator */
       font-weight: 900;
     }
 
     /* ── Health Bars (Active & Readable) ─────────────────────── */
     .ghud-hp-wrap {
       position: absolute;
-      top: 54px; /* Shifted down to vertically stack below the banner with a clear gap */
+      top: 56px; /* Positioned dynamically below the enlarged banner names */
       width: 220px; /* Restored to wide, luxurious proportions */
       display: flex;
       flex-direction: column;
@@ -84,7 +84,7 @@ function injectStyles() {
     .ghud-hp-wrap.right { right: 20px; }
 
     .ghud-hp-text {
-      font-size: 14px; /* Enlarged HP counters */
+      font-size: 17px; /* Sizable, highly readable HP text counters */
       font-weight: 900;
       color: #000;
       margin-top: 4px;
