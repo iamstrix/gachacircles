@@ -439,55 +439,79 @@ export class CryoVFX {
    * Spawns a massive burst of icy blue crystals, sizzling orange sparks, and dense white vapor mist.
    */
   triggerMeltReaction(x, y) {
-    // 1. White vapor steam clouds (representing vaporization)
-    this._burst.emit(x, y, {
-      count: 25,
-      speedMin: 0.8,
-      speedMax: 3.5,
+    // 1. Central White-Hot Flash
+    this._skill.emit(x, y, {
+      count: 12,
+      speedMin: 0.5,
+      speedMax: 2.5,
       spreadAngle: Math.PI * 2,
-      lifetimeMin: 25,
-      lifetimeMax: 50,
+      lifetimeMin: 10,
+      lifetimeMax: 25,
+      sizeMin: 12,
+      sizeMax: 25,
+      startAlpha: 0.8,
+      endAlpha: 0,
+      blendMode: 'add',
+      color: 0xffffff,
+    });
+
+    // 2. Multi-toned Pyro Residue (Oranges/Golds)
+    const pyroColors = [0xff6d00, 0xffab40, 0xff3d00, 0xffd600];
+    pyroColors.forEach(c => {
+      this._burst.emit(x, y, {
+        count: 12,
+        speedMin: 2.0,
+        speedMax: 8.0,
+        spreadAngle: Math.PI * 2,
+        lifetimeMin: 20,
+        lifetimeMax: 45,
+        sizeMin: 1.5,
+        sizeMax: 4.5,
+        startAlpha: 1.0,
+        endAlpha: 0,
+        blendMode: Math.random() < 0.4 ? 'normal' : 'add',
+        color: c,
+        shrink: true,
+        gravity: 0.05,
+      });
+    });
+
+    // 3. Multi-toned Cryo Shards (Light/Dark Blues)
+    // Using deep navy for "darks" and cyan/ice-blue for "lights"
+    const cryoColors = [0x5ed4fc, 0x00bcd4, 0x1a6dd4, 0x0c3366]; 
+    cryoColors.forEach(c => {
+      this._burst.emit(x, y, {
+        count: 15,
+        speedMin: 3.0,
+        speedMax: 10.0,
+        spreadAngle: Math.PI * 2,
+        lifetimeMin: 25,
+        lifetimeMax: 55,
+        sizeMin: 2.0,
+        sizeMax: 5.5,
+        startAlpha: 1.0,
+        endAlpha: 0,
+        blendMode: Math.random() < 0.4 ? 'normal' : 'add',
+        color: c,
+        shrink: true,
+        gravity: -0.02, // Some shards float up
+      });
+    });
+
+    // 4. Dense White Vapor Steam (Mist)
+    this._ambient.emit(x, y, {
+      count: 35,
+      speedMin: 1.2,
+      speedMax: 5.0,
+      spreadAngle: Math.PI * 2,
+      lifetimeMin: 30,
+      lifetimeMax: 70,
       sizeMin: 4.0,
-      sizeMax: 8.5,
-      startAlpha: 0.75,
+      sizeMax: 12.0,
+      startAlpha: 0.6,
       endAlpha: 0.0,
-      color: 0xe0f7fa, // Soft steaming mist
-      shrink: true,
-    });
-
-    // 2. Icy blue Cryo shards flying out
-    this._burst.emit(x, y, {
-      count: 20,
-      speedMin: 2.5,
-      speedMax: 7.5,
-      spreadAngle: Math.PI * 2,
-      lifetimeMin: 18,
-      lifetimeMax: 36,
-      sizeMin: 2.0,
-      sizeMax: 4.5,
-      startAlpha: 0.95,
-      endAlpha: 0.0,
-      gravity: 0.015,
-      blendMode: 'add',
-      gradient: CRYO_GRADIENT,
-      shrink: true,
-    });
-
-    // 3. Hot Pyro sparks spraying (Melt combustion residue)
-    this._burst.emit(x, y, {
-      count: 20,
-      speedMin: 2.0,
-      speedMax: 6.5,
-      spreadAngle: Math.PI * 2,
-      lifetimeMin: 15,
-      lifetimeMax: 32,
-      sizeMin: 1.5,
-      sizeMax: 3.5,
-      startAlpha: 0.95,
-      endAlpha: 0.0,
-      gravity: 0.02,
-      blendMode: 'add',
-      color: 0xff6d00, // Vivid pyro orange
+      color: 0xe0f7fa,
+      blendMode: 'normal',
       shrink: true,
     });
   }
