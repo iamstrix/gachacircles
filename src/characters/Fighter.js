@@ -57,7 +57,7 @@ export class Fighter {
         burst: 0
       }
     };
-    }
+
     // Infusion visual (Yoimiya E)
     this.infusionParticles = [];
 
