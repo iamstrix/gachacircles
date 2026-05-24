@@ -351,7 +351,7 @@ export class GameLoop {
 
           // Pyro explosion burst VFX only for Blazing Arrows!
           if (arrow.isBlazing && arrow.owner.vfx) {
-            if (isFinalShot && typeof arrow.owner.vfx.triggerFinisherImpact === 'function') {
+            if (arrow.isFinalShot && typeof arrow.owner.vfx.triggerFinisherImpact === 'function') {
               arrow.owner.vfx.triggerFinisherImpact(arrow.x, arrow.y);
             } else if (typeof arrow.owner.vfx.triggerBlazingCollision === 'function') {
               arrow.owner.vfx.triggerBlazingCollision(arrow.x, arrow.y);
@@ -1387,7 +1387,8 @@ export class GameLoop {
       visual: visual,
       owner: fighter,
       target: opponent,
-      isBlazing: isBlazing
+      isBlazing: isBlazing,
+      isFinalShot: isFinalShot
     });
 
     if (isBlazing && isFinalShot) {
