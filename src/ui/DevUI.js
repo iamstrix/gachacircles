@@ -35,49 +35,50 @@ export class DevUI {
       this.gameLoop.fighter2.isInvincible = val;
     });
 
-    const savedHP = localStorage.getItem('dev-hp-config') || 500;
     this.addNumericInput(group, 'HP Config (Integer)', savedHP, (val) => {
-      const hp = parseInt(val, 10);
-      if (isNaN(hp) || hp <= 0) return;
-      
-      // Save to localStorage so it persists across the restart
-      localStorage.setItem('dev-hp-config', hp);
-      
-      // Full game restart
-      location.reload();
-    });
+      // Manual save via button now
+    }, 1, 'hp');
 
     const savedDmgMult = localStorage.getItem('dev-dmg-multiplier') || 1.0;
     this.addNumericInput(group, 'Damage Multiplier (Float)', savedDmgMult, (val) => {
-      const mult = parseFloat(val);
-      if (isNaN(mult) || mult <= 0) return;
-
-      localStorage.setItem('dev-dmg-multiplier', mult);
-      location.reload();
-    }, 0.1);
+      // Manual save via button now
+    }, 0.1, 'dmg');
 
     const scoreAyaka = localStorage.getItem('match-score-cryo') || 0;
     this.addNumericInput(group, 'Score: Ayaka', scoreAyaka, (val) => {
-      localStorage.setItem('match-score-cryo', parseInt(val, 10) || 0);
-      location.reload();
-    });
+      // Manual save via button now
+    }, 1, 'score1');
 
     const scoreYoimiya = localStorage.getItem('match-score-pyro') || 0;
     this.addNumericInput(group, 'Score: Yoimiya', scoreYoimiya, (val) => {
-      localStorage.setItem('match-score-pyro', parseInt(val, 10) || 0);
-      location.reload();
-    });
+      // Manual save via button now
+    }, 1, 'score2');
 
     const currentVol = parseFloat(localStorage.getItem('dev-master-volume')) ?? 1.0;
     this.addRangeInput(group, 'Master Volume', currentVol, (val) => {
       setMasterVolume(val);
     }, 0, 1, 0.05);
 
+    this.addButton(group, 'Save & Restart', () => {
+      const hp = this.container.querySelector('[data-key="hp"]').value;
+      const dmg = this.container.querySelector('[data-key="dmg"]').value;
+      const s1 = this.container.querySelector('[data-key="score1"]').value;
+      const s2 = this.container.querySelector('[data-key="score2"]').value;
+
+      localStorage.setItem('dev-hp-config', hp);
+      localStorage.setItem('dev-dmg-multiplier', dmg);
+      localStorage.setItem('match-score-cryo', s1);
+      localStorage.setItem('match-score-pyro', s2);
+
+      location.reload();
+    }, '#2e7d32'); // Green for Save
+
     this.addButton(group, 'Reset Match Scores', () => {
       localStorage.removeItem('match-score-cryo');
       localStorage.removeItem('match-score-pyro');
       location.reload();
     });
+  }
   }
 
   addToggle(parent, label, callback) {
@@ -102,7 +103,7 @@ export class DevUI {
     parent.appendChild(row);
   }
 
-  addNumericInput(parent, label, defaultValue, callback, step = 1) {
+  addNumericInput(parent, label, defaultValue, callback, step = 1, key = '') {
     const row = document.createElement('div');
     row.style.display = 'flex';
     row.style.flexDirection = 'column';
@@ -120,6 +121,7 @@ export class DevUI {
     input.type = 'number';
     input.value = defaultValue;
     input.step = step;
+    if (key) input.setAttribute('data-key', key);
     input.className = 'dev-input'; // We'll add some CSS for this
     input.style.width = '100%';
     input.style.backgroundColor = '#1a1a2e';
@@ -168,13 +170,13 @@ export class DevUI {
     parent.appendChild(row);
   }
 
-  addButton(parent, label, callback) {
+  addButton(parent, label, callback, bgColor = '#d32f2f') {
     const btn = document.createElement('button');
     btn.innerText = label;
     btn.style.width = '100%';
     btn.style.padding = '8px';
     btn.style.marginTop = '10px';
-    btn.style.backgroundColor = '#d32f2f';
+    btn.style.backgroundColor = bgColor;
     btn.style.color = 'white';
     btn.style.border = '2px solid #000';
     btn.style.fontWeight = '800';
