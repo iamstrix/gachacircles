@@ -398,59 +398,73 @@ body {
   width: 100%;
   height: 100%;
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  background: rgba(5, 5, 15, 0.85);
+  flex-direction: row; /* Horizontal split screen */
+  align-items: stretch;
+  justify-content: stretch;
+  background: rgba(5, 5, 15, 0.95);
   backdrop-filter: blur(8px);
   z-index: 50;
   opacity: 0;
   animation: win-fadein 0.8s ease forwards;
-  padding: 24px;
+  overflow: hidden;
+}
+
+.win-screen__panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.win-screen__panel--image {
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.win-screen__panel--text {
+  padding: 40px;
+  text-align: center;
+}
+
+.win-screen__panel--left {
+  border-right: 3px solid #000000;
+}
+
+.win-screen__splash-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transform: scale(1.05);
+  animation: splash-appear 1.2s cubic-bezier(0.2, 0.8, 0.2, 1) 0.2s forwards;
+}
+
+@keyframes splash-appear {
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 .win-screen__title {
-  font-size: 48px;
+  font-size: 40px;
   font-weight: 900;
   letter-spacing: 4px;
   text-transform: uppercase;
-  margin-bottom: 8px;
+  margin-bottom: 12px;
   text-align: center;
   max-width: 95%;
 }
 
 .win-screen__subtitle {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
   color: var(--text-secondary);
   letter-spacing: 2px;
-  margin-bottom: 32px;
   text-align: center;
   max-width: 95%;
-}
-
-.win-screen__restart {
-  padding: 12px 36px;
-  font-family: var(--font-main);
-  font-size: 14px;
-  font-weight: 700;
-  letter-spacing: 2px;
-  text-transform: uppercase;
-  color: var(--text-primary);
-  background: var(--bg-glass);
-  border: 1px solid var(--border-glass);
-  border-radius: 8px;
-  cursor: pointer;
-  pointer-events: all;
-  transition: all 0.3s ease;
-  backdrop-filter: blur(4px);
-}
-
-.win-screen__restart:hover {
-  background: rgba(255, 255, 255, 0.12);
-  border-color: rgba(255, 255, 255, 0.25);
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
 }
 
 @keyframes win-fadein {
@@ -476,4 +490,144 @@ body {
   60% { transform: translate(2px, -1px); }
   70% { transform: translate(-1px, 0px); }
   80% { transform: translate(1px, 1px); }
+}
+
+#main-layout {
+  position: relative;
+  width: var(--game-width);
+  height: var(--game-height);
+}
+
+#dev-panel {
+  position: absolute;
+  right: calc(100% + 80px);
+  top: 50%;
+  transform: translateY(-50%);
+  width: 220px;
+  background: #0d0d16;
+  border: 3px solid #000;
+  box-shadow: 8px 8px 0px rgba(0, 0, 0, 0.15);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  font-family: var(--font-main);
+  color: #ffffff;
+  user-select: none;
+}
+
+.dev-title {
+  font-size: 18px;
+  font-weight: 900;
+  color: #ff9800;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  text-align: center;
+}
+
+.dev-subtitle {
+  font-size: 11px;
+  font-weight: 600;
+  color: #8888aa;
+  text-align: center;
+  margin-top: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.dev-divider {
+  height: 2px;
+  background: #1a1a2e;
+  margin: 20px 0;
+}
+
+.dev-button-group {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.dev-btn {
+  font-family: var(--font-main);
+  font-size: 14px;
+  font-weight: 900;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  padding: 14px;
+  border-radius: 0px;
+  border: 2px solid #000;
+  width: 100%;
+  cursor: pointer;
+  transition: all 0.1s ease;
+}
+
+/* Restart Button Style */
+.dev-btn--restart {
+  background: #ffffff;
+  color: #000000;
+  box-shadow: 3px 3px 0px #000000;
+}
+
+.dev-btn--restart:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0px #000000;
+}
+
+.dev-btn--restart:active {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0px #000000;
+}
+
+/* Rematch Button - Disabled */
+.dev-btn--rematch[disabled] {
+  background: #1b1b24;
+  color: #555566;
+  border-color: #22222e;
+  cursor: not-allowed;
+  opacity: 0.6;
+  box-shadow: none;
+}
+
+/* Rematch Button - Active */
+.dev-btn--rematch:not([disabled]) {
+  background: #ffd54f; /* Vibrant retro yellow */
+  color: #000000;
+  box-shadow: 3px 3px 0px #000000;
+  cursor: pointer;
+}
+
+.dev-btn--rematch:not([disabled]):hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0px #000000;
+}
+
+.dev-btn--rematch:not([disabled]):active {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0px #000000;
+}
+
+/* ========================================
+   HUD Adjustments during Victory Overlay
+   ======================================== */
+
+.hud-active-win .ghud-vs {
+  opacity: 0 !important;
+  pointer-events: none;
+  transition: opacity 0.5s ease;
+}
+
+.hud-winner-cryo .ghud-name-pyro,
+.hud-winner-cryo .ghud-hp-wrap.right,
+.hud-winner-cryo .ghud-sidebar.right {
+  opacity: 0 !important;
+  pointer-events: none;
+  transition: opacity 0.5s ease;
+}
+
+.hud-winner-pyro .ghud-name-cryo,
+.hud-winner-pyro .ghud-hp-wrap.left,
+.hud-winner-pyro .ghud-sidebar.left {
+  opacity: 0 !important;
+  pointer-events: none;
+  transition: opacity 0.5s ease;
 }

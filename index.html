@@ -12,10 +12,22 @@
     <link rel="stylesheet" href="/src/style.css">
   </head>
   <body>
-    <div id="game-container">
-      <div id="game-canvas-wrapper"></div>
-      <div id="hud-overlay"></div>
-      <div id="damage-layer"></div>
+    <div id="main-layout">
+      <div id="dev-panel">
+        <div class="dev-title">🛠️ DEV CONTROLS</div>
+        <div class="dev-subtitle">Battle Simulation Panel</div>
+        <div class="dev-divider"></div>
+        <div class="dev-button-group">
+          <button id="dev-btn-restart" class="dev-btn dev-btn--restart">RESTART</button>
+          <button id="dev-btn-rematch" class="dev-btn dev-btn--rematch" disabled>REMATCH</button>
+        </div>
+      </div>
+      
+      <div id="game-container">
+        <div id="game-canvas-wrapper"></div>
+        <div id="hud-overlay"></div>
+        <div id="damage-layer"></div>
+      </div>
     </div>
     <script type="module" src="/src/main.js"></script>
   </body>

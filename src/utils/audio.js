@@ -246,3 +246,43 @@ export function playSynthDeflect(volume = 0.28) {
     console.debug('Synth deflect failed:', e);
   }
 }
+
+// ── Random Parry Sound System (no-repeat shuffle deck) ─────────────────────────
+const PARRY_SOUNDS = [
+  '/audio/ayaka/ayaka-parry_1.wav',
+  '/audio/ayaka/ayaka-parry_2.wav',
+  '/audio/ayaka/ayaka-parry_3.wav',
+  '/audio/ayaka/ayaka-parry_4.wav',
+];
+
+let parryDeck = [];
+let lastParryPlayed = null;
+
+function shuffleParryDeck() {
+  parryDeck = [...PARRY_SOUNDS];
+  // Fisher-Yates shuffle
+  for (let i = parryDeck.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [parryDeck[i], parryDeck[j]] = [parryDeck[j], parryDeck[i]];
+  }
+  // Ensure the first sound of the new deck isn't the same as the last sound of the previous deck
+  if (parryDeck[0] === lastParryPlayed && parryDeck.length > 1) {
+    // Swap with a random later position
+    const swapIdx = 1 + Math.floor(Math.random() * (parryDeck.length - 1));
+    [parryDeck[0], parryDeck[swapIdx]] = [parryDeck[swapIdx], parryDeck[0]];
+  }
+}
+
+/**
+ * Play a random parry sound effect from the shuffled deck.
+ * Guarantees the same sound never plays twice in a row.
+ * @param {number} [volume=0.5] - Playback volume
+ */
+export function playRandomParry(volume = 0.5) {
+  if (parryDeck.length === 0) {
+    shuffleParryDeck();
+  }
+  const sound = parryDeck.shift();
+  lastParryPlayed = sound;
+  playSFX(sound, volume);
+}

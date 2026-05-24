@@ -5,7 +5,7 @@
 
 import { Graphics, Sprite, Assets, Container, Text, TextStyle } from 'pixi.js';
 import { updatePosition, bounceOffWalls, checkCircleCollision, resolveCollision } from './physics.js';
-import { playSFX, preloadSFX, playSynthBounce, playSynthClash, playSynthDeflect } from './utils/audio.js';
+import { playSFX, preloadSFX, playSynthBounce, playSynthClash, playSynthDeflect, playRandomParry } from './utils/audio.js';
 
 export class GameLoop {
   /**
@@ -54,6 +54,11 @@ export class GameLoop {
     preloadSFX('/audio/yoimiya/ayaka-skill.mp3'); // Existing misnamed file or just preloading for safety
     preloadSFX('/audio/yoimiya/yoimiya-skill.wav');
     preloadSFX('/audio/yoimiya/yoimiya-ultimate.wav');
+
+    // Preload parry sound effects
+    for (let i = 1; i <= 4; i++) {
+      preloadSFX(`/audio/ayaka/ayaka-parry_${i}.wav`);
+    }
 
     // ── Bouncing Watermark Setup ──────────────────
     const style = new TextStyle({
@@ -258,7 +263,7 @@ export class GameLoop {
                 arrow.target.body.vy += Math.sin(arrow.angle) * parryKnockback;
               }
             }
-            playSynthDeflect();
+            playRandomParry();
             
             // Spawn the anime-style sliced arrow shards (respecting blazing state!)
             this._spawnSlicedArrowShards(arrow.x, arrow.y, arrow.angle, arrow.isBlazing);

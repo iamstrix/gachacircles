@@ -41,7 +41,8 @@ export const CHARACTERS = {
       description: 'Summons blooming ice dealing AoE Cryo damage and repelling opponents',
       damageMultiplier: 2.0,
       cooldown: 7,
-      emoji: '❄️'
+      emoji: '❄️',
+      icon: '/ayaka-skill_icon.png'
     },
     burstQ: {
       name: 'Kamisato Art: Soumetsu',
@@ -50,7 +51,8 @@ export const CHARACTERS = {
       duration: 3000,       // ticks over 3s
       aoeRadius: 140,
       cooldown: 18,
-      emoji: '🌀'
+      emoji: '🌀',
+      icon: '/ayaka-ultimate_icon.png'
     },
     passive: {
       name: 'Kanten Senmyou Blessing',
@@ -63,6 +65,7 @@ export const CHARACTERS = {
     circleRadius: 42,
     portrait: '/characters/ayaka_portrait.png',
     splash: '/characters/ayaka-splash.png',
+    ultAnimation: '/characters/ayaka-ultimate_animation.mp4',
     weaponSprite: '/weapons/sword.png',
     colors: {
       primary: '#4FC3F7',
@@ -113,9 +116,10 @@ export const CHARACTERS = {
     },
 
     // Visual config
-    circleRadius: 38,
+    circleRadius: 42,
     portrait: '/characters/yoimiya_portrait.png',
     splash: '/characters/yoimiya-splash.png',
+    ultAnimation: '/characters/yoimiya-ultimate_animation.mp4',
     weaponSprite: '/weapons/bow.png',
     colors: {
       primary: '#FF9800',
