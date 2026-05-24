@@ -322,12 +322,12 @@ function injectStyles() {
       box-shadow: 4px 4px 0px rgba(0,0,0,0.2);
     }
     .hud-winner-cryo .ghud-score-tracker {
-      background: #4dd0e1; /* Even darker Cryo blue */
+      background: #00acc1; /* Deep high-saturation Cryo blue */
       left: 123px; /* Centered above left sidebar: 60 + (126/2) */
       transform: translateX(-50%);
     }
     .hud-winner-pyro .ghud-score-tracker {
-      background: #ff8a65; /* Even darker Pyro orange/red */
+      background: #e64a19; /* Deep high-saturation Pyro red/orange */
       left: auto;
       right: 123px; /* Centered above right sidebar: 60 + (126/2) */
       transform: translateX(50%);
