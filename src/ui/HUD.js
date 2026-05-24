@@ -81,15 +81,14 @@ function injectStyles() {
       gap: 4px;
     }
     .ghud-hp-wrap.left { left: 20px; }
-    .ghud-hp-wrap.right { right: 20px; text-align: right; }
+    .ghud-hp-wrap.right { right: 20px; }
 
-    .ghud-hp-label {
-      display: flex;
-      justify-content: space-between;
+    .ghud-hp-text {
       font-size: 11px;
       font-weight: 900;
-      text-transform: uppercase;
+      text-align: center;
       color: #000;
+      margin-top: 2px;
     }
 
     .ghud-hp-bar-bg {
@@ -342,15 +341,6 @@ export class HUD {
   _buildHP(element, side) {
     const wrap = document.createElement('div');
     wrap.className = `ghud-hp-wrap ${side}`;
-    const label = document.createElement('div');
-    label.className = 'ghud-hp-label';
-
-    const nameSpan = document.createElement('span');
-    nameSpan.textContent = element === 'cryo' ? 'Ayaka' : 'Yoimiya';
-    const hpSpan = document.createElement('span');
-    hpSpan.textContent = '100 / 100';
-    label.appendChild(nameSpan);
-    label.appendChild(hpSpan);
 
     const barBg = document.createElement('div');
     barBg.className = 'ghud-hp-bar-bg';
@@ -359,8 +349,12 @@ export class HUD {
     fill.style.width = '100%';
     barBg.appendChild(fill);
 
-    wrap.appendChild(label);
+    const hpSpan = document.createElement('div');
+    hpSpan.className = 'ghud-hp-text';
+    hpSpan.textContent = '100 / 100';
+
     wrap.appendChild(barBg);
+    wrap.appendChild(hpSpan);
     this.root.appendChild(wrap);
 
     // Store references
