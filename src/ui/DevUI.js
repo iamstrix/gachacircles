@@ -56,6 +56,18 @@ export class DevUI {
       location.reload();
     }, 0.1);
 
+    const scoreAyaka = localStorage.getItem('match-score-cryo') || 0;
+    this.addNumericInput(group, 'Score: Ayaka', scoreAyaka, (val) => {
+      localStorage.setItem('match-score-cryo', parseInt(val, 10) || 0);
+      location.reload();
+    });
+
+    const scoreYoimiya = localStorage.getItem('match-score-pyro') || 0;
+    this.addNumericInput(group, 'Score: Yoimiya', scoreYoimiya, (val) => {
+      localStorage.setItem('match-score-pyro', parseInt(val, 10) || 0);
+      location.reload();
+    });
+
     const currentVol = parseFloat(localStorage.getItem('dev-master-volume')) ?? 1.0;
     this.addRangeInput(group, 'Master Volume', currentVol, (val) => {
       setMasterVolume(val);
