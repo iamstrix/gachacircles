@@ -31,7 +31,7 @@ export const CHARACTERS = {
 
     // Combat stats
     hp: 500,
-    damage: 10,
+    damage: 8,
     attackSpeed: 1.0,       // Attacks per second during collision
     speed: 3.0,             // Movement speed multiplier
 
