@@ -40,7 +40,7 @@ export const CHARACTERS = {
       name: 'Kamisato Art: Hyouka',
       description: 'Summons blooming ice dealing AoE Cryo damage and repelling opponents',
       damageMultiplier: 2.0,
-      cooldown: 8,
+      cooldown: 9,
       emoji: '❄️'
     },
     burstQ: {
