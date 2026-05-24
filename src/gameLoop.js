@@ -251,10 +251,12 @@ export class GameLoop {
               if (arrow.target.vfx) {
                 arrow.target.vfx.triggerCollision(arrow.x, arrow.y);
               }
-              // Apply slight knockback for normal arrows (40% of blazing arrow block strength)
-              const parryKnockback = 2.6;
-              arrow.target.body.vx += Math.cos(arrow.angle) * parryKnockback;
-              arrow.target.body.vy += Math.sin(arrow.angle) * parryKnockback;
+              // Apply slight knockback for normal arrows if not Cryo Imbued
+              if (!isCryoImbued) {
+                const parryKnockback = 2.6;
+                arrow.target.body.vx += Math.cos(arrow.angle) * parryKnockback;
+                arrow.target.body.vy += Math.sin(arrow.angle) * parryKnockback;
+              }
             }
             playSynthDeflect();
             
