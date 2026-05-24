@@ -39,8 +39,8 @@ export class GameLoop {
 
     // Initial delay: start attacking 1 second after game start
     const startTime = performance.now();
-    this.fighter1.lastAttackTime = startTime - 1000;
-    this.fighter2.lastAttackTime = startTime - 1000;
+    this.fighter1.lastAttackTime = startTime - 1500;
+    this.fighter2.lastAttackTime = startTime - 1500;
 
     // Preload normal attack sound files for both characters
     for (let i = 1; i <= 5; i++) {
