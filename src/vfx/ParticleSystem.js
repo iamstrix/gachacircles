@@ -48,6 +48,10 @@ function createParticleData() {
     targetX: 0,
     targetY: 0,
     attractionForce: 0,
+    // Orbital properties
+    centerX: 0,
+    centerY: 0,
+    orbitalForce: 0,
   };
 }
 
@@ -138,6 +142,9 @@ export class ParticleSystem {
       p.targetX = c.targetX || 0;
       p.targetY = c.targetY || 0;
       p.attractionForce = c.attractionForce || 0;
+      p.centerX = c.centerX || 0;
+      p.centerY = c.centerY || 0;
+      p.orbitalForce = c.orbitalForce || 0;
       p.active = true;
 
       // Initialise Graphics visual
@@ -223,6 +230,21 @@ export class ParticleSystem {
 
       // Physics
       p.vy += (p.gravity ?? 0) * delta;
+
+      // Orbital Physics: tangential force around (centerX, centerY)
+      if (p.orbitalForce !== 0) {
+        const dx = p.x - p.centerX;
+        const dy = p.y - p.centerY;
+        const distSq = dx * dx + dy * dy;
+        if (distSq > 1) {
+          const dist = Math.sqrt(distSq);
+          // Tangential vector is (-dy, dx) normalized
+          const tx = -dy / dist;
+          const ty = dx / dist;
+          p.vx += tx * p.orbitalForce * delta;
+          p.vy += ty * p.orbitalForce * delta;
+        }
+      }
 
       // Attraction / Black Hole logic
       if (p.attractionForce !== 0) {

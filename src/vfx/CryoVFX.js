@@ -150,19 +150,31 @@ export class CryoVFX {
    * Uses a diverse gradient (white, light blue, dark blue) and normal blend mode
    * to ensure visibility and depth.
    */
-  triggerVortexParticles(x, y) {
+  triggerVortexParticles(x, y, centerX, centerY) {
+    // 1. Orbital particles - these spin with the cyclone
+    const isDrifter = Math.random() < 0.25; // 25% chance to be a drifter with weak orbital tie
+    
     this._skill.emit(x, y, {
       count: 2,
-      speedMin: 0.5,
-      speedMax: 2.5,
+      speedMin: 0.2,
+      speedMax: 1.0,
       spreadAngle: Math.PI * 2,
-      lifetimeMin: 20,
-      lifetimeMax: 45,
+      lifetimeMin: 30,
+      lifetimeMax: 60,
       sizeMin: 1.5,
       sizeMax: 4.0,
       gradient: HYOUKA_BURST_GRADIENT,
       blendMode: 'normal',
       shrink: true,
+      // Orbital physics
+      centerX: centerX || x,
+      centerY: centerY || y,
+      orbitalForce: isDrifter ? 0.05 : 0.4, // Drifters have very low orbital force
+      attractionForce: isDrifter ? 0.01 : 0.15, // Drifters also fly away easier
+      targetX: centerX || x,
+      targetY: centerY || y,
+    });
+  }
     });
   }
 

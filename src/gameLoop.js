@@ -608,7 +608,9 @@ export class GameLoop {
           if (typeof effect.owner.vfx.triggerVortexParticles === 'function') {
             effect.owner.vfx.triggerVortexParticles(
               effect.x + (Math.random() - 0.5) * 270,
-              effect.y + (Math.random() - 0.5) * 270
+              effect.y + (Math.random() - 0.5) * 270,
+              effect.x,
+              effect.y
             );
           } else {
             effect.owner.vfx.triggerCollision(
