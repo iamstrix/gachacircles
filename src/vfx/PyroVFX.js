@@ -129,32 +129,57 @@ export class PyroVFX {
    * Matches the massive recoil impulse.
    */
   triggerFinisherLaunch(x, y, angle) {
-    // 1. Recoil blast cone (opposite to firing direction)
+    // 1. Primary multi-toned recoil blast (Normal blend for "meat")
+    const blastLayers = [
+      { count: 12, color: PYRO_COLORS.bloodOrange, size: 4.5, speed: 6.0 },
+      { count: 15, color: PYRO_COLORS.vividOrange, size: 3.5, speed: 8.0 }
+    ];
+
+    blastLayers.forEach(l => {
+      this._burst.emit(x, y, {
+        count: l.count,
+        speedMin: l.speed * 0.5,
+        speedMax: l.speed,
+        spreadAngle: 0.8,
+        angleCenter: angle + Math.PI,
+        lifetimeMin: 15,
+        lifetimeMax: 40,
+        sizeMin: l.size * 0.6,
+        sizeMax: l.size,
+        startAlpha: 1.0,
+        endAlpha: 0,
+        blendMode: 'normal',
+        color: l.color,
+        shrink: true,
+      });
+    });
+
+    // 2. High-speed additive sparks
     this._burst.emit(x, y, {
-      count: 25,
+      count: 15,
       speedMin: 2.0,
-      speedMax: 8.0,
-      spreadAngle: 0.8,
+      speedMax: 9.0,
+      spreadAngle: 1.0,
       angleCenter: angle + Math.PI,
-      lifetimeMin: 15,
-      lifetimeMax: 35,
-      sizeMin: 2.0,
-      sizeMax: 5.0,
-      gradient: PYRO_GRADIENT,
+      lifetimeMin: 10,
+      lifetimeMax: 25,
+      sizeMin: 1.5,
+      sizeMax: 3.0,
+      color: PYRO_COLORS.brightGold,
       blendMode: 'add',
       shrink: true,
     });
 
-    // 2. Muzzle flash burst
+    // 3. Muzzle flash burst
     this._skill.emit(x, y, {
-      count: 15,
+      count: 10,
       speedMin: 1.0,
       speedMax: 4.0,
       spreadAngle: Math.PI * 2,
-      lifetimeMin: 10,
-      lifetimeMax: 20,
-      sizeMin: 4,
-      sizeMax: 10,
+      lifetimeMin: 8,
+      lifetimeMax: 18,
+      sizeMin: 6,
+      sizeMax: 12,
       color: PYRO_COLORS.white,
       blendMode: 'add',
     });
@@ -164,37 +189,42 @@ export class PyroVFX {
    * Heavy impact effects for the N5 finisher hit.
    */
   triggerFinisherImpact(x, y) {
-    // 1. Denser multi-toned core
-    const colors = [PYRO_COLORS.vividOrange, PYRO_COLORS.brightGold, PYRO_COLORS.white];
-    colors.forEach(c => {
+    // 1. Multi-toned impact core (Mixed blends)
+    const impactLayers = [
+      { count: 18, color: PYRO_COLORS.bloodOrange, size: 7.0, speed: 10, mode: 'normal' },
+      { count: 15, color: PYRO_COLORS.vividOrange, size: 5.5, speed: 12, mode: 'add' },
+      { count: 12, color: PYRO_COLORS.brightGold, size: 4.0, speed: 14, mode: 'add' }
+    ];
+
+    impactLayers.forEach(l => {
       this._burst.emit(x, y, {
-        count: 15,
-        speedMin: 3.0,
-        speedMax: 10.0,
+        count: l.count,
+        speedMin: l.speed * 0.4,
+        speedMax: l.speed,
         spreadAngle: Math.PI * 2,
         lifetimeMin: 20,
-        lifetimeMax: 40,
-        sizeMin: 2.5,
-        sizeMax: 6.5,
-        color: c,
-        blendMode: 'add',
+        lifetimeMax: 50,
+        sizeMin: l.size * 0.5,
+        sizeMax: l.size,
+        color: l.color,
+        blendMode: l.mode,
         shrink: true,
       });
     });
 
     // 2. Lingering embers
     this._ambient.emit(x, y, {
-      count: 10,
+      count: 12,
       speedMin: 0.5,
-      speedMax: 2.0,
+      speedMax: 2.5,
       spreadAngle: Math.PI * 2,
       lifetimeMin: 40,
-      lifetimeMax: 70,
-      sizeMin: 1.0,
-      sizeMax: 2.5,
+      lifetimeMax: 80,
+      sizeMin: 1.5,
+      sizeMax: 3.0,
       color: PYRO_COLORS.vividOrange,
-      blendMode: 'add',
-      gravity: 0.05,
+      blendMode: 'normal',
+      gravity: 0.08,
     });
   }
 
