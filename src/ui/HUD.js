@@ -52,7 +52,7 @@ function injectStyles() {
       display: flex;
       align-items: center;
       gap: 16px;
-      font-size: 24px; /* Restored to a crisp, premium, highly readable size */
+      font-size: 28px; /* Enlarged premium sizing */
       font-weight: 900;
       white-space: nowrap;
       letter-spacing: 0.5px;
@@ -67,14 +67,14 @@ function injectStyles() {
     }
     .ghud-vs {
       color: #000;
-      font-size: 16px;
+      font-size: 18px; /* Enlarged VS separator */
       font-weight: 900;
     }
 
     /* ── Health Bars (Active & Readable) ─────────────────────── */
     .ghud-hp-wrap {
       position: absolute;
-      top: 48px; /* Positioned below the banner, completely clear of any overlap */
+      top: 54px; /* Shifted down to vertically stack below the banner with a clear gap */
       width: 220px; /* Restored to wide, luxurious proportions */
       display: flex;
       flex-direction: column;
@@ -84,10 +84,10 @@ function injectStyles() {
     .ghud-hp-wrap.right { right: 20px; }
 
     .ghud-hp-text {
-      font-size: 11px;
+      font-size: 14px; /* Enlarged HP counters */
       font-weight: 900;
       color: #000;
-      margin-top: 2px;
+      margin-top: 4px;
     }
     .ghud-hp-wrap.left .ghud-hp-text {
       text-align: right; /* Aligns HP counter with the right end (under Ayaka's name) */

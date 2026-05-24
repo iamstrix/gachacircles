@@ -16,9 +16,9 @@ import './style.css';
 
 // Game constants
 const GAME_WIDTH = 600;
-const GAME_HEIGHT = 650;
-const ARENA_PADDING_TOP = 95;
-const ARENA_PADDING_BOTTOM = 75;
+const GAME_HEIGHT = 670;
+const ARENA_PADDING_TOP = 110;
+const ARENA_PADDING_BOTTOM = 80;
 
 // Arena bounds (perfect 1:1 square, centered horizontally)
 const ARENA_SIZE = 480;
