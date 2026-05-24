@@ -31,6 +31,13 @@ export class GameLoop {
 
     this.onGameOver = null; // Callback
 
+    this.paused = false;
+    this.pauseContainer = new Container();
+    this.pauseContainer.visible = false;
+    this.stage.addChild(this.pauseContainer);
+
+    this._setupPauseVisuals();
+
     this.activeEffects = []; // Store active Q whirlwind effects, etc.
     this.projectiles = []; // Store active flying arrows, etc.
     this.shards = []; // Store tumbling sliced arrow shards
@@ -85,11 +92,66 @@ export class GameLoop {
     this.stage.addChild(this.watermark);
   }
 
+  _setupPauseVisuals() {
+    const { x, y, width, height } = this.bounds;
+    
+    // 1. Gray transparent overlay
+    const overlay = new Graphics();
+    overlay.rect(x, y, width, height);
+    overlay.fill({ color: 0x333333, alpha: 0.4 });
+    this.pauseContainer.addChild(overlay);
+
+    // 2. Large pulsing white columns
+    const colW = 40;
+    const colH = 120;
+    const centerX = x + width / 2;
+    const centerY = y + height / 2;
+
+    this.pauseCol1 = new Graphics();
+    this.pauseCol1.rect(-colW - 15, -colH / 2, colW, colH);
+    this.pauseCol1.fill({ color: 0xffffff });
+    
+    this.pauseCol2 = new Graphics();
+    this.pauseCol2.rect(15, -colH / 2, colW, colH);
+    this.pauseCol2.fill({ color: 0xffffff });
+
+    this.pauseCol1.x = centerX;
+    this.pauseCol1.y = centerY;
+    this.pauseCol2.x = centerX;
+    this.pauseCol2.y = centerY;
+
+    this.pauseContainer.addChild(this.pauseCol1);
+    this.pauseContainer.addChild(this.pauseCol2);
+  }
+
+  togglePause() {
+    if (this.gameOver) return;
+    this.paused = !this.paused;
+    this.pauseContainer.visible = this.paused;
+    
+    // If we just unpaused, reset lastAttackTimes to prevent immediate burst of attacks
+    if (!this.paused) {
+      const now = performance.now();
+      const offset = 1500;
+      this.fighter1.lastAttackTime = now - offset;
+      this.fighter2.lastAttackTime = now - offset;
+    }
+  }
+
   /**
    * Main update tick — called every frame by PixiJS ticker
    * @param {number} delta - Frame delta (1.0 = target frame rate)
    */
   update(delta) {
+    // Even if paused, we want the pause visuals to animate
+    if (this.paused) {
+      // Pulsing columns (changing darkness slightly)
+      const pulse = 0.7 + Math.sin(performance.now() * 0.005) * 0.3;
+      this.pauseCol1.alpha = pulse;
+      this.pauseCol2.alpha = pulse;
+      return;
+    }
+
     if (this.gameOver) return;
 
     this.elapsedTime += delta * 0.016; // Convert to seconds roughly

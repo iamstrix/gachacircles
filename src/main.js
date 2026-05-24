@@ -61,10 +61,6 @@ async function init() {
   const cryoVFX = new CryoVFX();
   const pyroVFX = new PyroVFX();
 
-  // Add VFX containers to stage (behind fighters)
-  app.stage.addChild(cryoVFX.container);
-  app.stage.addChild(pyroVFX.container);
-
   // Create fighters
   const ayakaData = getCharacter('ayaka');
   const yoimiyaData = getCharacter('yoimiya');
@@ -101,9 +97,13 @@ async function init() {
   await fighter1.createVisuals();
   await fighter2.createVisuals();
 
-  // Add fighters to stage (on top of VFX)
+  // Add fighters to stage (under VFX)
   app.stage.addChild(fighter1.container);
   app.stage.addChild(fighter2.container);
+
+  // Add VFX containers to stage (on top of fighters so marks and particles sit higher than character circles)
+  app.stage.addChild(cryoVFX.container);
+  app.stage.addChild(pyroVFX.container);
 
   // Set up UI
   const hud = new HUD();
@@ -120,6 +120,14 @@ async function init() {
 
   // Initialize Developer UI
   new DevUI(gameLoop);
+
+  // ── Keyboard Controls ────────────────────────
+  document.addEventListener('keydown', (e) => {
+    if (e.code === 'Space' && gameLoop && !gameLoop.gameOver) {
+      e.preventDefault();
+      gameLoop.togglePause();
+    }
+  });
 
   // Handle game over
   gameLoop.onGameOver = (winner) => {
@@ -202,13 +210,19 @@ function showWinScreen(winner) {
   const textPanel = document.createElement('div');
   textPanel.className = 'win-screen__panel win-screen__panel--text';
 
+  const placard = document.createElement('div');
+  placard.className = 'win-screen__placard';
+  placard.textContent = 'WINNER';
+
+  const displayName = winner.data.name === 'Kamisato Ayaka' ? 'Ayaka' : winner.data.name;
+
   const title = document.createElement('div');
   title.className = `win-screen__title hud-banner__name--${winner.element}`;
-  title.textContent = `${winner.data.name} Wins!`;
+  title.textContent = displayName.toUpperCase();
 
   const subtitle = document.createElement('div');
   subtitle.className = 'win-screen__subtitle';
-  subtitle.textContent = `${winner.data.title} • ${winner.hp}/${winner.maxHp} HP remaining`;
+  subtitle.innerHTML = `${winner.data.title}<br><span style="font-size: 13px; font-weight: 700; margin-top: 6px; display: inline-block; text-transform: uppercase;">${winner.hp}/${winner.maxHp} HP remaining</span>`;
 
   // ── Statistics Section ───────────────────────
   const statsContainer = document.createElement('div');
@@ -249,6 +263,27 @@ function showWinScreen(winner) {
   const elapsedTime = gameLoop ? gameLoop.elapsedTime : 0;
   const timeStr = elapsedTime.toFixed(1) + 's';
   const averageDPS = elapsedTime > 0 ? Math.round(totalDmg / elapsedTime) : 0;
+
+  // Calculate difficulty outcome depending on winner's remaining HP (out of 250 max HP)
+  const remainingHP = winner.hp;
+  let diffLabel = '';
+  let diffColor = '#2e7d32'; // Saturated green
+  let diffClass = '';
+
+  if (remainingHP > 175) {
+    diffLabel = 'LOW DIFF';
+    diffColor = '#2e7d32';
+  } else if (remainingHP > 50) {
+    diffLabel = 'MID DIFF';
+    diffColor = '#ff9800'; // Orange
+  } else if (remainingHP >= 20) {
+    diffLabel = 'HIGH DIFF';
+    diffColor = '#d32f2f'; // Red
+  } else {
+    diffLabel = 'EXTREME DIFF';
+    diffColor = '#880e4f'; // Dark crimson
+    diffClass = 'diff-clutch';
+  }
 
   statsContainer.innerHTML = `
     <div class="win-stat-row">
@@ -301,8 +336,17 @@ function showWinScreen(winner) {
       <span class="win-stat-label">Ultimate Casts:</span>
       <span class="win-stat-value">${s.casts.burst}</span>
     </div>
+
+    <div class="win-stat-divider" style="margin-top: 8px; margin-bottom: 8px;"></div>
+
+    <div class="win-stat-row" style="justify-content: center;">
+      <span class="win-stat-value win-stat-value--diff-badge ${diffClass}" style="background: ${diffColor};">
+        ${diffLabel}
+      </span>
+    </div>
   `;
 
+  textPanel.appendChild(placard);
   textPanel.appendChild(title);
   textPanel.appendChild(subtitle);
   textPanel.appendChild(statsContainer);
