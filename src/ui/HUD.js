@@ -297,14 +297,13 @@ function injectStyles() {
     /* ── Score Tracker ───────────────────── */
     .ghud-score-tracker {
       position: absolute;
-      bottom: 24px;
+      bottom: 12px; /* Lowered and centered in the 80px gutter */
       left: 50%;
       transform: translateX(-50%);
       display: flex;
       align-items: center;
       gap: 20px;
-      background: rgba(255, 255, 255, 0.15);
-      backdrop-filter: blur(4px);
+      background: #e2fde6; /* Match arena floor color */
       padding: 6px 16px;
       border: 2px solid #000;
       box-shadow: 2px 2px 0px rgba(0,0,0,0.15);
