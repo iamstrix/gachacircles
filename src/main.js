@@ -245,6 +245,11 @@ function showWinScreen(winner) {
     if (burstPct > 0) barHtml += `<div class="win-stat-bar-segment" style="width: ${burstPct}%; background: ${cBurst};" title="Ultimate: ${burstDmg}"></div>`;
   }
 
+  // Calculate Time Elapsed and Average DPS
+  const elapsedTime = gameLoop ? gameLoop.elapsedTime : 0;
+  const timeStr = elapsedTime.toFixed(1) + 's';
+  const averageDPS = elapsedTime > 0 ? Math.round(totalDmg / elapsedTime) : 0;
+
   statsContainer.innerHTML = `
     <div class="win-stat-row">
       <span class="win-stat-label">Total Damage Done:</span>
@@ -280,6 +285,14 @@ function showWinScreen(winner) {
 
     <div class="win-stat-divider" style="margin-top: 16px;"></div>
 
+    <div class="win-stat-row">
+      <span class="win-stat-label">Time Elapsed:</span>
+      <span class="win-stat-value">${timeStr}</span>
+    </div>
+    <div class="win-stat-row">
+      <span class="win-stat-label">Average DPS:</span>
+      <span class="win-stat-value">${averageDPS}</span>
+    </div>
     <div class="win-stat-row">
       <span class="win-stat-label">Skill Casts:</span>
       <span class="win-stat-value">${s.casts.skill}</span>
