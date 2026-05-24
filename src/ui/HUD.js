@@ -312,18 +312,18 @@ function injectStyles() {
     }
 
     .ghud-score-label {
-      font-size: 11px;
-      font-weight: 800;
-      letter-spacing: 1.5px;
+      font-size: 14px;
+      font-weight: 850;
+      letter-spacing: 0.5px;
       color: #000;
-      /* no transparency */
+      text-align: center;
+      line-height: 1.1;
     }
 
     .ghud-score-val {
-      font-size: 24px;
+      font-size: 32px;
       font-weight: 950;
       color: #000;
-      /* removed white outline */
       text-shadow: 2px 2px 0px rgba(0,0,0,0.1);
     }
     .ghud-score-val.cryo { color: #00bcd4; }
@@ -362,7 +362,7 @@ export class HUD {
     d.className = 'ghud-score-tracker';
     d.innerHTML = `
       <div class="ghud-score-val cryo" id="ghud-score-cryo">0</div>
-      <div class="ghud-score-label">best of three</div>
+      <div class="ghud-score-label">best of<br>three</div>
       <div class="ghud-score-val pyro" id="ghud-score-pyro">0</div>
     `;
     this.root.appendChild(d);
