@@ -366,7 +366,11 @@ export class GameLoop {
           }
 
           const result = arrow.target.takeDamage(damage);
-          arrow.owner.stats.damageDealt.normal += result.actualDamage;
+          if (arrow.isBlazing || arrow.isKindlingSpark) {
+            arrow.owner.stats.damageDealt.enhancedNormal += result.actualDamage;
+          } else {
+            arrow.owner.stats.damageDealt.normal += result.actualDamage;
+          }
 
           // Pyro explosion burst VFX only for Blazing Arrows!
           if (arrow.isBlazing && arrow.owner.vfx) {
@@ -1042,6 +1046,12 @@ export class GameLoop {
       const result = this.fighter2.takeDamage(damage);
 
       if (result.actualDamage > 0) {
+        if (this.fighter1.passiveTimer > 0) {
+          this.fighter1.stats.damageDealt.enhancedNormal += result.actualDamage;
+        } else {
+          this.fighter1.stats.damageDealt.normal += result.actualDamage;
+        }
+
         if (isAyakaLunging) {
           this.fighter1.hasHitThisSwing = true; // Block further hits this animation step
         } else {
@@ -1314,7 +1324,11 @@ export class GameLoop {
       const result = opponent.takeDamage(damage);
 
       if (result.actualDamage > 0) {
-        fighter.stats.damageDealt.normal += result.actualDamage;
+        if (fighter.passiveTimer > 0) {
+          fighter.stats.damageDealt.enhancedNormal += result.actualDamage;
+        } else {
+          fighter.stats.damageDealt.normal += result.actualDamage;
+        }
         // Ayaka C1: Every hit during Cryo infusion reduces Hyouka (E) cooldown by 1.0s
         if (fighter.id === 'ayaka' && fighter.passiveTimer > 0) {
           fighter.skillCDTimer = Math.max(0, fighter.skillCDTimer - 1.0);

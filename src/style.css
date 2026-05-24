@@ -536,6 +536,77 @@ body {
   margin: 4px 0;
 }
 
+/* ── Segmented Damage Breakdown Bar ── */
+.win-stat-bar-wrapper {
+  display: flex;
+  height: 24px;
+  width: 100%;
+  border: 3px solid #000;
+  background: #1b1b24;
+  overflow: hidden;
+  box-shadow: 4px 4px 0px rgba(0, 0, 0, 0.15);
+  margin: 12px 0 8px 0;
+  box-sizing: border-box;
+}
+
+.win-stat-bar-segment {
+  height: 100%;
+  transition: width 0.3s ease-out;
+  border-right: 3px solid #000;
+  box-sizing: border-box;
+}
+
+.win-stat-bar-segment:last-child {
+  border-right: none;
+}
+
+/* Legend styling */
+.win-stat-legend-container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px 16px;
+  margin-top: 8px;
+  width: 100%;
+}
+
+.win-stat-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-main);
+}
+
+.win-stat-legend-dot {
+  width: 10px;
+  height: 10px;
+  border: 2px solid #000;
+  display: inline-block;
+  flex-shrink: 0;
+  box-sizing: border-box;
+}
+
+.win-stat-legend-label {
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  letter-spacing: 0.5px;
+}
+
+.win-stat-legend-val {
+  font-size: 12px;
+  font-weight: 900;
+  color: var(--text-primary);
+  margin-left: auto;
+}
+
+.win-stat-legend-pct {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  opacity: 0.7;
+}
+
 @keyframes win-fadein {
   from { opacity: 0; }
   to { opacity: 1; }

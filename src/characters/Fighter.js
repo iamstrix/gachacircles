@@ -49,6 +49,7 @@ export class Fighter {
     this.stats = {
       damageDealt: {
         normal: 0,
+        enhancedNormal: 0,
         skill: 0,
         burst: 0
       },

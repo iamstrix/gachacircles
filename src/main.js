@@ -215,27 +215,71 @@ function showWinScreen(winner) {
   statsContainer.className = 'win-screen__stats';
 
   const s = winner.stats;
-  const totalDmg = Math.round(s.damageDealt.normal + s.damageDealt.skill + s.damageDealt.burst);
+  const normalDmg = Math.round(s.damageDealt.normal || 0);
+  const enhancedDmg = Math.round(s.damageDealt.enhancedNormal || 0);
+  const skillDmg = Math.round(s.damageDealt.skill || 0);
+  const burstDmg = Math.round(s.damageDealt.burst || 0);
+  const totalDmg = normalDmg + enhancedDmg + skillDmg + burstDmg;
 
-  // Determine Most Effective Source
-  const sources = [
-    { label: 'Normal Attacks', val: s.damageDealt.normal },
-    { label: 'Elemental Skill', val: s.damageDealt.skill },
-    { label: 'Elemental Burst', val: s.damageDealt.burst }
-  ];
-  sources.sort((a, b) => b.val - a.val);
-  const topSource = sources[0].val > 0 ? sources[0].label : 'None';
+  // Calculate percentages
+  const normalPct = totalDmg > 0 ? (normalDmg / totalDmg) * 100 : 0;
+  const enhancedPct = totalDmg > 0 ? (enhancedDmg / totalDmg) * 100 : 0;
+  const skillPct = totalDmg > 0 ? (skillDmg / totalDmg) * 100 : 0;
+  const burstPct = totalDmg > 0 ? (burstDmg / totalDmg) * 100 : 0;
+
+  // Segment colors based on element (Cryo Blue vs Pyro Red/Orange)
+  const isCryo = winner.element === 'cryo';
+  const cNormal = '#78909c'; // Cool slate grey
+  const cEnhanced = isCryo ? '#00e5ff' : '#ff3d00'; // Cryo Cyan vs Pyro Red
+  const cSkill = isCryo ? '#00838f' : '#ff9100'; // Deep Teal vs Flame Orange
+  const cBurst = isCryo ? '#ffd600' : '#ffea00'; // Soumetsu Gold vs Ryuukin Amber
+
+  // Build the breakdown bar html segments
+  let barHtml = '';
+  if (totalDmg === 0) {
+    barHtml = `<div class="win-stat-bar-segment" style="width: 100%; background: ${cNormal};"></div>`;
+  } else {
+    if (normalPct > 0) barHtml += `<div class="win-stat-bar-segment" style="width: ${normalPct}%; background: ${cNormal};" title="Normal: ${normalDmg}"></div>`;
+    if (enhancedPct > 0) barHtml += `<div class="win-stat-bar-segment" style="width: ${enhancedPct}%; background: ${cEnhanced};" title="Enhanced Normal: ${enhancedDmg}"></div>`;
+    if (skillPct > 0) barHtml += `<div class="win-stat-bar-segment" style="width: ${skillPct}%; background: ${cSkill};" title="Skill: ${skillDmg}"></div>`;
+    if (burstPct > 0) barHtml += `<div class="win-stat-bar-segment" style="width: ${burstPct}%; background: ${cBurst};" title="Ultimate: ${burstDmg}"></div>`;
+  }
 
   statsContainer.innerHTML = `
     <div class="win-stat-row">
       <span class="win-stat-label">Total Damage Done:</span>
       <span class="win-stat-value">${totalDmg}</span>
     </div>
-    <div class="win-stat-row">
-      <span class="win-stat-label">Most Impactful:</span>
-      <span class="win-stat-value">${topSource}</span>
+    
+    <div class="win-stat-bar-wrapper">
+      ${barHtml}
     </div>
-    <div class="win-stat-divider"></div>
+
+    <div class="win-stat-legend-container">
+      <div class="win-stat-legend-item">
+        <span class="win-stat-legend-dot" style="background: ${cNormal}"></span>
+        <span class="win-stat-legend-label">Normal</span>
+        <span class="win-stat-legend-val">${normalDmg} <span class="win-stat-legend-pct">(${Math.round(normalPct)}%)</span></span>
+      </div>
+      <div class="win-stat-legend-item">
+        <span class="win-stat-legend-dot" style="background: ${cEnhanced}"></span>
+        <span class="win-stat-legend-label">Enhanced</span>
+        <span class="win-stat-legend-val">${enhancedDmg} <span class="win-stat-legend-pct">(${Math.round(enhancedPct)}%)</span></span>
+      </div>
+      <div class="win-stat-legend-item">
+        <span class="win-stat-legend-dot" style="background: ${cSkill}"></span>
+        <span class="win-stat-legend-label">Skill (E)</span>
+        <span class="win-stat-legend-val">${skillDmg} <span class="win-stat-legend-pct">(${Math.round(skillPct)}%)</span></span>
+      </div>
+      <div class="win-stat-legend-item">
+        <span class="win-stat-legend-dot" style="background: ${cBurst}"></span>
+        <span class="win-stat-legend-label">Ultimate</span>
+        <span class="win-stat-legend-val">${burstDmg} <span class="win-stat-legend-pct">(${Math.round(burstPct)}%)</span></span>
+      </div>
+    </div>
+
+    <div class="win-stat-divider" style="margin-top: 16px;"></div>
+
     <div class="win-stat-row">
       <span class="win-stat-label">Skill Casts:</span>
       <span class="win-stat-value">${s.casts.skill}</span>
