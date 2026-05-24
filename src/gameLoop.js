@@ -1486,8 +1486,7 @@ export class GameLoop {
     if (!this.stage || !fighter.alive || !opponent.alive) return;
 
     if (sound) {
-      const volume = isFinalShot ? 1.0 : 0.78;
-      playSFX(sound, volume);
+      playSFX(sound, 1.0);
     }
 
     const startX = fighter.body.x;
@@ -1803,7 +1802,7 @@ export class GameLoop {
     });
 
     // Play a firework whistle launcher SFX!
-    playSFX('/audio/yoimiya/yoimiya-na_5.mp3', 0.85); // Crisp whistle launcher
+    playSFX('/audio/yoimiya/yoimiya-na_5.mp3', 1.0); // Crisp whistle launcher
   }
 }
 
