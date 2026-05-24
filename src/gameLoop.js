@@ -1324,10 +1324,14 @@ export class GameLoop {
 
     // Trigger spark effect muzzle flash originating from Yoimiya's circle
     if (fighter.vfx) {
-      if (isFinalShot && typeof fighter.vfx.triggerFinisherLaunch === 'function') {
-        fighter.vfx.triggerFinisherLaunch(startX, startY, angle);
+      // Offset start position to bow (approx 30px out)
+      const bowX = startX + Math.cos(angle) * 30;
+      const bowY = startY + Math.sin(angle) * 30;
+
+      if (isFinalShot && isBlazing && typeof fighter.vfx.triggerFinisherLaunch === 'function') {
+        fighter.vfx.triggerFinisherLaunch(bowX, bowY, angle);
       } else if (isBlazing) {
-        fighter.vfx.triggerCollision(startX, startY);
+        fighter.vfx.triggerCollision(bowX, bowY);
       }
     }
 
