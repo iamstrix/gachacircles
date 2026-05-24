@@ -540,6 +540,9 @@ export class PyroVFX {
     const px = x + Math.cos(angle) * distance;
     const py = y + Math.sin(angle) * distance;
 
+    const colors = [PYRO_COLORS.vividOrange, PYRO_COLORS.bloodOrange, PYRO_COLORS.brightGold];
+    const color = colors[Math.floor(Math.random() * colors.length)];
+
     this._skill.emit(px, py, {
       count: 2, // Emitted every frame -> high density
       speedMin: -0.5,
@@ -551,8 +554,8 @@ export class PyroVFX {
       sizeMax: 4.2,
       startAlpha: 0.95,
       endAlpha: 0,
-      blendMode: 'add',
-      gradient: PYRO_GRADIENT,
+      blendMode: Math.random() < 0.3 ? 'normal' : 'add',
+      color: color,
       shrink: true,
       targetX: x,
       targetY: y,
@@ -572,7 +575,7 @@ export class PyroVFX {
       startAlpha: 1.0,
       endAlpha: 0,
       blendMode: 'add',
-      color: PYRO_COLORS.accent,
+      color: Math.random() < 0.5 ? PYRO_COLORS.accent : PYRO_COLORS.brightGold,
       shrink: true,
     });
 
