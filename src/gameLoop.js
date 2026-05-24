@@ -450,12 +450,27 @@ export class GameLoop {
           const currentB = Math.round(startB + (endB - startB) * progress);
           const currentColor = (currentR << 16) | (currentG << 8) | currentB;
 
+          // Interpolate fill color from dark-orange (#9e2a00) to glowing white (#ffffff)
+          const fillStartR = 0x9e, fillStartG = 0x2a, fillStartB = 0x00;
+          const fillEndR = 0xff, fillEndG = 0xff, fillEndB = 0xff;
+          
+          const fillR = Math.round(fillStartR + (fillEndR - fillStartR) * progress);
+          const fillG = Math.round(fillStartG + (fillEndG - fillStartG) * progress);
+          const fillB = Math.round(fillStartB + (fillEndB - fillStartB) * progress);
+          const fillCol = (fillR << 16) | (fillG << 8) | fillB;
+
+          // Growing fill opacity as energy accumulates (starts at 0.15, peaks at 0.75 for intense flash)
+          const fillAlpha = 0.15 + 0.60 * progress;
+
           effect.ring.clear();
           effect.ring.circle(0, 0, ringRadius);
           
+          // Fill the circle
+          effect.ring.fill({ color: fillCol, alpha: fillAlpha });
+          
           // Elegant glow stroke that solidifies as it gets closer
           const alpha = 0.35 + 0.65 * progress;
-          effect.ring.stroke({ color: currentColor, width: 3.0, alpha });
+          effect.ring.stroke({ color: currentColor, width: 3.5, alpha });
           
           effect.ring.x = effect.owner.body.x;
           effect.ring.y = effect.owner.body.y;
