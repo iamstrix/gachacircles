@@ -226,7 +226,7 @@ export class GameLoop {
         const dist = Math.sqrt(dx * dx + dy * dy);
         
         // ── 2. Active Parry Check (Melee Swing deflection - blocks physical arrows, and blocks blazing arrows if Cryo Imbued!) ──
-        if (dist < arrow.target.body.radius + 15) {
+        if (!arrow.isFireworkRocket && dist < arrow.target.body.radius + 15) {
           const isCryoImbued = (arrow.target.id === 'ayaka' && arrow.target.passiveTimer > 0);
           const canParryBlazing = arrow.isBlazing && isCryoImbued;
 
@@ -251,6 +251,10 @@ export class GameLoop {
               if (arrow.target.vfx) {
                 arrow.target.vfx.triggerCollision(arrow.x, arrow.y);
               }
+              // Apply slight knockback for normal arrows (40% of blazing arrow block strength)
+              const parryKnockback = 2.6;
+              arrow.target.body.vx += Math.cos(arrow.angle) * parryKnockback;
+              arrow.target.body.vy += Math.sin(arrow.angle) * parryKnockback;
             }
             playSynthDeflect();
             
