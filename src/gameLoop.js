@@ -1221,7 +1221,7 @@ export class GameLoop {
     if (!fighter.alive || !opponent.alive) return;
 
     if (sound) {
-      playSFX(sound);
+      playSFX(sound, 0.78);
     }
 
     // Trigger animation in fighter
@@ -1309,7 +1309,7 @@ export class GameLoop {
     if (!this.stage || !fighter.alive || !opponent.alive) return;
 
     if (sound) {
-      playSFX(sound);
+      playSFX(sound, 0.78);
     }
 
     const startX = fighter.body.x;
