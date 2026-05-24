@@ -170,3 +170,79 @@ export function playSynthClash(volume = 0.38) {
     console.debug('Synth clash failed:', e);
   }
 }
+
+/**
+ * Synthesize an extremely clean, high-pitched metallic sword deflection ring in real-time
+ * whenever Ayaka parries Yoimiya's arrows with her sword or shreds them in her vortex.
+ * @param {number} [volume=0.28] - Playback volume
+ */
+export function playSynthDeflect(volume = 0.28) {
+  try {
+    const ctx = getAudioContext();
+    if (!ctx) return;
+
+    const now = ctx.currentTime;
+
+    // 1. High-frequency metallic chink (sine wave slide)
+    const osc1 = ctx.createOscillator();
+    const gain1 = ctx.createGain();
+    osc1.type = 'sine';
+    osc1.frequency.setValueAtTime(2600, now);
+    osc1.frequency.exponentialRampToValueAtTime(1800, now + 0.022);
+    
+    gain1.gain.setValueAtTime(volume * 0.95, now);
+    gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.025);
+    
+    osc1.connect(gain1);
+    gain1.connect(ctx.destination);
+
+    // 2. Lingering crystal metal ring (high-frequency sine with long decay)
+    const osc2 = ctx.createOscillator();
+    const gain2 = ctx.createGain();
+    osc2.type = 'sine';
+    osc2.frequency.setValueAtTime(3600, now);
+    osc2.frequency.setValueAtTime(3600, now + 0.01);
+    
+    gain2.gain.setValueAtTime(volume * 0.25, now);
+    // Exponential fade-out representing a premium crystal sword ring
+    gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.16);
+    
+    osc2.connect(gain2);
+    gain2.connect(ctx.destination);
+
+    // 3. Short high-pass impact noise transient
+    const bufferSize = ctx.sampleRate * 0.01;
+    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      data[i] = Math.random() * 2 - 1;
+    }
+    
+    const noiseNode = ctx.createBufferSource();
+    noiseNode.buffer = buffer;
+    
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'highpass';
+    filter.frequency.value = 2000;
+    
+    const noiseGain = ctx.createGain();
+    noiseGain.gain.setValueAtTime(volume * 0.85, now);
+    noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.008);
+    
+    noiseNode.connect(filter);
+    filter.connect(noiseGain);
+    noiseGain.connect(ctx.destination);
+
+    // Trigger all layers
+    osc1.start(now);
+    osc2.start(now);
+    noiseNode.start(now);
+
+    // Stop nodes
+    osc1.stop(now + 0.03);
+    osc2.stop(now + 0.18);
+    noiseNode.stop(now + 0.01);
+  } catch (e) {
+    console.debug('Synth deflect failed:', e);
+  }
+}

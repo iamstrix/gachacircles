@@ -82,17 +82,26 @@ export class DamageNumbers {
   spawn(x, y, amount, element, isCrit = false) {
     const el = document.createElement('div');
     el.className = 'gdmg-num' + (isCrit ? ' crit' : '');
-    el.textContent = String(Math.round(amount));
-
-    // Colours
-    if (isCrit) {
-      el.style.color = element === 'cryo' ? CRIT_CRYO : CRIT_PYRO;
+    
+    if (typeof amount === 'string') {
+      el.textContent = amount;
     } else {
-      el.style.color = element === 'cryo' ? CRYO_TEXT : PYRO_TEXT;
+      el.textContent = String(Math.round(amount));
     }
 
-    // Size
-    el.style.fontSize = isCrit ? '28px' : '18px';
+    // Colours and sizing
+    if (amount === 'MELT!') {
+      el.style.color = '#ff1744'; // Sizzling pinkish-red Melt reaction color
+      el.style.textShadow = '0 0 10px #ff1744, 0 0 2px #000';
+      el.style.fontSize = '30px';
+      el.style.fontWeight = '900';
+    } else if (isCrit) {
+      el.style.color = element === 'cryo' ? CRIT_CRYO : CRIT_PYRO;
+      el.style.fontSize = '28px';
+    } else {
+      el.style.color = element === 'cryo' ? CRYO_TEXT : PYRO_TEXT;
+      el.style.fontSize = '18px';
+    }
 
     // Position – offset so the number is centred at (x, y)
     // We need to account for the canvas offset relative to the viewport

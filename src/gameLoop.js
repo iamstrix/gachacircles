@@ -48,9 +48,12 @@ export class GameLoop {
       preloadSFX(`/audio/ayaka/ayaka-na_${i}.wav`);
     }
 
-    // Preload skill and burst sound files for Ayaka
+    // Preload skill and burst sound files
     preloadSFX('/audio/ayaka/ayaka-skill.mp3');
     preloadSFX('/audio/ayaka/ayaka-ultimate.mp3');
+    preloadSFX('/audio/yoimiya/ayaka-skill.mp3'); // Existing misnamed file or just preloading for safety
+    preloadSFX('/audio/yoimiya/yoimiya-skill.wav');
+    preloadSFX('/audio/yoimiya/yoimiya-ultimate.wav');
   }
 
   /**
@@ -150,10 +153,27 @@ export class GameLoop {
 
         if (isInVortex) {
           // Shred arrow on contact with vortex
-          if (arrow.target.vfx) {
-            arrow.target.vfx.triggerCollision(arrow.x, arrow.y);
+          if (arrow.isBlazing) {
+            // Trigger spectacular Melt reaction visual clash within the blizzard!
+            if (arrow.target.vfx && typeof arrow.target.vfx.triggerMeltReaction === 'function') {
+              arrow.target.vfx.triggerMeltReaction(arrow.x, arrow.y);
+            }
+            // Spawn a bold floating elemental reaction text popup!
+            if (this.damageNumbers) {
+              this.damageNumbers.spawn(arrow.x, arrow.y - 25, 'MELT!', 'cryo', true);
+            }
+          } else {
+            // Standard physical deflect sparks
+            if (arrow.target.vfx) {
+              arrow.target.vfx.triggerCollision(arrow.x, arrow.y);
+            }
           }
+
           playSynthDeflect();
+          
+          // Spawn the anime-style sliced arrow shards (respecting blazing state!)
+          this._spawnSlicedArrowShards(arrow.x, arrow.y, arrow.angle, arrow.isBlazing);
+
           this.stage.removeChild(arrow.visual);
           arrow.visual.destroy();
           return false;
@@ -161,8 +181,12 @@ export class GameLoop {
 
         // Spawn fire particle trail behind flying arrow only if it's a Blazing Arrow!
         if (arrow.isBlazing && arrow.owner.vfx) {
-          const multiplier = arrow.isKindlingSpark ? 1.0 : 2.0;
-          arrow.owner.vfx.updateAmbient(arrow.x, arrow.y, delta * multiplier);
+          if (typeof arrow.owner.vfx.triggerArrowTrail === 'function') {
+            arrow.owner.vfx.triggerArrowTrail(arrow.x, arrow.y, arrow.isKindlingSpark);
+          } else {
+            // Fallback for missing function
+            arrow.owner.vfx.updateAmbient(arrow.x, arrow.y, delta);
+          }
         }
 
         // Out of bounds check
@@ -210,8 +234,8 @@ export class GameLoop {
             }
             playSynthDeflect();
             
-            // Spawn the anime-style sliced arrow shards!
-            this._spawnSlicedArrowShards(arrow.x, arrow.y, arrow.angle);
+            // Spawn the anime-style sliced arrow shards (respecting blazing state!)
+            this._spawnSlicedArrowShards(arrow.x, arrow.y, arrow.angle, arrow.isBlazing);
 
             this.stage.removeChild(arrow.visual);
             arrow.visual.destroy();
@@ -516,7 +540,7 @@ export class GameLoop {
         const dy = effect.target.body.y - effect.owner.body.y;
         effect.angle = Math.atan2(dy, dx);
 
-        const progress = 1 - (effect.timer / 1.6); // Divisor reduced to 1.6s
+        const progress = 1 - (effect.timer / 1.3); // Divisor reduced to 1.3s to match shorter windup
         const ringRadius = 250 * (1 - progress) + 40; // Starts at 250, closes to 40
 
         if (effect.owner.vfx) {
@@ -1006,6 +1030,7 @@ export class GameLoop {
             effect.symbolSprite = sprite;
           }).catch(err => console.warn('Could not load Cryo symbol:', err));
         } else if (fighter.id === 'yoimiya') {
+          playSFX('/audio/yoimiya/yoimiya-skill.wav');
           // Yoimiya E: Infusion, triggers aura visual (VFX triggered inside activateSkill)
           
           // Do NOT call _startYoimiyaArrowCombo directly here to avoid double streams of arrows.
@@ -1035,7 +1060,7 @@ export class GameLoop {
             type: 'soumetsu_cast',
             owner: fighter,
             target: opponent,
-            timer: 1.6, // Windup reduced by 0.5s (from 2.1s to 1.6s) to sync with audio!
+            timer: 1.3, // Windup reduced by another 0.3s (from 1.6s to 1.3s) for snappier feel!
             telegraph: telegraphGfx,
             ring: ringGfx,
             angle: 0
@@ -1069,7 +1094,7 @@ export class GameLoop {
           fighter.isInvincible = true; // Invincible during burst cast windup!
 
           // Play cast audio/whistle
-          playSFX('/audio/yoimiya/yoimiya-na_4.mp3', 0.85);
+          playSFX('/audio/yoimiya/yoimiya-ultimate.wav');
         }
       }
     }
@@ -1305,15 +1330,10 @@ export class GameLoop {
           x: startX,
           y: startY,
           angle: sparkAngle,
-          speed: speed * 0.75, // Curving sparks travel slower for a dramatic sweep!
+          speed: speed * 0.15, // Curving sparks travel MUCH slower to ensure homing!
           visual: sparkVisual,
           owner: fighter,
           target: opponent,
-          isBlazing: true,
-          isKindlingSpark: true
-        });
-      }
-    }
           isBlazing: true,
           isKindlingSpark: true
         });
@@ -1376,7 +1396,7 @@ export class GameLoop {
    * Spawn two realistic, tumbling arrow shards (sliced in half) that fly
    * outward to the sides and fade away, representing an anime-style sword cut!
    */
-  _spawnSlicedArrowShards(x, y, angle) {
+  _spawnSlicedArrowShards(x, y, angle, isBlazing = false) {
     if (!this.stage) return;
 
     // ── Shard 1: The Silver Metal Tip (Front Half) ────────────────────
@@ -1387,7 +1407,7 @@ export class GameLoop {
     shardA.lineTo(8, 1.5);
     shardA.lineTo(0, 1.5);
     shardA.closePath();
-    shardA.fill({ color: 0x90a4ae }); // Silver steel tip
+    shardA.fill({ color: isBlazing ? 0xff4500 : 0x90a4ae }); // Silver steel tip or Red-orange Blaze
 
     shardA.x = x;
     shardA.y = y;
@@ -1401,19 +1421,19 @@ export class GameLoop {
     shardB.lineTo(0, 1.5);
     shardB.lineTo(-10, 1.5);
     shardB.closePath();
-    shardB.fill({ color: 0x90a4ae });
+    shardB.fill({ color: isBlazing ? 0xff4500 : 0x90a4ae });
 
     shardB.moveTo(-8, -4);
     shardB.lineTo(-4, -1.5);
     shardB.lineTo(-10, -1.5);
     shardB.closePath();
-    shardB.fill({ color: 0x8d6e63 }); // Wooden brown feather fletch
+    shardB.fill({ color: isBlazing ? 0xffaa00 : 0x8d6e63 }); // Wooden brown or Golden Blaze fletch
 
     shardB.moveTo(-8, 4);
     shardB.lineTo(-4, 1.5);
     shardB.lineTo(-10, 1.5);
     shardB.closePath();
-    shardB.fill({ color: 0x8d6e63 });
+    shardB.fill({ color: isBlazing ? 0xffaa00 : 0x8d6e63 });
 
     shardB.x = x;
     shardB.y = y;

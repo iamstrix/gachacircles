@@ -243,7 +243,7 @@ export class Fighter {
           orbitDist -= 10;
           // Apply forward dash impulse in the first half of N5
           if (p > 0.1 && p < 0.4 && opponent) {
-            const dashForce = 0.8;
+            const dashForce = 1.2;
             this.body.vx += Math.cos(targetAngle) * dashForce;
             this.body.vy += Math.sin(targetAngle) * dashForce;
           }
@@ -337,6 +337,35 @@ export class Fighter {
     // Update VFX ambient effects
     if (this.vfx) {
       this.vfx.updateAmbient(this.body.x, this.body.y, delta);
+    }
+
+    // Update invincibility visual pulse
+    if (this.isInvincible && this.circleGraphics) {
+      // Gentle golden pulse! Oscillates between white (0xffffff) and vibrant gold (0xffd54f)
+      const pulse = 0.5 + 0.5 * Math.sin(elapsed * 15);
+      const startR = 0xff, startG = 0xff, startB = 0xff;
+      const endR = 0xff, endG = 0xd5, endB = 0x4f;
+      const r = Math.round(startR + (endR - startR) * pulse);
+      const g = Math.round(startG + (endG - startG) * pulse);
+      const b = Math.round(startB + (endB - startB) * pulse);
+      this.circleGraphics.tint = (r << 16) | (g << 8) | b;
+    } else if (this.circleGraphics && this.circleGraphics.tint !== 0xffffff && this.circleGraphics.tint !== 0xff4444) {
+      // Revert to standard
+      this.circleGraphics.tint = 0xffffff;
+    }
+
+    // Tint Ayaka's sword with a beautiful glowing cyan/light blue color when she has passive Cryo Infusion!
+    if (this.weaponSprite && this.id === 'ayaka') {
+      if (this.passiveTimer > 0) {
+        this.weaponSprite.tint = 0x80deea; // Icy cyan glow
+        
+        // Emit beautiful trailing snowy ice crystal particles from the sword!
+        if (this.vfx && typeof this.vfx.triggerSwordInfusionParticles === 'function') {
+          this.vfx.triggerSwordInfusionParticles(this.body.x + this.weaponSprite.x, this.body.y + this.weaponSprite.y);
+        }
+      } else {
+        this.weaponSprite.tint = 0xffffff; // Revert to original texture color
+      }
     }
   }
 

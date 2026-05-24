@@ -360,6 +360,107 @@ export class CryoVFX {
     }
   }
 
+  /**
+   * Trigger beautiful, floating snowy ice crystal particles trailing Ayaka's sword.
+   * Emitted while her Cryo sword infusion is active.
+   */
+  triggerSwordInfusionParticles(x, y) {
+    // We emit 1 or 2 small snowy crystals per frame
+    this._burst.emit(x, y, {
+      count: 1,
+      speedMin: 0.1,
+      speedMax: 0.8,
+      spreadAngle: Math.PI * 2,
+      lifetimeMin: 15,
+      lifetimeMax: 35,
+      sizeMin: 1.0,
+      sizeMax: 2.8,
+      startAlpha: 0.85,
+      endAlpha: 0.0,
+      gravity: -0.008, // float up slightly like snow
+      blendMode: 'add',
+      gradient: CRYO_GRADIENT,
+      shrink: true,
+    });
+
+    // Sizzling bright ice sparkles
+    if (Math.random() < 0.35) {
+      this._burst.emit(x, y, {
+        count: 1,
+        speedMin: 0.4,
+        speedMax: 1.5,
+        spreadAngle: Math.PI * 2,
+        lifetimeMin: 10,
+        lifetimeMax: 20,
+        sizeMin: 0.5,
+        sizeMax: 1.8,
+        startAlpha: 0.9,
+        endAlpha: 0.0,
+        blendMode: 'add',
+        color: CRYO_COLORS.accent,
+        shrink: true,
+      });
+    }
+  }
+
+  /**
+   * Trigger a magnificent elemental Melt reaction clash when a Cryo-infused sword parries a Pyro arrow.
+   * Spawns a massive burst of icy blue crystals, sizzling orange sparks, and dense white vapor mist.
+   */
+  triggerMeltReaction(x, y) {
+    // 1. White vapor steam clouds (representing vaporization)
+    this._burst.emit(x, y, {
+      count: 25,
+      speedMin: 0.8,
+      speedMax: 3.5,
+      spreadAngle: Math.PI * 2,
+      lifetimeMin: 25,
+      lifetimeMax: 50,
+      sizeMin: 4.0,
+      sizeMax: 8.5,
+      startAlpha: 0.75,
+      endAlpha: 0.0,
+      color: 0xe0f7fa, // Soft steaming mist
+      shrink: true,
+    });
+
+    // 2. Icy blue Cryo shards flying out
+    this._burst.emit(x, y, {
+      count: 20,
+      speedMin: 2.5,
+      speedMax: 7.5,
+      spreadAngle: Math.PI * 2,
+      lifetimeMin: 18,
+      lifetimeMax: 36,
+      sizeMin: 2.0,
+      sizeMax: 4.5,
+      startAlpha: 0.95,
+      endAlpha: 0.0,
+      gravity: 0.015,
+      blendMode: 'add',
+      gradient: CRYO_GRADIENT,
+      shrink: true,
+    });
+
+    // 3. Hot Pyro sparks spraying (Melt combustion residue)
+    this._burst.emit(x, y, {
+      count: 20,
+      speedMin: 2.0,
+      speedMax: 6.5,
+      spreadAngle: Math.PI * 2,
+      lifetimeMin: 15,
+      lifetimeMax: 32,
+      sizeMin: 1.5,
+      sizeMax: 3.5,
+      startAlpha: 0.95,
+      endAlpha: 0.0,
+      gravity: 0.02,
+      blendMode: 'add',
+      color: 0xff6d00, // Vivid pyro orange
+      shrink: true,
+    });
+  }
+
   // ── Lifecycle helpers ────────────────────────────────────
 
   /** Whether the cyclone skill is still running. */

@@ -69,6 +69,61 @@ export class PyroVFX {
     this._ambient.update(delta);
   }
 
+  /**
+   * Spawns particle trails behind flaming projectiles.
+   */
+  triggerArrowTrail(x, y, isKindlingSpark) {
+    if (isKindlingSpark) {
+      // Dense burning particles and sparkles for homing embers!
+      this._ambient.emit(x, y, {
+        count: 5,
+        speedMin: 0.2,
+        speedMax: 1.8,
+        spreadAngle: Math.PI * 2,
+        lifetimeMin: 25,
+        lifetimeMax: 50,
+        sizeMin: 1.5,
+        sizeMax: 3.5,
+        startAlpha: 0.85,
+        endAlpha: 0,
+        blendMode: 'add',
+        color: PYRO_COLORS.brightGold,
+        shrink: true,
+      });
+      // Additional fast, sizzling orange sparks
+      this._burst.emit(x, y, {
+        count: 3,
+        speedMin: 1.5,
+        speedMax: 4.0,
+        spreadAngle: Math.PI * 2,
+        lifetimeMin: 15,
+        lifetimeMax: 35,
+        sizeMin: 2,
+        sizeMax: 4.5,
+        blendMode: 'add',
+        color: PYRO_COLORS.vividOrange,
+        shrink: true,
+      });
+    } else {
+      // Normal flaming arrow trail
+      this._ambient.emit(x, y, {
+        count: 1,
+        speedMin: 0.1,
+        speedMax: 0.5,
+        spreadAngle: Math.PI * 2,
+        lifetimeMin: 15,
+        lifetimeMax: 30,
+        sizeMin: 1.0,
+        sizeMax: 2.5,
+        startAlpha: 0.6,
+        endAlpha: 0,
+        blendMode: 'add',
+        color: PYRO_COLORS.vividOrange,
+        shrink: true,
+      });
+    }
+  }
+
   // ── Collision burst ──────────────────────────────────────
 
   /**
@@ -179,6 +234,80 @@ export class PyroVFX {
     });
   }
 
+  /**
+   * Trigger a spectacular, dense fire-spark and sparkling orange pyrotechnic explosion
+   * at (x, y) when a Pyro-infused blazing arrow hits the opponent.
+   */
+  triggerBlazingCollision(x, y) {
+    // 1. Layer: Vivid Orange and Gold Spark Spray (dense burst)
+    this._burst.emit(x, y, {
+      count: 25 + Math.floor(Math.random() * 10), // 25-35 particles
+      speedMin: 3.5,
+      speedMax: 9.5,
+      spreadAngle: Math.PI * 2,
+      lifetimeMin: 18,
+      lifetimeMax: 38,
+      sizeMin: 2,
+      sizeMax: 5.5,
+      startAlpha: 1,
+      endAlpha: 0,
+      gravity: 0.05,     // sparks arc downward nicely
+      blendMode: 'add',
+      gradient: PYRO_GRADIENT,
+      shrink: true,
+    });
+
+    // 2. Layer: Accent Sparkles (high-speed sparkling fireworks fragments)
+    this._burst.emit(x, y, {
+      count: 15,
+      speedMin: 5,
+      speedMax: 12,
+      spreadAngle: Math.PI * 2,
+      lifetimeMin: 12,
+      lifetimeMax: 24,
+      sizeMin: 1,
+      sizeMax: 3.0,
+      startAlpha: 1,
+      endAlpha: 0,
+      blendMode: 'add',
+      color: PYRO_COLORS.accent,
+      shrink: true,
+    });
+
+    // 3. Layer: Bright expanding pyrotechnic core flash
+    this._burst.emit(x, y, {
+      count: 1,
+      speedMin: 0,
+      speedMax: 0,
+      lifetimeMin: 12,
+      lifetimeMax: 18,
+      sizeMin: 35,
+      sizeMax: 65,
+      startAlpha: 0.85,
+      endAlpha: 0,
+      blendMode: 'add',
+      color: PYRO_COLORS.brightGold,
+      shrink: true,
+    });
+
+    // 4. Layer: High contrast dark charred embers
+    this._burst.emit(x, y, {
+      count: 12,
+      speedMin: 1.5,
+      speedMax: 4.5,
+      spreadAngle: Math.PI * 2,
+      lifetimeMin: 30,
+      lifetimeMax: 55,
+      sizeMin: 1.5,
+      sizeMax: 3.5,
+      startAlpha: 0.9,
+      endAlpha: 0,
+      blendMode: 'normal',
+      color: PYRO_COLORS.dark,
+      shrink: true,
+    });
+  }
+
   // ── Skill effect – Ryuukin Saxifrage firework ────────────
 
   /**
@@ -207,6 +336,102 @@ export class PyroVFX {
       gravity: 0.02,
       blendMode: 'add',
       gradient: PYRO_GRADIENT,
+      shrink: true,
+    });
+  }
+
+  /**
+   * Trigger a massive directional piercing gust of firework particles and embers
+   * shooting behind the target along the arrow's impact trajectory angle.
+   */
+  triggerUltimateHitGust(x, y, angle) {
+    // 1. Core high-speed plasma jet stream (vivid orange and gold sparks)
+    this._skill.emit(x, y, {
+      count: 60, // Sizable count for a massive feel
+      speedMin: 5.5,
+      speedMax: 14.5,
+      spreadAngle: Math.PI * 0.3, // Tight piercing cone
+      angleCenter: angle, // Centered in the direction of the arrow's travel
+      lifetimeMin: 18,
+      lifetimeMax: 36,
+      sizeMin: 2.2,
+      sizeMax: 5.5,
+      startAlpha: 1.0,
+      endAlpha: 0.0,
+      gravity: 0.01,
+      blendMode: 'add',
+      gradient: PYRO_GRADIENT,
+      shrink: true,
+    });
+
+    // 2. High-speed brilliant golden crackle fragments (longer tail)
+    this._skill.emit(x, y, {
+      count: 40,
+      speedMin: 7.0,
+      speedMax: 17.0,
+      spreadAngle: Math.PI * 0.2, // Even tighter cone for the hyper-fast piercing core
+      angleCenter: angle,
+      lifetimeMin: 12,
+      lifetimeMax: 28,
+      sizeMin: 1.2,
+      sizeMax: 3.2,
+      startAlpha: 0.95,
+      endAlpha: 0.0,
+      blendMode: 'add',
+      color: PYRO_COLORS.brightGold,
+      shrink: true,
+    });
+
+    // 3. Massive high contrast dark charred embers jet (directional gust - 55 particles)
+    this._burst.emit(x, y, {
+      count: 55,
+      speedMin: 3.5,
+      speedMax: 12.0,
+      spreadAngle: Math.PI * 0.45,
+      angleCenter: angle,
+      lifetimeMin: 20,
+      lifetimeMax: 45,
+      sizeMin: 2.0,
+      sizeMax: 4.8,
+      startAlpha: 0.95,
+      endAlpha: 0.0,
+      blendMode: 'normal',
+      color: PYRO_COLORS.dark,
+      shrink: true,
+    });
+
+    // 4. Large radial dark soot/ash explosion (45 particles blasting in all directions)
+    this._burst.emit(x, y, {
+      count: 45,
+      speedMin: 1.5,
+      speedMax: 7.0,
+      spreadAngle: Math.PI * 2,
+      lifetimeMin: 30,
+      lifetimeMax: 60,
+      sizeMin: 1.8,
+      sizeMax: 3.8,
+      startAlpha: 0.9,
+      endAlpha: 0.0,
+      blendMode: 'normal',
+      color: PYRO_COLORS.dark,
+      shrink: true,
+    });
+
+    // 4. Sizzling golden accent sparks spraying out
+    this._burst.emit(x, y, {
+      count: 25,
+      speedMin: 4.0,
+      speedMax: 12.0,
+      spreadAngle: Math.PI * 0.35,
+      angleCenter: angle,
+      lifetimeMin: 14,
+      lifetimeMax: 26,
+      sizeMin: 1.0,
+      sizeMax: 2.5,
+      startAlpha: 0.9,
+      endAlpha: 0.0,
+      blendMode: 'add',
+      color: PYRO_COLORS.accent,
       shrink: true,
     });
   }
@@ -302,6 +527,140 @@ export class PyroVFX {
       color: PYRO_COLORS.accent,
       shrink: true,
     });
+  }
+
+  /**
+   * Trigger dense golden and orange firework sparkles swirling and imploding around Yoimiya's center.
+   * Also releases crackling accent embers popping outwards for maximum pyrotechnic intensity.
+   */
+  triggerWindupSparks(x, y) {
+    // 1. Swirling/imploding fireworks sparkles pulling in from outer ring
+    const angle = Math.random() * Math.PI * 2;
+    const distance = 30 + Math.random() * 45; // 30 to 75px radius
+    const px = x + Math.cos(angle) * distance;
+    const py = y + Math.sin(angle) * distance;
+
+    this._skill.emit(px, py, {
+      count: 2, // Emitted every frame -> high density
+      speedMin: -0.5,
+      speedMax: 1.2,
+      spreadAngle: Math.PI * 2,
+      lifetimeMin: 18,
+      lifetimeMax: 36,
+      sizeMin: 1.8,
+      sizeMax: 4.2,
+      startAlpha: 0.95,
+      endAlpha: 0,
+      blendMode: 'add',
+      gradient: PYRO_GRADIENT,
+      shrink: true,
+      targetX: x,
+      targetY: y,
+      attractionForce: 0.35, // Dynamic gravity pull to create a beautiful charging vortex
+    });
+
+    // 2. High-speed bright gold/orange sparks crackling outwards
+    this._skill.emit(x, y, {
+      count: 1,
+      speedMin: 1.2,
+      speedMax: 5.0,
+      spreadAngle: Math.PI * 2,
+      lifetimeMin: 10,
+      lifetimeMax: 24,
+      sizeMin: 1.0,
+      sizeMax: 3.2,
+      startAlpha: 1.0,
+      endAlpha: 0,
+      blendMode: 'add',
+      color: PYRO_COLORS.accent,
+      shrink: true,
+    });
+
+    // 3. Mini bright gold/orange core flashes
+    if (Math.random() < 0.15) {
+      this._skill.emit(x, y, {
+        count: 1,
+        speedMin: 0,
+        speedMax: 0.4,
+        spreadAngle: Math.PI * 2,
+        lifetimeMin: 6,
+        lifetimeMax: 14,
+        sizeMin: 15,
+        sizeMax: 30,
+        startAlpha: 0.75,
+        endAlpha: 0,
+        blendMode: 'add',
+        color: PYRO_COLORS.brightGold,
+        shrink: true,
+      });
+    }
+  }
+
+  /**
+   * Trigger burning particle trails at the two orbiting Aurous Blaze mark circles.
+   * Emits embers resembling those from the enhanced/blazing arrow hits.
+   */
+  triggerMarkTrail(x1, y1, x2, y2) {
+    const emitTrail = (x, y) => {
+      // 1. Core orange/gold trail spark
+      this._burst.emit(x, y, {
+        count: 1,
+        speedMin: 0.2,
+        speedMax: 0.8,
+        spreadAngle: Math.PI * 2,
+        lifetimeMin: 15,
+        lifetimeMax: 30,
+        sizeMin: 1.5,
+        sizeMax: 3.2,
+        startAlpha: 0.95,
+        endAlpha: 0,
+        gravity: 0.015,
+        blendMode: 'add',
+        gradient: PYRO_GRADIENT,
+        shrink: true,
+      });
+
+      // 2. Deep charred dark ember (for high contrast/burning smoke look)
+      if (Math.random() < 0.35) {
+        this._burst.emit(x, y, {
+          count: 1,
+          speedMin: 0.1,
+          speedMax: 0.4,
+          spreadAngle: Math.PI * 2,
+          lifetimeMin: 20,
+          lifetimeMax: 40,
+          sizeMin: 1.0,
+          sizeMax: 2.2,
+          startAlpha: 0.8,
+          endAlpha: 0,
+          blendMode: 'normal',
+          color: PYRO_COLORS.dark,
+          shrink: true,
+        });
+      }
+
+      // 3. Sizzling golden accent sparkles
+      if (Math.random() < 0.25) {
+        this._burst.emit(x, y, {
+          count: 1,
+          speedMin: 0.8,
+          speedMax: 1.8,
+          spreadAngle: Math.PI * 2,
+          lifetimeMin: 10,
+          lifetimeMax: 20,
+          sizeMin: 0.8,
+          sizeMax: 1.8,
+          startAlpha: 0.9,
+          endAlpha: 0,
+          blendMode: 'add',
+          color: PYRO_COLORS.accent,
+          shrink: true,
+        });
+      }
+    };
+
+    emitTrail(x1, y1);
+    emitTrail(x2, y2);
   }
 
   // ── Lifecycle helpers ────────────────────────────────────

@@ -59,14 +59,14 @@ function injectStyles() {
       letter-spacing: 0.5px;
     }
     .ghud-name-cryo {
-      color: #00bcd4; /* cyan */
+      color: #00bcd4; /* vibrant cyan */
       -webkit-text-stroke: 1.5px #000;
-      text-shadow: 2px 2px 0px #000;
+      text-shadow: 2px 2px 0px #000, 0 0 10px rgba(0, 188, 212, 0.5);
     }
     .ghud-name-pyro {
-      color: #ff3333; /* red */
+      color: #ff3333; /* vibrant red */
       -webkit-text-stroke: 1.5px #000;
-      text-shadow: 2px 2px 0px #000;
+      text-shadow: 2px 2px 0px #000, 0 0 10px rgba(255, 51, 51, 0.5);
     }
     .ghud-vs {
       color: #000;
@@ -74,10 +74,41 @@ function injectStyles() {
       font-weight: 900;
     }
 
-    /* ── Health Bars (Hidden to match simple aesthetic) ─────────────────────── */
+    /* ── Health Bars (Active & Readable) ─────────────────────── */
     .ghud-hp-wrap {
-      display: none !important;
+      position: absolute;
+      top: 48px;
+      width: 220px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
     }
+    .ghud-hp-wrap.left { left: 20px; }
+    .ghud-hp-wrap.right { right: 20px; text-align: right; }
+
+    .ghud-hp-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      font-weight: 900;
+      text-transform: uppercase;
+      color: #000;
+    }
+
+    .ghud-hp-bar-bg {
+      width: 100%;
+      height: 12px;
+      background: #fff;
+      border: 2px solid #000;
+      box-shadow: 2px 2px 0px rgba(0,0,0,0.15);
+      overflow: hidden;
+    }
+    .ghud-hp-bar-fill {
+      height: 100%;
+      transition: width 0.3s ease;
+    }
+    .ghud-hp-bar-fill.cryo { background: #00bcd4; }
+    .ghud-hp-bar-fill.pyro { background: #ff3333; }
 
     /* ── Stats ────────────────────────────── */
     .ghud-stats {
@@ -139,6 +170,18 @@ function injectStyles() {
       justify-content: center;
       box-shadow: 2px 2px 0px rgba(0,0,0,0.15);
       pointer-events: auto;
+    }
+    .ghud-action-name {
+      position: absolute;
+      top: -18px;
+      font-size: 9px;
+      font-weight: 900;
+      color: #000;
+      background: #ffd54f;
+      padding: 1px 4px;
+      border: 1.5px solid #000;
+      border-radius: 4px;
+      white-space: nowrap;
     }
     .ghud-emoji {
       font-size: 22px; /* Larger emoji */
@@ -408,6 +451,7 @@ export class HUD {
     const btn = document.createElement('div');
     btn.className = `ghud-action-btn ${element}`;
     btn.innerHTML = `
+      <div class="ghud-action-name">${abilityData.name}</div>
       <div class="ghud-emoji">${emoji}</div>
       <svg viewBox="0 0 32 32" class="ghud-cd-svg">
         <circle cx="16" cy="16" r="13" class="ghud-cd-bg"></circle>

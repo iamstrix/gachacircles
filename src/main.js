@@ -47,6 +47,9 @@ async function init() {
 
   // Add canvas to DOM
   const canvasWrapper = document.getElementById('game-canvas-wrapper');
+  if (canvasWrapper) {
+    canvasWrapper.innerHTML = ''; // Clear previous canvas elements on hot reload
+  }
   canvasWrapper.appendChild(app.canvas);
 
   // Draw arena background
@@ -165,3 +168,17 @@ if (existingApp) existingApp.remove();
 
 // Start the game
 init().catch(console.error);
+
+// Clean up PixiJS application on hot reload to prevent duplicate loops and double audio triggers
+if (import.meta.hot) {
+  import.meta.hot.dispose(() => {
+    if (app) {
+      try {
+        app.destroy(true, { children: true, texture: true, baseTexture: true });
+        console.log('♻️ PixiJS application destroyed for hot reload.');
+      } catch (e) {
+        console.warn('Failed to destroy PixiJS app on HMR:', e);
+      }
+    }
+  });
+}
