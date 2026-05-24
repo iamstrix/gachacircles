@@ -159,7 +159,7 @@ export class GameLoop {
         arrow.visual.rotation = arrow.angle;
 
         // ── 1. Vortex Shield Check (Soumetsu shreds arrows) ────────────
-        const isInVortex = this.activeEffects && this.activeEffects.some(effect => {
+        const isInVortex = !arrow.isFireworkRocket && this.activeEffects && this.activeEffects.some(effect => {
           if (effect.type === 'soumetsu_vortex') {
             const vdx = arrow.x - effect.x;
             const vdy = arrow.y - effect.y;
@@ -199,7 +199,9 @@ export class GameLoop {
 
         // Spawn fire particle trail behind flying arrow only if it's a Blazing Arrow!
         if (arrow.isBlazing && arrow.owner.vfx) {
-          if (typeof arrow.owner.vfx.triggerArrowTrail === 'function') {
+          if (arrow.isFireworkRocket && typeof arrow.owner.vfx.triggerRocketTrail === 'function') {
+            arrow.owner.vfx.triggerRocketTrail(arrow.x, arrow.y, arrow.angle);
+          } else if (typeof arrow.owner.vfx.triggerArrowTrail === 'function') {
             arrow.owner.vfx.triggerArrowTrail(arrow.x, arrow.y, arrow.isKindlingSpark);
           } else {
             // Fallback for missing function
@@ -276,7 +278,12 @@ export class GameLoop {
 
             // Trigger massive fireworks explosion visual and a piercing directional jet stream gust behind the enemy!
             if (arrow.owner.vfx) {
-              arrow.owner.vfx.triggerSkill(arrow.x, arrow.y);
+              if (typeof arrow.owner.vfx.triggerRocketImpact === 'function') {
+                arrow.owner.vfx.triggerRocketImpact(arrow.x, arrow.y);
+              } else {
+                arrow.owner.vfx.triggerSkill(arrow.x, arrow.y);
+              }
+              
               if (typeof arrow.owner.vfx.triggerUltimateHitGust === 'function') {
                 arrow.owner.vfx.triggerUltimateHitGust(arrow.x, arrow.y, arrow.angle);
               }

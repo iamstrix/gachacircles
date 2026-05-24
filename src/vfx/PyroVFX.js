@@ -13,12 +13,12 @@ export class PyroVFX {
    * @param {object} [opts]
    * @param {number} [opts.poolSize=400]
    */
-  constructor({ poolSize = 400 } = {}) {
+  constructor({ poolSize = 600 } = {}) {
     this.container = new Container();
 
-    this._ambient = new ParticleSystem({ poolSize: 80 });
-    this._burst   = new ParticleSystem({ poolSize: 150 });
-    this._skill   = new ParticleSystem({ poolSize: 250 });
+    this._ambient = new ParticleSystem({ poolSize: 150 });
+    this._burst   = new ParticleSystem({ poolSize: 250 });
+    this._skill   = new ParticleSystem({ poolSize: 350 });
 
     this.container.addChild(this._ambient.container);
     this.container.addChild(this._burst.container);
@@ -122,6 +122,116 @@ export class PyroVFX {
         shrink: true,
       });
     }
+  }
+
+  /**
+   * Intensive trail for the ultimate firework rocket.
+   * Sprays a thick volume of multi-toned orange/gold particles.
+   */
+  triggerRocketTrail(x, y, angle) {
+    // 1. Thick smoke/fire trail (multi-toned)
+    const colors = [PYRO_COLORS.vividOrange, PYRO_COLORS.bloodOrange, PYRO_COLORS.brightGold];
+    for (let i = 0; i < 6; i++) {
+      const color = colors[i % colors.length];
+      this._ambient.emit(x, y, {
+        count: 1,
+        speedMin: 0.5,
+        speedMax: 2.5,
+        spreadAngle: 0.4, // Tight cone behind rocket
+        angleCenter: angle + Math.PI, // Opposite to direction
+        lifetimeMin: 20,
+        lifetimeMax: 45,
+        sizeMin: 2.5,
+        sizeMax: 6.0,
+        startAlpha: 0.9,
+        endAlpha: 0,
+        blendMode: 'normal',
+        color: color,
+        shrink: true,
+      });
+    }
+
+    // 2. High-speed sizzling sparks
+    this._burst.emit(x, y, {
+      count: 3,
+      speedMin: 2.0,
+      speedMax: 6.0,
+      spreadAngle: Math.PI * 0.4,
+      angleCenter: angle + Math.PI,
+      lifetimeMin: 10,
+      lifetimeMax: 25,
+      sizeMin: 1.5,
+      sizeMax: 3.5,
+      startAlpha: 1.0,
+      endAlpha: 0,
+      blendMode: 'add',
+      color: PYRO_COLORS.brightGold,
+      shrink: true,
+    });
+  }
+
+  /**
+   * Massive pyrotechnic explosion for the ultimate rocket impact.
+   */
+  triggerRocketImpact(x, y) {
+    // 1. Primary multi-toned blast core
+    const layers = [
+      { count: 40, color: PYRO_COLORS.bloodOrange, size: 8, speed: 12 },
+      { count: 30, color: PYRO_COLORS.vividOrange, size: 6, speed: 15 },
+      { count: 20, color: PYRO_COLORS.brightGold, size: 4, speed: 20 }
+    ];
+
+    layers.forEach(l => {
+      this._burst.emit(x, y, {
+        count: l.count,
+        speedMin: l.speed * 0.4,
+        speedMax: l.speed,
+        spreadAngle: Math.PI * 2,
+        lifetimeMin: 30,
+        lifetimeMax: 60,
+        sizeMin: l.size * 0.5,
+        sizeMax: l.size,
+        startAlpha: 1.0,
+        endAlpha: 0,
+        blendMode: 'normal',
+        color: l.color,
+        shrink: true,
+      });
+    });
+
+    // 2. Sizzling golden sparkles (Additive)
+    this._skill.emit(x, y, {
+      count: 50,
+      speedMin: 5,
+      speedMax: 25,
+      spreadAngle: Math.PI * 2,
+      lifetimeMin: 20,
+      lifetimeMax: 40,
+      sizeMin: 1.5,
+      sizeMax: 4.5,
+      startAlpha: 1.0,
+      endAlpha: 0,
+      blendMode: 'add',
+      color: PYRO_COLORS.brightGold,
+      shrink: true,
+      gravity: 0.1, // Fall down like real firework
+    });
+
+    // 3. Central white-hot flash
+    this._skill.emit(x, y, {
+      count: 10,
+      speedMin: 0.5,
+      speedMax: 3.0,
+      spreadAngle: Math.PI * 2,
+      lifetimeMin: 10,
+      lifetimeMax: 20,
+      sizeMin: 10,
+      sizeMax: 25,
+      startAlpha: 0.8,
+      endAlpha: 0,
+      blendMode: 'add',
+      color: PYRO_COLORS.white,
+    });
   }
 
   // ── Collision burst ──────────────────────────────────────
