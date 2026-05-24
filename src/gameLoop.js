@@ -248,7 +248,7 @@ export class GameLoop {
             if (canParryBlazing) {
               // Trigger spectacular Melt reaction visual clash!
               if (arrow.target.vfx && typeof arrow.target.vfx.triggerMeltReaction === 'function') {
-                arrow.target.vfx.triggerMeltReaction(arrow.x, arrow.y);
+                arrow.target.vfx.triggerMeltReaction(arrow.x, arrow.y, arrow.angle);
               }
               // Play special infused parry sound on top of standard deflect
               playSFX('/audio/ayaka/ayaka-parry_infused.wav', 0.6);
