@@ -175,8 +175,6 @@ export class CryoVFX {
       targetY: centerY || y,
     });
   }
-    });
-  }
 
   /**
    * Draw the laser sight telegraph line.
