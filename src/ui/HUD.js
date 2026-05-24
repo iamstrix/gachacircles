@@ -46,13 +46,13 @@ function injectStyles() {
     /* ── Top Banner ──────────────────────── */
     .ghud-banner {
       position: absolute;
-      top: 12px; /* Aligned vertically in the header */
+      top: 4px; /* Moved up completely to clear the health bars */
       left: 50%;
       transform: translateX(-50%);
       display: flex;
       align-items: center;
       gap: 16px;
-      font-size: 24px; /* Crisp premium sizing */
+      font-size: 20px; /* Highly readable premium size */
       font-weight: 900;
       white-space: nowrap;
       letter-spacing: 0.5px;
@@ -74,7 +74,7 @@ function injectStyles() {
     /* ── Health Bars (Active & Readable) ─────────────────────── */
     .ghud-hp-wrap {
       position: absolute;
-      top: 12px; /* Aligned perfectly with top banner horizontally */
+      top: 30px; /* Moved down to vertically stack below the banner with a clear gap */
       width: 150px; /* Narrowed to guarantee zero horizontal overlap */
       display: flex;
       flex-direction: column;
