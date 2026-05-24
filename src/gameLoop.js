@@ -292,6 +292,7 @@ export class GameLoop {
             // Massive firework rocket hit!
             damage = Math.round(arrow.owner.data.damage * arrow.owner.data.burstQ.damageMultiplier);
             const result = arrow.target.takeDamage(damage);
+            arrow.owner.stats.damageDealt.burst += result.actualDamage;
 
             // Apply heavy pyrotechnic knockback to Ayaka!
             const force = 13.5;
@@ -356,14 +357,17 @@ export class GameLoop {
           }
           else if (arrow.isKindlingSpark) {
             damage = Math.round(arrow.owner.getCurrentDamage() * 0.25); // Kindling sparks deal 25% damage
+            const result = arrow.target.takeDamage(damage);
+            arrow.owner.stats.damageDealt.normal += result.actualDamage;
           } else {
             damage = Math.round(arrow.owner.getCurrentDamage() * 0.75); // Blazing arrow deals 75%
             if (!arrow.isBlazing) {
               // Normal physical arrow deals half damage
               damage = Math.round(damage * 0.5);
             }
+            const result = arrow.target.takeDamage(damage);
+            arrow.owner.stats.damageDealt.normal += result.actualDamage;
           }
-          const result = arrow.target.takeDamage(damage);
 
           // Pyro explosion burst VFX only for Blazing Arrows!
           if (arrow.isBlazing && arrow.owner.vfx) {
@@ -490,6 +494,7 @@ export class GameLoop {
           // DETONATION EXPLOSION!
           const tickDmg = 16;
           const result = effect.target.takeDamage(tickDmg);
+          effect.owner.stats.damageDealt.skill += result.actualDamage;
 
           // Trigger massive Pyrotechnic sparks burst!
           if (effect.owner.vfx) {
@@ -685,6 +690,7 @@ export class GameLoop {
             effect.hits++;
             const damage = 10; // Ramped up to 10 (was 0.4x dmg)
             const result = effect.target.takeDamage(damage);
+            effect.owner.stats.damageDealt.burst += result.actualDamage;
 
             // Play specific tick sound for active hits
             playSFX('/audio/ayaka/ayaka-ultimate_tick.wav', 0.5);
@@ -705,6 +711,7 @@ export class GameLoop {
           if (effect.timer <= 0) {
           const bloomDmg = Math.round(effect.owner.getCurrentDamage() * 1.5);
           const result = effect.target.takeDamage(bloomDmg);
+          effect.owner.stats.damageDealt.burst += result.actualDamage;
 
           if (effect.owner.vfx) {
             effect.owner.vfx.triggerHyoukaBurst(effect.x, effect.y);
@@ -1121,6 +1128,7 @@ export class GameLoop {
       if (activated) {
         if (fighter.id === 'ayaka') {
           playSFX('/audio/ayaka/ayaka-skill.mp3', 0.78);
+          fighter.stats.casts.skill++;
           // Create the frost blooming ice radius visual indicator
           const visual = new Graphics();
           visual.circle(0, 0, 180);
@@ -1170,8 +1178,9 @@ export class GameLoop {
             }
             effect.symbolSprite = sprite;
           }).catch(err => console.warn('Could not load Cryo symbol:', err));
-        } else if (fighter.id === 'yoimiya') {
+        if (fighter.id === 'yoimiya') {
           playSFX('/audio/yoimiya/yoimiya-skill.wav');
+          fighter.stats.casts.skill++;
           // Yoimiya E: Infusion, triggers aura visual (VFX triggered inside activateSkill)
           
           // Do NOT call _startYoimiyaArrowCombo directly here to avoid double streams of arrows.
@@ -1194,6 +1203,7 @@ export class GameLoop {
 
         if (fighter.id === 'ayaka') {
           playSFX('/audio/ayaka/ayaka-ultimate.wav', 0.6);
+          fighter.stats.casts.burst++;
           // Ayaka Q: Two-phase Soumetsu burst
           // Phase 1: 2.1s Casting with Laser Telegraph + Contracting Ring
           const telegraphGfx = new Graphics();
@@ -1220,6 +1230,7 @@ export class GameLoop {
         }
         else if (fighter.id === 'yoimiya') {
           // Yoimiya Q: Two-phase Ryuukin Saxifrage burst
+          fighter.stats.casts.burst++;
           // Phase 1: 1.0s Casting with sparkles and orange particles around her
           const ringGfx = new Graphics();
           if (fighter.vfx && fighter.vfx.container) {
@@ -1303,6 +1314,7 @@ export class GameLoop {
       const result = opponent.takeDamage(damage);
 
       if (result.actualDamage > 0) {
+        fighter.stats.damageDealt.normal += result.actualDamage;
         // Ayaka C1: Every hit during Cryo infusion reduces Hyouka (E) cooldown by 1.0s
         if (fighter.id === 'ayaka' && fighter.passiveTimer > 0) {
           fighter.skillCDTimer = Math.max(0, fighter.skillCDTimer - 1.0);

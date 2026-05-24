@@ -45,6 +45,19 @@ export class Fighter {
     this.isInvincible = false;
     this.slowMultiplier = 1.0;
 
+    // Statistics tracking
+    this.stats = {
+      damageDealt: {
+        normal: 0,
+        skill: 0,
+        burst: 0
+      },
+      casts: {
+        skill: 0,
+        burst: 0
+      }
+    };
+    }
     // Infusion visual (Yoimiya E)
     this.infusionParticles = [];
 
