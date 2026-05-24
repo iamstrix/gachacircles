@@ -267,7 +267,7 @@ export class GameLoop {
                 arrow.target.body.vy += Math.sin(arrow.angle) * parryKnockback;
               }
             }
-            playRandomParry(0.7);
+            playRandomParry(0.5);
             
             // Spawn the anime-style sliced arrow shards (respecting blazing state!)
             this._spawnSlicedArrowShards(arrow.x, arrow.y, arrow.angle, arrow.isBlazing);
