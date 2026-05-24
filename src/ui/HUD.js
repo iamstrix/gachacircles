@@ -308,19 +308,29 @@ function injectStyles() {
       border: 2px solid #000;
       box-shadow: 2px 2px 0px rgba(0,0,0,0.15);
       z-index: 1010;
-      transition: bottom 0.6s cubic-bezier(0.2, 0.8, 0.2, 1), background 0.6s ease;
+      transition: 
+        bottom 0.6s cubic-bezier(0.2, 0.8, 0.2, 1), 
+        left 0.6s cubic-bezier(0.2, 0.8, 0.2, 1),
+        right 0.6s cubic-bezier(0.2, 0.8, 0.2, 1),
+        transform 0.6s cubic-bezier(0.2, 0.8, 0.2, 1),
+        background 0.6s ease;
     }
 
     /* ── Winner UI Adaptations ────────────── */
     .hud-active-win .ghud-score-tracker {
-      bottom: 78px; /* Moves above the skills (10 + 56 + 12 offset) */
+      bottom: 78px; /* Moves above the skills */
       box-shadow: 4px 4px 0px rgba(0,0,0,0.2);
     }
     .hud-winner-cryo .ghud-score-tracker {
       background: #b4e1fa; /* Light Cryo blue */
+      left: 123px; /* Centered above left sidebar: 60 + (126/2) */
+      transform: translateX(-50%);
     }
     .hud-winner-pyro .ghud-score-tracker {
       background: #ffccbc; /* Light Pyro orange/red */
+      left: auto;
+      right: 123px; /* Centered above right sidebar: 60 + (126/2) */
+      transform: translateX(50%);
     }
 
     .ghud-score-label {
