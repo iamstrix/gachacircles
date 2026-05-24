@@ -1058,7 +1058,7 @@ export class GameLoop {
       const activated = fighter.activateSkill();
       if (activated) {
         if (fighter.id === 'ayaka') {
-          playSFX('/audio/ayaka/ayaka-skill.mp3');
+          playSFX('/audio/ayaka/ayaka-skill.mp3', 0.78);
           // Create the frost blooming ice radius visual indicator
           const visual = new Graphics();
           visual.circle(0, 0, 180);
