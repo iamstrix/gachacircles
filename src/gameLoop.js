@@ -238,13 +238,8 @@ export class GameLoop {
 
           if (arrow.target.id === 'ayaka' && arrow.target.swingProgress < 0.9 && (!arrow.isBlazing || canParryBlazing)) {
             // PARRY! Sword deflects arrow
-            if (canParryBlazing) {
-              // Trigger spectacular Melt reaction visual clash!
-              if (arrow.target.vfx && typeof arrow.target.vfx.triggerMeltReaction === 'function') {
-                arrow.target.vfx.triggerMeltReaction(arrow.x, arrow.y);
-              }
               // Play special infused parry sound on top of standard deflect
-              playSFX('/audio/ayaka/ayaka-parry_infused.wav');
+              playSFX('/audio/ayaka/ayaka-parry_infused.wav', 0.6);
 
               // Spawn a bold floating elemental reaction text popup!
               if (this.damageNumbers) {
@@ -267,7 +262,7 @@ export class GameLoop {
                 arrow.target.body.vy += Math.sin(arrow.angle) * parryKnockback;
               }
             }
-            playRandomParry();
+            playRandomParry(0.7);
             
             // Spawn the anime-style sliced arrow shards (respecting blazing state!)
             this._spawnSlicedArrowShards(arrow.x, arrow.y, arrow.angle, arrow.isBlazing);
