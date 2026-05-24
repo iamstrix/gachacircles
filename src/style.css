@@ -427,7 +427,7 @@ body {
   padding: 0px 40px 60px 40px; /* Shifted padding to move content up */
   text-align: center;
   justify-content: flex-start; /* Align to top instead of center */
-  padding-top: 15%; /* Custom offset from top */
+  padding-top: 8%; /* Moved up further from 15% */
 }
 
 .win-screen__panel--left {
