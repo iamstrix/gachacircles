@@ -12,6 +12,7 @@ import { CryoVFX } from './vfx/CryoVFX.js';
 import { PyroVFX } from './vfx/PyroVFX.js';
 import { HUD } from './ui/HUD.js';
 import { DamageNumbers } from './ui/DamageNumbers.js';
+import { DevUI } from './ui/DevUI.js';
 import './style.css';
 
 // Game constants
@@ -98,6 +99,9 @@ async function init() {
   // Create game loop
   gameLoop = new GameLoop(fighter1, fighter2, ARENA, hud, damageNumbers, app.stage);
 
+  // Initialize Developer UI
+  new DevUI(gameLoop);
+
   // Handle game over
   gameLoop.onGameOver = (winner) => {
     showWinScreen(winner);
@@ -111,6 +115,22 @@ async function init() {
     cryoVFX.updateSkill(ticker.deltaTime, fighter1.body.x, fighter1.body.y);
     pyroVFX.updateSkill(ticker.deltaTime);
   });
+
+  // Wire up Dev Panel controls
+  const devRestartBtn = document.getElementById('dev-btn-restart');
+  const devRematchBtn = document.getElementById('dev-btn-rematch');
+  if (devRestartBtn) {
+    devRestartBtn.addEventListener('click', () => {
+      location.reload();
+    });
+  }
+  if (devRematchBtn) {
+    devRematchBtn.addEventListener('click', () => {
+      if (!devRematchBtn.disabled) {
+        location.reload();
+      }
+    });
+  }
 
   console.log('🎮 Gacha Circles initialized! Ayaka vs Yoimiya — FIGHT!');
 }
@@ -140,6 +160,29 @@ function showWinScreen(winner) {
   overlay.className = 'win-screen';
   overlay.id = 'win-screen';
 
+  // Create image panel
+  const imgPanel = document.createElement('div');
+  imgPanel.className = 'win-screen__panel win-screen__panel--image';
+
+  const splashImg = document.createElement('img');
+  splashImg.className = 'win-screen__splash-img';
+  // Ayaka is 'cryo', Yoimiya is 'pyro'
+  const splashPath = winner.element === 'cryo' ? '/characters/ayaka-splash.png' : '/characters/yoimiya-splash.png';
+  splashImg.src = splashPath;
+  splashImg.alt = `${winner.data.name} Splash`;
+
+  // Fallback if splash image is not present
+  splashImg.onerror = () => {
+    splashImg.src = winner.element === 'cryo' ? '/characters/ayaka_portrait.png' : '/characters/yoimiya_portrait.png';
+    splashImg.style.objectFit = 'contain';
+    splashImg.style.padding = '40px';
+  };
+  imgPanel.appendChild(splashImg);
+
+  // Create text panel
+  const textPanel = document.createElement('div');
+  textPanel.className = 'win-screen__panel win-screen__panel--text';
+
   const title = document.createElement('div');
   title.className = `win-screen__title hud-banner__name--${winner.element}`;
   title.textContent = `${winner.data.name} Wins!`;
@@ -148,18 +191,29 @@ function showWinScreen(winner) {
   subtitle.className = 'win-screen__subtitle';
   subtitle.textContent = `${winner.data.title} • ${winner.hp}/${winner.maxHp} HP remaining`;
 
-  const restartBtn = document.createElement('button');
-  restartBtn.className = 'win-screen__restart';
-  restartBtn.textContent = 'Rematch';
-  restartBtn.addEventListener('click', () => {
-    location.reload();
-  });
+  textPanel.appendChild(title);
+  textPanel.appendChild(subtitle);
 
-  overlay.appendChild(title);
-  overlay.appendChild(subtitle);
-  overlay.appendChild(restartBtn);
+  // Layout logic: Cryo (Ayaka) is left, Pyro (Yoimiya) is right
+  if (winner.element === 'cryo') {
+    imgPanel.classList.add('win-screen__panel--left');
+    textPanel.classList.add('win-screen__panel--right');
+    overlay.appendChild(imgPanel);
+    overlay.appendChild(textPanel);
+  } else {
+    textPanel.classList.add('win-screen__panel--left');
+    imgPanel.classList.add('win-screen__panel--right');
+    overlay.appendChild(textPanel);
+    overlay.appendChild(imgPanel);
+  }
 
   document.getElementById('hud-overlay').appendChild(overlay);
+
+  // Enable the Dev Panel rematch button
+  const devRematchBtn = document.getElementById('dev-btn-rematch');
+  if (devRematchBtn) {
+    devRematchBtn.removeAttribute('disabled');
+  }
 }
 
 // Remove default Vite template content
