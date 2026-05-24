@@ -357,17 +357,16 @@ export class GameLoop {
           }
           else if (arrow.isKindlingSpark) {
             damage = Math.round(arrow.owner.getCurrentDamage() * 0.25); // Kindling sparks deal 25% damage
-            const result = arrow.target.takeDamage(damage);
-            arrow.owner.stats.damageDealt.normal += result.actualDamage;
           } else {
             damage = Math.round(arrow.owner.getCurrentDamage() * 0.75); // Blazing arrow deals 75%
             if (!arrow.isBlazing) {
               // Normal physical arrow deals half damage
               damage = Math.round(damage * 0.5);
             }
-            const result = arrow.target.takeDamage(damage);
-            arrow.owner.stats.damageDealt.normal += result.actualDamage;
           }
+
+          const result = arrow.target.takeDamage(damage);
+          arrow.owner.stats.damageDealt.normal += result.actualDamage;
 
           // Pyro explosion burst VFX only for Blazing Arrows!
           if (arrow.isBlazing && arrow.owner.vfx) {
