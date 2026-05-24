@@ -62,6 +62,7 @@ export const CHARACTERS = {
     // Visual config
     circleRadius: 42,
     portrait: '/characters/ayaka_portrait.png',
+    splash: '/characters/ayaka-splash.png',
     weaponSprite: '/weapons/sword.png',
     colors: {
       primary: '#4FC3F7',
@@ -89,9 +90,9 @@ export const CHARACTERS = {
     // Skills & Burst
     skillE: {
       name: 'Niwabi Fire-Dance',
-      description: 'Pyro infusion: deals +50% damage and doubles attack speed for 6s',
+      description: 'Pyro infusion: deals +50% damage and doubles attack speed for 7s',
       cooldown: 10,
-      duration: 6000,
+      duration: 7000,
       emoji: '🔥',
       icon: '/yoimiya-skill_icon.png'
     },
@@ -114,6 +115,7 @@ export const CHARACTERS = {
     // Visual config
     circleRadius: 38,
     portrait: '/characters/yoimiya_portrait.png',
+    splash: '/characters/yoimiya-splash.png',
     weaponSprite: '/weapons/bow.png',
     colors: {
       primary: '#FF9800',
