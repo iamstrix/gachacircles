@@ -35,6 +35,7 @@ export class DevUI {
       this.gameLoop.fighter2.isInvincible = val;
     });
 
+    const savedHP = localStorage.getItem('dev-hp-config') || 500;
     this.addNumericInput(group, 'HP Config (Integer)', savedHP, (val) => {
       // Manual save via button now
     }, 1, 'hp');
