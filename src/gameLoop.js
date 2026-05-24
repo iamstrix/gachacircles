@@ -1131,7 +1131,7 @@ export class GameLoop {
         }
 
         if (fighter.id === 'ayaka') {
-          playSFX('/audio/ayaka/ayaka-ultimate.wav', 0.9);
+          playSFX('/audio/ayaka/ayaka-ultimate.wav', 0.6);
           // Ayaka Q: Two-phase Soumetsu burst
           // Phase 1: 2.1s Casting with Laser Telegraph + Contracting Ring
           const telegraphGfx = new Graphics();
