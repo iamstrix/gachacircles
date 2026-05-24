@@ -441,7 +441,7 @@ body {
   filter: brightness(0) contrast(200%); /* Start as silhouette */
   animation: 
     pull-slide 1.07s cubic-bezier(0.25, 0.1, 0.25, 1) forwards,
-    pull-reveal 0.4s ease-out 1.07s forwards;
+    pull-reveal 0.4s ease-out 1.37s forwards; /* Delayed by 0.3s (1.07 -> 1.37) */
 }
 
 @keyframes pull-slide {
@@ -465,7 +465,7 @@ body {
   opacity: 0;
   pointer-events: none;
   z-index: 10;
-  animation: pull-flash 0.3s ease-out 1.07s forwards;
+  animation: pull-flash 0.3s ease-out 1.37s forwards; /* Delayed by 0.3s */
 }
 
 @keyframes pull-flash {
@@ -483,7 +483,7 @@ body {
   text-align: center;
   max-width: 95%;
   opacity: 0;
-  animation: win-fadein 0.8s ease-out 1.6s forwards;
+  animation: win-fadein 0.8s ease-out 1.9s forwards; /* Delayed by 0.3s (1.6 -> 1.9) */
 }
 
 .win-screen__subtitle {
@@ -494,7 +494,7 @@ body {
   text-align: center;
   max-width: 95%;
   opacity: 0;
-  animation: win-fadein 0.8s ease-out 1.8s forwards;
+  animation: win-fadein 0.8s ease-out 2.1s forwards; /* Delayed by 0.3s (1.8 -> 2.1) */
 }
 
 @keyframes win-fadein {
