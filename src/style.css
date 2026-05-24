@@ -452,7 +452,7 @@ body {
 
 @keyframes pull-reveal {
   0% { filter: brightness(0) contrast(200%); transform: scale(1); }
-  20% { filter: brightness(2) contrast(100%); transform: scale(1.05); } /* Flash peak */
+  25% { filter: brightness(1.5) contrast(100%); transform: scale(1.015); } /* Softened Flash peak */
   100% { filter: brightness(1) contrast(100%); transform: scale(1); }
 }
 
