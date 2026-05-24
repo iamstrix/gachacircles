@@ -51,6 +51,7 @@ export class GameLoop {
     // Preload skill and burst sound files
     preloadSFX('/audio/ayaka/ayaka-skill.mp3');
     preloadSFX('/audio/ayaka/ayaka-ultimate.wav');
+    preloadSFX('/audio/ayaka/ayaka-ultimate_tick.wav');
     preloadSFX('/audio/yoimiya/ayaka-skill.mp3'); // Existing misnamed file or just preloading for safety
     preloadSFX('/audio/yoimiya/yoimiya-skill.wav');
     preloadSFX('/audio/yoimiya/yoimiya-ultimate.wav');
@@ -679,6 +680,9 @@ export class GameLoop {
             effect.hits++;
             const damage = 10; // Ramped up to 10 (was 0.4x dmg)
             const result = effect.target.takeDamage(damage);
+
+            // Play specific tick sound for active hits
+            playSFX('/audio/ayaka/ayaka-ultimate_tick.wav', 0.5);
 
             if (effect.owner.vfx) {
               effect.owner.vfx.triggerCollision(effect.target.body.x, effect.target.body.y);
