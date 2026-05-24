@@ -612,7 +612,7 @@ export class GameLoop {
       } 
       else if (effect.type === 'soumetsu_vortex') {
         // Phase 2: Vortex Movement & Damage
-        let currentSpeed = 0.9; // Base speed (was 1.8)
+        let currentSpeed = 1.17; // Base speed increased by 30% (from 0.9 to 1.17)
         const distToEnemy = Math.sqrt((effect.x - effect.target.body.x)**2 + (effect.y - effect.target.body.y)**2);
         const isEnemyInside = distToEnemy < 135; // Reduced to 75% of 180 (135px)
 
@@ -1110,10 +1110,14 @@ export class GameLoop {
       }
     }
 
-    // ── Check Elemental Burst (Q) ────────────────
     if (fighter.burstCDTimer <= 0) {
       const activated = fighter.activateBurst();
       if (activated) {
+        // Play ultimate animation inside character circle portrait if available
+        if (typeof fighter.playUltAnimation === 'function') {
+          fighter.playUltAnimation();
+        }
+
         if (fighter.id === 'ayaka') {
           playSFX('/audio/ayaka/ayaka-ultimate.mp3');
           // Ayaka Q: Two-phase Soumetsu burst
@@ -1516,8 +1520,8 @@ export class GameLoop {
     const angleLeft = angle - Math.PI / 2;
     const angleRight = angle + Math.PI / 2;
 
-    const baseSpeed = 4.0;
-    const forwardSpeed = 2.0;
+    const baseSpeed = 8.0;    // Increased from 4.0 for wider spread
+    const forwardSpeed = 5.0; // Increased from 2.0 to fly past the parryer
 
     // Store shards in loop queue
     this.shards.push(
@@ -1526,20 +1530,20 @@ export class GameLoop {
         y: y,
         vx: Math.cos(angle) * forwardSpeed + Math.cos(angleLeft) * baseSpeed,
         vy: Math.sin(angle) * forwardSpeed + Math.sin(angleLeft) * baseSpeed,
-        rotSpeed: 0.16,
+        rotSpeed: 0.22,
         visual: shardA,
-        life: 0.35,
-        maxLife: 0.35
+        life: 0.7,
+        maxLife: 0.7
       },
       {
         x: x,
         y: y,
-        vx: Math.cos(angle) * (forwardSpeed * 0.5) + Math.cos(angleRight) * baseSpeed,
-        vy: Math.sin(angle) * (forwardSpeed * 0.5) + Math.sin(angleRight) * baseSpeed,
-        rotSpeed: -0.16,
+        vx: Math.cos(angle) * forwardSpeed + Math.cos(angleRight) * baseSpeed,
+        vy: Math.sin(angle) * forwardSpeed + Math.sin(angleRight) * baseSpeed,
+        rotSpeed: -0.22,
         visual: shardB,
-        life: 0.35,
-        maxLife: 0.35
+        life: 0.7,
+        maxLife: 0.7
       }
     );
   }
