@@ -437,15 +437,41 @@ body {
   height: 100%;
   object-fit: cover;
   opacity: 0;
-  transform: scale(1.05);
-  animation: splash-appear 1.2s cubic-bezier(0.2, 0.8, 0.2, 1) 0.2s forwards;
+  transform: translateX(-50px) scale(1.02);
+  filter: brightness(0) contrast(200%); /* Start as silhouette */
+  animation: 
+    pull-slide 1.07s cubic-bezier(0.25, 0.1, 0.25, 1) forwards,
+    pull-reveal 0.4s ease-out 1.07s forwards;
 }
 
-@keyframes splash-appear {
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
+@keyframes pull-slide {
+  0% { opacity: 0; transform: translateX(-50px) scale(1.02); }
+  20% { opacity: 1; }
+  100% { opacity: 1; transform: translateX(0px) scale(1); }
+}
+
+@keyframes pull-reveal {
+  0% { filter: brightness(0) contrast(200%); transform: scale(1); }
+  20% { filter: brightness(2) contrast(100%); transform: scale(1.05); } /* Flash peak */
+  100% { filter: brightness(1) contrast(100%); transform: scale(1); }
+}
+
+/* Flash overlay for the reveal moment */
+.win-screen__panel--image::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: white;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 10;
+  animation: pull-flash 0.3s ease-out 1.07s forwards;
+}
+
+@keyframes pull-flash {
+  0% { opacity: 0; }
+  50% { opacity: 0.8; }
+  100% { opacity: 0; }
 }
 
 .win-screen__title {
@@ -456,6 +482,8 @@ body {
   margin-bottom: 12px;
   text-align: center;
   max-width: 95%;
+  opacity: 0;
+  animation: win-fadein 0.8s ease-out 1.6s forwards;
 }
 
 .win-screen__subtitle {
@@ -465,6 +493,8 @@ body {
   letter-spacing: 2px;
   text-align: center;
   max-width: 95%;
+  opacity: 0;
+  animation: win-fadein 0.8s ease-out 1.8s forwards;
 }
 
 @keyframes win-fadein {
