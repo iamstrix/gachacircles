@@ -46,39 +46,36 @@ function injectStyles() {
     /* ── Top Banner ──────────────────────── */
     .ghud-banner {
       position: absolute;
-      top: 4px; /* Moved up since they are being covered by the health bars */
+      top: 12px; /* Aligned vertically in the header */
       left: 50%;
       transform: translateX(-50%);
       display: flex;
       align-items: center;
       gap: 16px;
-      font-size: 22px; /* Slightly reduced to give clearance */
+      font-size: 24px; /* Crisp premium sizing */
       font-weight: 900;
       white-space: nowrap;
-      text-transform: uppercase;
       letter-spacing: 0.5px;
     }
     .ghud-name-cryo {
       color: #00bcd4; /* vibrant cyan */
-      -webkit-text-stroke: 1.5px #000;
-      text-shadow: 2px 2px 0px #000, 0 0 10px rgba(0, 188, 212, 0.5);
+      text-shadow: 1px 1px 0px #000, 2px 2px 0px rgba(0,0,0,0.15), 0 0 10px rgba(0, 188, 212, 0.4);
     }
     .ghud-name-pyro {
       color: #ff3333; /* vibrant red */
-      -webkit-text-stroke: 1.5px #000;
-      text-shadow: 2px 2px 0px #000, 0 0 10px rgba(255, 51, 51, 0.5);
+      text-shadow: 1px 1px 0px #000, 2px 2px 0px rgba(0,0,0,0.15), 0 0 10px rgba(255, 51, 51, 0.4);
     }
     .ghud-vs {
       color: #000;
-      font-size: 18px;
+      font-size: 16px;
       font-weight: 900;
     }
 
     /* ── Health Bars (Active & Readable) ─────────────────────── */
     .ghud-hp-wrap {
       position: absolute;
-      top: 28px; /* Moved down to vertically stack below banner text and clear overlap */
-      width: 180px; /* Sized to fit elegantly with banner */
+      top: 12px; /* Aligned perfectly with top banner horizontally */
+      width: 150px; /* Narrowed to guarantee zero horizontal overlap */
       display: flex;
       flex-direction: column;
       gap: 4px;
