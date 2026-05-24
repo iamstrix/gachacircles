@@ -3,7 +3,7 @@
  * Orchestrates physics, combat, VFX, and UI updates.
  */
 
-import { Graphics, Sprite, Assets, Container } from 'pixi.js';
+import { Graphics, Sprite, Assets, Container, Text, TextStyle } from 'pixi.js';
 import { updatePosition, bounceOffWalls, checkCircleCollision, resolveCollision } from './physics.js';
 import { playSFX, preloadSFX, playSynthBounce, playSynthClash, playSynthDeflect } from './utils/audio.js';
 
@@ -54,6 +54,24 @@ export class GameLoop {
     preloadSFX('/audio/yoimiya/ayaka-skill.mp3'); // Existing misnamed file or just preloading for safety
     preloadSFX('/audio/yoimiya/yoimiya-skill.wav');
     preloadSFX('/audio/yoimiya/yoimiya-ultimate.wav');
+
+    // ── Bouncing Watermark Setup ──────────────────
+    const style = new TextStyle({
+      fontFamily: 'Outfit',
+      fontSize: 24,
+      fontWeight: '800',
+      fill: '#000000',
+      alpha: 0.15,
+      letterSpacing: 2,
+    });
+    this.watermark = new Text({ text: 'gachacircles', style });
+    this.watermark.anchor.set(0.5);
+    this.watermark.alpha = 0.12;
+    this.watermark.x = bounds.width / 2;
+    this.watermark.y = bounds.height / 2;
+    this.watermarkVx = 1.2;
+    this.watermarkVy = 0.9;
+    this.stage.addChild(this.watermark);
   }
 
   /**
@@ -878,6 +896,33 @@ export class GameLoop {
     // Update fighters (Visual sync)
     this.fighter1.update(delta, this.elapsedTime, this.fighter2);
     this.fighter2.update(delta, this.elapsedTime, this.fighter1);
+
+    // ── Update Bouncing Watermark ─────────────────
+    if (this.watermark) {
+      this.watermark.x += this.watermarkVx * delta;
+      this.watermark.y += this.watermarkVy * delta;
+
+      const halfW = this.watermark.width / 2;
+      const halfH = this.watermark.height / 2;
+
+      // Bounce off X
+      if (this.watermark.x - halfW < this.bounds.x) {
+        this.watermark.x = this.bounds.x + halfW;
+        this.watermarkVx *= -1;
+      } else if (this.watermark.x + halfW > this.bounds.x + this.bounds.width) {
+        this.watermark.x = this.bounds.x + this.bounds.width - halfW;
+        this.watermarkVx *= -1;
+      }
+
+      // Bounce off Y
+      if (this.watermark.y - halfH < this.bounds.y) {
+        this.watermark.y = this.bounds.y + halfH;
+        this.watermarkVy *= -1;
+      } else if (this.watermark.y + halfH > this.bounds.y + this.bounds.height) {
+        this.watermark.y = this.bounds.y + this.bounds.height - halfH;
+        this.watermarkVy *= -1;
+      }
+    }
 
     // Update HUD
     this._updateHUD();

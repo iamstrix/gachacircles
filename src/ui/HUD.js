@@ -130,26 +130,26 @@ function injectStyles() {
     /* ── Sidebars ────────────────────────── */
     .ghud-sidebar {
       position: absolute;
-      top: 50%;
-      transform: translateY(-50%); /* Centered vertically alongside arena */
+      bottom: 10px; /* Positioned centered vertically in the expanded bottom gutter */
       display: flex;
-      flex-direction: column; /* Vertical stack */
+      flex-direction: row; /* Horizontal row layout */
       align-items: center;
-      gap: 16px;
+      gap: 14px;
       z-index: 1005;
     }
     .ghud-sidebar.left {
-      left: 6px; /* Centered in the 60px left margin */
+      left: 60px; /* Aligns perfectly with the left border of the combat arena */
     }
     .ghud-sidebar.right {
-      right: 6px; /* Centered in the 60px right margin */
+      right: 60px; /* Aligns perfectly with the right border of the combat arena */
+      flex-direction: row-reverse; /* Mirrored layout: Q burst is inner, E skill is outer */
     }
 
     /* ── Action Buttons ──────────────────── */
     .ghud-action-btn {
       position: relative;
-      width: 48px; /* Enlarged skill icons */
-      height: 48px;
+      width: 56px; /* Enlarged skill icons */
+      height: 56px;
       border-radius: 50%;
       border: 2px solid #000;
       background: #fff;
@@ -160,7 +160,7 @@ function injectStyles() {
       pointer-events: auto;
     }
     .ghud-emoji {
-      font-size: 24px; /* Enlarged emoji */
+      font-size: 28px; /* Enlarged emoji */
       display: flex;
       align-items: center;
       justify-content: center;
@@ -203,7 +203,7 @@ function injectStyles() {
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 14px; /* Enlarged countdown text */
+      font-size: 16px; /* Enlarged countdown text */
       font-weight: 900;
       color: #000;
       -webkit-text-stroke: 0.5px #fff;
@@ -215,13 +215,13 @@ function injectStyles() {
       position: absolute;
       bottom: -4px;
       right: -4px;
-      width: 14px;
-      height: 14px;
+      width: 16px; /* Slightly enlarged key badge */
+      height: 16px;
       border-radius: 50%;
       border: 1.5px solid #000;
       background: #ffd54f;
       color: #000;
-      font-size: 8px;
+      font-size: 9px; /* Slightly enlarged font */
       font-weight: 900;
       display: flex;
       align-items: center;
@@ -229,42 +229,14 @@ function injectStyles() {
       box-shadow: 1px 1px 0px rgba(0,0,0,0.15);
     }
 
-    /* ── Passive Badges ──────────────────── */
-    .ghud-passive-badge {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      font-size: 9px;
-      font-weight: 900;
-      padding: 4px;
-      border-radius: 4px;
-      border: 1.5px solid #000;
-      background: #fff;
-      box-shadow: 2px 2px 0px rgba(0,0,0,0.15);
-      transition: all 0.3s ease;
-      white-space: nowrap;
-    }
-    .ghud-passive-badge.cryo {
-      border-color: #00bcd4;
-    }
-    .ghud-passive-badge.pyro {
-      border-color: #ff3333;
-    }
-    
-    .ghud-passive-active {
-      opacity: 1.0 !important;
-      animation: ghud-passive-pulse 0.8s ease-in-out infinite alternate;
-    }
-    
-    @keyframes ghud-passive-pulse {
-      from { transform: scale(1.0); }
-      to   { transform: scale(1.1); }
-    }
+
 
     /* ── Retro Tooltip Cards ─────────────── */
     .ghud-tooltip {
       position: absolute;
+      bottom: 64px; /* Float directly above the action button pointing into the arena floor */
+      left: 50%;
+      transform: translateX(-50%);
       width: 220px;
       padding: 10px;
       border: 2px solid #000;
@@ -278,16 +250,7 @@ function injectStyles() {
       pointer-events: none;
       text-align: left;
     }
-    .ghud-sidebar.left .ghud-tooltip {
-      left: 58px;
-      top: 50%;
-      transform: translateY(-50%);
-    }
-    .ghud-sidebar.right .ghud-tooltip {
-      right: 58px;
-      top: 50%;
-      transform: translateY(-50%);
-    }
+
     
     .ghud-tooltip.cryo {
       border-color: #00bcd4;
