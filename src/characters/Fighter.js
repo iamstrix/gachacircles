@@ -191,7 +191,7 @@ export class Fighter {
         }
       });
       this.hpText.anchor.set(0.5);
-      this.hpText.y = circleRadius * 0.78; // Shifted further downward to unblock the character face portrait
+      this.hpText.y = circleRadius * 0.83; // Shifted further downward to unblock the character face portrait
       this.container.addChild(this.hpText);
     } catch (e) {
       console.warn(`Could not create HP text for ${this.id}:`, e);
