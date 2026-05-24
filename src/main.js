@@ -8,6 +8,7 @@ import { getCharacter } from './characters/CharacterData.js';
 import { Fighter } from './characters/Fighter.js';
 import { GameLoop } from './gameLoop.js';
 import { randomVelocity } from './physics.js';
+import { playSFX } from './utils/audio.js';
 import { CryoVFX } from './vfx/CryoVFX.js';
 import { PyroVFX } from './vfx/PyroVFX.js';
 import { HUD } from './ui/HUD.js';
@@ -226,6 +227,9 @@ function showWinScreen(winner) {
   }
 
   document.getElementById('hud-overlay').appendChild(overlay);
+
+  // Play victory splash audio
+  playSFX('/audio/winner-splash.wav');
 
   // Apply victory styling hooks to the HUD to fade out irrelevant components
   const hudElement = document.getElementById('gacha-hud');

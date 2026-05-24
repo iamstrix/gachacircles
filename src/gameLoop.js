@@ -1546,9 +1546,6 @@ export class GameLoop {
     this.gameOver = true;
     this.winner = winner;
 
-    // Play victory splash audio
-    playSFX('/audio/winner-splash.wav');
-
     if (this.onGameOver) {
       this.onGameOver(winner);
     }
