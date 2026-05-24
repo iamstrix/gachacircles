@@ -50,7 +50,7 @@ export class GameLoop {
 
     // Preload skill and burst sound files
     preloadSFX('/audio/ayaka/ayaka-skill.mp3');
-    preloadSFX('/audio/ayaka/ayaka-ultimate.mp3');
+    preloadSFX('/audio/ayaka/ayaka-ultimate.wav');
     preloadSFX('/audio/yoimiya/ayaka-skill.mp3'); // Existing misnamed file or just preloading for safety
     preloadSFX('/audio/yoimiya/yoimiya-skill.wav');
     preloadSFX('/audio/yoimiya/yoimiya-ultimate.wav');
