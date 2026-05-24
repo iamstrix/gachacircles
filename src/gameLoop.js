@@ -1219,6 +1219,11 @@ export class GameLoop {
       const result = opponent.takeDamage(damage);
 
       if (result.actualDamage > 0) {
+        // Ayaka C1: Every hit during Cryo infusion reduces Hyouka (E) cooldown by 0.3s
+        if (fighter.id === 'ayaka' && fighter.passiveTimer > 0) {
+          fighter.skillCDTimer = Math.max(0, fighter.skillCDTimer - 0.3);
+        }
+
         // VFX
         if (fighter.vfx) {
           fighter.vfx.triggerCollision(
