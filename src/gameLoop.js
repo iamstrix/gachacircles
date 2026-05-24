@@ -1178,6 +1178,7 @@ export class GameLoop {
             }
             effect.symbolSprite = sprite;
           }).catch(err => console.warn('Could not load Cryo symbol:', err));
+        }
         if (fighter.id === 'yoimiya') {
           playSFX('/audio/yoimiya/yoimiya-skill.wav');
           fighter.stats.casts.skill++;
