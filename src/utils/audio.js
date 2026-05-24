@@ -61,25 +61,25 @@ export function playSFX(path, volume = 0.6) {
 
 /**
  * Play the circle-bounce WAV file for arena wall bounces.
- * @param {number} [volume=0.18] - Playback volume
+ * @param {number} [volume=0.4] - Playback volume
  */
-export function playSynthBounce(volume = 0.18) {
+export function playSynthBounce(volume = 0.4) {
   playSFX('/audio/circle-bounce.wav', volume);
 }
 
 /**
  * Play the circle-bounce WAV file for character collisions.
- * @param {number} [volume=0.38] - Playback volume
+ * @param {number} [volume=0.4] - Playback volume
  */
-export function playSynthClash(volume = 0.38) {
+export function playSynthClash(volume = 0.4) {
   playSFX('/audio/circle-bounce.wav', volume);
 }
 
 /**
  * Play the circle-bounce WAV file for sword deflections and vortex shredding.
- * @param {number} [volume=0.28] - Playback volume
+ * @param {number} [volume=0.4] - Playback volume
  */
-export function playSynthDeflect(volume = 0.28) {
+export function playSynthDeflect(volume = 0.4) {
   playSFX('/audio/circle-bounce.wav', volume);
 }
 
