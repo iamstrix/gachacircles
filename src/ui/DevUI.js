@@ -60,6 +60,12 @@ export class DevUI {
     this.addRangeInput(group, 'Master Volume', currentVol, (val) => {
       setMasterVolume(val);
     }, 0, 1, 0.05);
+
+    this.addButton(group, 'Reset Match Scores', () => {
+      localStorage.removeItem('match-score-cryo');
+      localStorage.removeItem('match-score-pyro');
+      location.reload();
+    });
   }
 
   addToggle(parent, label, callback) {
@@ -148,5 +154,23 @@ export class DevUI {
     row.appendChild(labelText);
     row.appendChild(input);
     parent.appendChild(row);
+  }
+
+  addButton(parent, label, callback) {
+    const btn = document.createElement('button');
+    btn.innerText = label;
+    btn.style.width = '100%';
+    btn.style.padding = '8px';
+    btn.style.marginTop = '10px';
+    btn.style.backgroundColor = '#d32f2f';
+    btn.style.color = 'white';
+    btn.style.border = '2px solid #000';
+    btn.style.fontWeight = '800';
+    btn.style.textTransform = 'uppercase';
+    btn.style.fontSize = '10px';
+    btn.style.cursor = 'pointer';
+
+    btn.addEventListener('click', callback);
+    parent.appendChild(btn);
   }
 }

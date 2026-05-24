@@ -115,6 +115,11 @@ async function init() {
   hud.updateHP('cryo', ayakaData.hp, ayakaData.hp);
   hud.updateHP('pyro', yoimiyaData.hp, yoimiyaData.hp);
 
+  // Initialize and display scores
+  const cryoScore = parseInt(localStorage.getItem('match-score-cryo') || '0', 10);
+  const pyroScore = parseInt(localStorage.getItem('match-score-pyro') || '0', 10);
+  hud.updateScore(cryoScore, pyroScore);
+
   // Create game loop
   gameLoop = new GameLoop(fighter1, fighter2, ARENA, hud, damageNumbers, app.stage);
 
@@ -380,6 +385,21 @@ function showWinScreen(winner) {
   const devRematchBtn = document.getElementById('dev-btn-rematch');
   if (devRematchBtn) {
     devRematchBtn.removeAttribute('disabled');
+  }
+
+  // ── Update Match Scores ─────────────────────
+  const scoreKey = winner.element === 'cryo' ? 'match-score-cryo' : 'match-score-pyro';
+  const currentScore = parseInt(localStorage.getItem(scoreKey) || '0', 10);
+  const newScore = currentScore + 1;
+  localStorage.setItem(scoreKey, newScore);
+
+  // Sync HUD scores instantly
+  const cryoFinal = winner.element === 'cryo' ? newScore : parseInt(localStorage.getItem('match-score-cryo') || '0', 10);
+  const pyroFinal = winner.element === 'pyro' ? newScore : parseInt(localStorage.getItem('match-score-pyro') || '0', 10);
+  
+  const hudInstance = gameLoop ? gameLoop.hud : null;
+  if (hudInstance) {
+    hudInstance.updateScore(cryoFinal, pyroFinal);
   }
 }
 

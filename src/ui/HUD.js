@@ -293,6 +293,42 @@ function injectStyles() {
       color: #555;
       line-height: 1.3;
     }
+
+    /* ── Score Tracker ───────────────────── */
+    .ghud-score-tracker {
+      position: absolute;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      background: rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(4px);
+      padding: 6px 16px;
+      border: 2px solid #000;
+      box-shadow: 2px 2px 0px rgba(0,0,0,0.15);
+      z-index: 1010;
+    }
+
+    .ghud-score-label {
+      font-size: 10px;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: #000;
+      opacity: 0.6;
+    }
+
+    .ghud-score-val {
+      font-size: 24px;
+      font-weight: 950;
+      color: #000;
+      -webkit-text-stroke: 1px #fff;
+      text-shadow: 2px 2px 0px rgba(0,0,0,0.2);
+    }
+    .ghud-score-val.cryo { color: #00bcd4; }
+    .ghud-score-val.pyro { color: #ff3333; }
   `;
   document.head.appendChild(style);
 }
@@ -316,9 +352,25 @@ export class HUD {
     // Build sidebars on left and right margins
     this._buildSidebar('cryo', 'left');
     this._buildSidebar('pyro', 'right');
+
+    this._buildScoreTracker();
   }
 
   // ── Build helpers ────────────────────────────────────────
+
+  _buildScoreTracker() {
+    const d = document.createElement('div');
+    d.className = 'ghud-score-tracker';
+    d.innerHTML = `
+      <div class="ghud-score-val cryo" id="ghud-score-cryo">0</div>
+      <div class="ghud-score-label">Best of Three</div>
+      <div class="ghud-score-val pyro" id="ghud-score-pyro">0</div>
+    `;
+    this.root.appendChild(d);
+    
+    this._score_cryo = d.querySelector('#ghud-score-cryo');
+    this._score_pyro = d.querySelector('#ghud-score-pyro');
+  }
 
   _buildBanner() {
     const d = document.createElement('div');
@@ -508,6 +560,16 @@ export class HUD {
         badge.textContent = '🎯 x0';
       }
     }
+  }
+
+  /**
+   * Update the match scores.
+   * @param {number} cryoScore
+   * @param {number} pyroScore
+   */
+  updateScore(cryoScore, pyroScore) {
+    if (this._score_cryo) this._score_cryo.textContent = String(cryoScore);
+    if (this._score_pyro) this._score_pyro.textContent = String(pyroScore);
   }
 
   /** Remove the HUD from the DOM. */
