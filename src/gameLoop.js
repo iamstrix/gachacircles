@@ -59,6 +59,7 @@ export class GameLoop {
     for (let i = 1; i <= 4; i++) {
       preloadSFX(`/audio/ayaka/ayaka-parry_${i}.wav`);
     }
+    preloadSFX('/audio/ayaka/ayaka-parry_infused.wav');
 
     // ── Bouncing Watermark Setup ──────────────────
     const style = new TextStyle({
@@ -242,6 +243,9 @@ export class GameLoop {
               if (arrow.target.vfx && typeof arrow.target.vfx.triggerMeltReaction === 'function') {
                 arrow.target.vfx.triggerMeltReaction(arrow.x, arrow.y);
               }
+              // Play special infused parry sound on top of standard deflect
+              playSFX('/audio/ayaka/ayaka-parry_infused.wav');
+
               // Spawn a bold floating elemental reaction text popup!
               if (this.damageNumbers) {
                 this.damageNumbers.spawn(arrow.x, arrow.y - 25, 'MELT!', 'cryo', true);
