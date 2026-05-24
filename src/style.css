@@ -497,6 +497,45 @@ body {
   animation: win-fadein 0.8s ease-out 2.1s forwards; /* Delayed by 0.3s (1.8 -> 2.1) */
 }
 
+/* ── Victory Statistics ────────────────────── */
+.win-screen__stats {
+  margin-top: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  max-width: 320px;
+  opacity: 0;
+  animation: win-fadein 0.8s ease-out 2.4s forwards;
+}
+
+.win-stat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: var(--font-main);
+}
+
+.win-stat-label {
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  letter-spacing: 1px;
+}
+
+.win-stat-value {
+  font-size: 18px;
+  font-weight: 900;
+  color: var(--text-primary);
+}
+
+.win-stat-divider {
+  height: 2px;
+  background: rgba(0, 0, 0, 0.05);
+  margin: 4px 0;
+}
+
 @keyframes win-fadein {
   from { opacity: 0; }
   to { opacity: 1; }

@@ -210,8 +210,45 @@ function showWinScreen(winner) {
   subtitle.className = 'win-screen__subtitle';
   subtitle.textContent = `${winner.data.title} • ${winner.hp}/${winner.maxHp} HP remaining`;
 
+  // ── Statistics Section ───────────────────────
+  const statsContainer = document.createElement('div');
+  statsContainer.className = 'win-screen__stats';
+
+  const s = winner.stats;
+  const totalDmg = Math.round(s.damageDealt.normal + s.damageDealt.skill + s.damageDealt.burst);
+
+  // Determine Most Effective Source
+  const sources = [
+    { label: 'Normal Attacks', val: s.damageDealt.normal },
+    { label: 'Elemental Skill', val: s.damageDealt.skill },
+    { label: 'Elemental Burst', val: s.damageDealt.burst }
+  ];
+  sources.sort((a, b) => b.val - a.val);
+  const topSource = sources[0].val > 0 ? sources[0].label : 'None';
+
+  statsContainer.innerHTML = `
+    <div class="win-stat-row">
+      <span class="win-stat-label">Total Damage Done:</span>
+      <span class="win-stat-value">${totalDmg}</span>
+    </div>
+    <div class="win-stat-row">
+      <span class="win-stat-label">Most Impactful:</span>
+      <span class="win-stat-value">${topSource}</span>
+    </div>
+    <div class="win-stat-divider"></div>
+    <div class="win-stat-row">
+      <span class="win-stat-label">Skill Casts:</span>
+      <span class="win-stat-value">${s.casts.skill}</span>
+    </div>
+    <div class="win-stat-row">
+      <span class="win-stat-label">Ultimate Casts:</span>
+      <span class="win-stat-value">${s.casts.burst}</span>
+    </div>
+  `;
+
   textPanel.appendChild(title);
   textPanel.appendChild(subtitle);
+  textPanel.appendChild(statsContainer);
 
   // Layout logic: Cryo (Ayaka) is left, Pyro (Yoimiya) is right
   if (winner.element === 'cryo') {
