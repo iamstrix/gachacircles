@@ -76,6 +76,16 @@ async function init() {
     yoimiyaData.hp = hp;
   }
 
+  // Override Damage from dev storage if present
+  const devDmgMult = localStorage.getItem('dev-dmg-multiplier');
+  if (devDmgMult) {
+    const mult = parseFloat(devDmgMult);
+    if (!isNaN(mult)) {
+      ayakaData.damage *= mult;
+      yoimiyaData.damage *= mult;
+    }
+  }
+
   const vel1 = randomVelocity(ayakaData.speed);
   const vel2 = randomVelocity(yoimiyaData.speed);
 
@@ -216,6 +226,13 @@ function showWinScreen(winner) {
   }
 
   document.getElementById('hud-overlay').appendChild(overlay);
+
+  // Apply victory styling hooks to the HUD to fade out irrelevant components
+  const hudElement = document.getElementById('gacha-hud');
+  if (hudElement) {
+    hudElement.classList.add('hud-active-win');
+    hudElement.classList.add(winner.element === 'cryo' ? 'hud-winner-cryo' : 'hud-winner-pyro');
+  }
 
   // Enable the Dev Panel rematch button
   const devRematchBtn = document.getElementById('dev-btn-rematch');

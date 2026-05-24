@@ -44,6 +44,15 @@ export class DevUI {
       // Full game restart
       location.reload();
     });
+
+    const savedDmgMult = localStorage.getItem('dev-dmg-multiplier') || 1.0;
+    this.addNumericInput(group, 'Damage Multiplier (Float)', savedDmgMult, (val) => {
+      const mult = parseFloat(val);
+      if (isNaN(mult) || mult <= 0) return;
+
+      localStorage.setItem('dev-dmg-multiplier', mult);
+      location.reload();
+    }, 0.1);
   }
 
   addToggle(parent, label, callback) {
@@ -68,7 +77,7 @@ export class DevUI {
     parent.appendChild(row);
   }
 
-  addNumericInput(parent, label, defaultValue, callback) {
+  addNumericInput(parent, label, defaultValue, callback, step = 1) {
     const row = document.createElement('div');
     row.style.display = 'flex';
     row.style.flexDirection = 'column';
@@ -85,6 +94,7 @@ export class DevUI {
     const input = document.createElement('input');
     input.type = 'number';
     input.value = defaultValue;
+    input.step = step;
     input.className = 'dev-input'; // We'll add some CSS for this
     input.style.width = '100%';
     input.style.backgroundColor = '#1a1a2e';
