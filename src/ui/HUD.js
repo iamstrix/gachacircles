@@ -346,7 +346,7 @@ function injectStyles() {
       font-size: 32px;
       font-weight: 950;
       color: #000;
-      text-shadow: 2px 2px 0px rgba(0,0,0,0.1);
+      text-shadow: 2px 2px 0px rgba(0,0,0,0.15); /* matched bounding box alpha */
     }
     .ghud-score-val.cryo { color: #00bcd4; }
     .ghud-score-val.pyro { color: #ff3333; }
