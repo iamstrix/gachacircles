@@ -4,7 +4,7 @@
  * Contains the circle, portrait, orbiting weapon, and glow effects.
  */
 
-import { Container, Graphics, Sprite, Assets, Text } from 'pixi.js';
+import { Container, Graphics, Sprite, Assets, Text, Texture } from 'pixi.js';
 
 export class Fighter {
   /**
@@ -23,6 +23,7 @@ export class Fighter {
     this.maxHp = characterData.hp;
     this.alive = true;
     this.lastAttackTime = 0;
+    this.attackIntervalOffset = 0; // Random variability between attack chains
 
     // Start fight with abilities on full cooldown
     this.skillCDTimer = characterData.skillE.cooldown;
@@ -111,6 +112,40 @@ export class Fighter {
       this.container.addChild(this.portraitMask);
       this.portraitSprite.mask = this.portraitMask;
       this.container.addChild(this.portraitSprite);
+
+      // Video ultimate animation sprite (circular masked)
+      if (this.data.ultAnimation) {
+        try {
+          const videoElement = document.createElement('video');
+          videoElement.src = this.data.ultAnimation;
+          videoElement.loop = false;
+          videoElement.muted = true;
+          videoElement.playsInline = true;
+          videoElement.style.display = 'none';
+          document.body.appendChild(videoElement);
+
+          this.ultVideo = videoElement;
+          this.ultVideoTexture = Texture.from(videoElement);
+          this.ultVideoSprite = new Sprite(this.ultVideoTexture);
+          this.ultVideoSprite.anchor.set(0.5);
+
+          // Asynchronously scale and center the sprite once video metadata dimensions are fully loaded
+          videoElement.addEventListener('loadedmetadata', () => {
+            const size = circleRadius * 1.8;
+            this.ultVideoSprite.width = size;
+            this.ultVideoSprite.height = size;
+          });
+
+          this.ultVideoSprite.mask = this.portraitMask;
+          this.ultVideoSprite.alpha = 0;
+          this.ultVideoSprite.visible = false;
+          this.container.addChild(this.ultVideoSprite);
+
+          this.ultVideoFading = false;
+        } catch (e) {
+          console.warn(`Could not load ultimate video for ${this.id}:`, e);
+        }
+      }
     } catch (e) {
       console.warn(`Could not load portrait for ${this.id}:`, e);
     }
@@ -318,6 +353,20 @@ export class Fighter {
       if (this.burstCDTimer < 0) this.burstCDTimer = 0;
     }
 
+    // Update ultimate video fade-out to portrait
+    if (this.ultVideoFading && this.ultVideoSprite && this.portraitSprite) {
+      const fadeSpeed = (delta * 16.67) / 800; // 800ms fade speed
+      this.ultVideoSprite.alpha -= fadeSpeed;
+      this.portraitSprite.alpha += fadeSpeed;
+
+      if (this.ultVideoSprite.alpha <= 0) {
+        this.ultVideoSprite.alpha = 0;
+        this.portraitSprite.alpha = 1;
+        this.ultVideoSprite.visible = false;
+        this.ultVideoFading = false;
+      }
+    }
+
     // Yoimiya infusion duration tick
     if (this.id === 'yoimiya' && this.isInfused) {
       this.infusionActiveTimer -= delta * 16.67;
@@ -391,6 +440,8 @@ export class Fighter {
    */
   registerAttack(currentTime) {
     this.lastAttackTime = currentTime;
+    // Generate new random variability for the NEXT interval (-300ms to +300ms)
+    this.attackIntervalOffset = (Math.random() - 0.5) * 600;
   }
 
   /**
@@ -482,6 +533,37 @@ export class Fighter {
     this.burstCDTimer = this.data.burstQ.cooldown;
 
     return true;
+  }
+
+  /**
+   * Play the ultimate burst video animation inside the circle
+   */
+  playUltAnimation() {
+    if (!this.ultVideoSprite || !this.ultVideo) return;
+
+    // Reset dimensions to ensure it scales and centers perfectly inside the circle, regardless of raw video metadata dimensions
+    const portraitSize = this.data.circleRadius * 1.8;
+    this.ultVideoSprite.width = portraitSize;
+    this.ultVideoSprite.height = portraitSize;
+
+    // Reset fade states and toggle visibility
+    this.ultVideoFading = false;
+    this.ultVideoSprite.visible = true;
+    this.ultVideoSprite.alpha = 1;
+    if (this.portraitSprite) {
+      this.portraitSprite.alpha = 0;
+    }
+
+    // Play video
+    this.ultVideo.currentTime = 0;
+    this.ultVideo.play().catch(err => {
+      console.warn(`Could not play ultimate video for ${this.id}:`, err);
+    });
+
+    // Slow fade back to static portrait when video completes
+    this.ultVideo.onended = () => {
+      this.ultVideoFading = true;
+    };
   }
 
   /**

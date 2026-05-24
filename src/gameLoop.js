@@ -839,7 +839,7 @@ export class GameLoop {
       // Begin the interval timer only after the last shot has been fired (the 7-arrow combo takes exactly 1400ms from first shot to last shot).
       const comboDurationMs = 1400;
       const baseIntervalMs = 2500 / currentAttackSpeed; // Was 5000, halved for faster combo cycles
-      const cooldownMs = comboDurationMs + baseIntervalMs;
+      const cooldownMs = comboDurationMs + baseIntervalMs + this.fighter2.attackIntervalOffset;
       
       if (currentTime - this.fighter2.lastAttackTime >= cooldownMs) {
         this.fighter2.registerAttack(currentTime);
@@ -851,7 +851,7 @@ export class GameLoop {
     if (this.fighter1.id === 'ayaka' && this.fighter1.alive) {
       const comboDurationMs = 1500; // Ayaka's N1-N5 string takes ~1.5s
       const delayBetweenCombosMs = 1000; // Restart 1s after last attack finishes
-      const cooldownMs = comboDurationMs + delayBetweenCombosMs;
+      const cooldownMs = comboDurationMs + delayBetweenCombosMs + this.fighter1.attackIntervalOffset;
 
       if (currentTime - this.fighter1.lastAttackTime >= cooldownMs) {
         this.fighter1.registerAttack(currentTime);
