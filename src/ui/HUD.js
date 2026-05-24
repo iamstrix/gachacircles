@@ -312,20 +312,19 @@ function injectStyles() {
     }
 
     .ghud-score-label {
-      font-size: 10px;
-      font-weight: 900;
-      text-transform: uppercase;
+      font-size: 11px;
+      font-weight: 800;
       letter-spacing: 1.5px;
       color: #000;
-      opacity: 0.6;
+      /* no transparency */
     }
 
     .ghud-score-val {
       font-size: 24px;
       font-weight: 950;
       color: #000;
-      -webkit-text-stroke: 1px #fff;
-      text-shadow: 2px 2px 0px rgba(0,0,0,0.2);
+      /* removed white outline */
+      text-shadow: 2px 2px 0px rgba(0,0,0,0.1);
     }
     .ghud-score-val.cryo { color: #00bcd4; }
     .ghud-score-val.pyro { color: #ff3333; }
@@ -363,7 +362,7 @@ export class HUD {
     d.className = 'ghud-score-tracker';
     d.innerHTML = `
       <div class="ghud-score-val cryo" id="ghud-score-cryo">0</div>
-      <div class="ghud-score-label">Best of Three</div>
+      <div class="ghud-score-label">best of three</div>
       <div class="ghud-score-val pyro" id="ghud-score-pyro">0</div>
     `;
     this.root.appendChild(d);
