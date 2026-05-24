@@ -182,8 +182,9 @@ export class GameLoop {
             // Trigger spectacular Melt reaction visual clash within the blizzard!
             if (arrow.target.vfx && typeof arrow.target.vfx.triggerMeltReaction === 'function') {
               arrow.target.vfx.triggerMeltReaction(arrow.x, arrow.y, arrow.angle);
-              }
-              // Spawn a bold floating elemental reaction text popup!            if (this.damageNumbers) {
+            }
+            // Spawn a bold floating elemental reaction text popup!
+            if (this.damageNumbers) {
               this.damageNumbers.spawn(arrow.x, arrow.y - 25, 'MELT!', 'cryo', true);
             }
           } else {
