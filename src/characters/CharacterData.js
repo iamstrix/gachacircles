@@ -92,7 +92,8 @@ export const CHARACTERS = {
       description: 'Pyro infusion: deals +50% damage and doubles attack speed for 6s',
       cooldown: 10,
       duration: 6000,
-      emoji: '🔥'
+      emoji: '🔥',
+      icon: '/yoimiya-skill_icon.png'
     },
     burstQ: {
       name: 'Ryuukin Saxifrage',
@@ -100,7 +101,8 @@ export const CHARACTERS = {
       damageMultiplier: 4.0,
       aoeRadius: 160,
       cooldown: 15,
-      emoji: '🎆'
+      emoji: '🎆',
+      icon: '/yoimiya-ultimate_icon.png'
     },
     passive: {
       name: 'Tricks of the Trouble-Maker',

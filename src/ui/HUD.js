@@ -161,6 +161,15 @@ function injectStyles() {
     }
     .ghud-emoji {
       font-size: 24px; /* Enlarged emoji */
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .ghud-icon-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 50%;
     }
 
     /* ── Cooldown Overlays ───────────────── */
@@ -427,8 +436,14 @@ export class HUD {
   _createActionButton(key, emoji, element, abilityData) {
     const btn = document.createElement('div');
     btn.className = `ghud-action-btn ${element}`;
+    
+    // Use icon image if available, otherwise fallback to emoji
+    const iconContent = abilityData.icon 
+      ? `<img src="${abilityData.icon}" class="ghud-icon-img" alt="${abilityData.name}">`
+      : emoji;
+
     btn.innerHTML = `
-      <div class="ghud-emoji">${emoji}</div>
+      <div class="ghud-emoji">${iconContent}</div>
       <svg viewBox="0 0 32 32" class="ghud-cd-svg">
         <circle cx="16" cy="16" r="13" class="ghud-cd-bg"></circle>
         <circle cx="16" cy="16" r="13" class="ghud-cd-fg ${element}"
