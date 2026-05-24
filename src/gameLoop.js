@@ -56,6 +56,7 @@ export class GameLoop {
     preloadSFX('/audio/yoimiya/yoimiya-skill.wav');
     preloadSFX('/audio/yoimiya/yoimiya-ultimate.wav');
     preloadSFX('/audio/circle-bounce.wav');
+    preloadSFX('/audio/winner-splash.wav');
 
     // Preload parry sound effects
     for (let i = 1; i <= 4; i++) {
@@ -1544,6 +1545,9 @@ export class GameLoop {
   _endGame(winner) {
     this.gameOver = true;
     this.winner = winner;
+
+    // Play victory splash audio
+    playSFX('/audio/winner-splash.wav');
 
     if (this.onGameOver) {
       this.onGameOver(winner);
