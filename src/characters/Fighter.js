@@ -232,7 +232,7 @@ export class Fighter {
 
           // Apply slight forward impulse for all early hits (Step-in effect)
           if (p > 0.05 && p < 0.25 && opponent) {
-            const stepForce = 0.15;
+            const stepForce = 0.36; // Increased to 30% of N5 dash force (1.2 * 0.3 = 0.36)
             this.body.vx += Math.cos(targetAngle) * stepForce;
             this.body.vy += Math.sin(targetAngle) * stepForce;
           }
