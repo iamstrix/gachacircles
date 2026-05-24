@@ -326,16 +326,16 @@ export class GameLoop {
             const circleGfx1 = new Graphics();
             const circleGfx2 = new Graphics();
 
-            circleGfx1.circle(0, 0, 10);
-            circleGfx1.fill({ color: 0xff6d00, alpha: 0.15 });
-            circleGfx1.stroke({ color: 0xffab40, width: 2 });
+            drawSparkle(circleGfx1, 0xffab40);
+            drawSparkle(circleGfx2, 0xffab40);
 
-            circleGfx2.circle(0, 0, 10);
-            circleGfx2.fill({ color: 0xff6d00, alpha: 0.15 });
-            circleGfx2.stroke({ color: 0xffab40, width: 2 });
-
-            this.stage.addChild(circleGfx1);
-            this.stage.addChild(circleGfx2);
+            if (arrow.owner.vfx && arrow.owner.vfx.container) {
+              arrow.owner.vfx.container.addChildAt(circleGfx1, 0);
+              arrow.owner.vfx.container.addChildAt(circleGfx2, 0);
+            } else {
+              this.stage.addChild(circleGfx1);
+              this.stage.addChild(circleGfx2);
+            }
 
             this.activeEffects.push({
               type: 'aurous_blaze_mark',
@@ -493,22 +493,38 @@ export class GameLoop {
       }
       else if (effect.type === 'aurous_blaze_mark') {
         if (effect.timer <= 0 || !effect.target.alive) {
-          this.stage.removeChild(effect.circle1);
-          this.stage.removeChild(effect.circle2);
+          if (effect.circle1.parent) {
+            effect.circle1.parent.removeChild(effect.circle1);
+          }
+          if (effect.circle2.parent) {
+            effect.circle2.parent.removeChild(effect.circle2);
+          }
           effect.circle1.destroy();
           effect.circle2.destroy();
           return false;
         }
 
-        // Orbiting logic: two medium-sized orange circles circling her dynamically
+        // Orbiting logic: two medium-sized orange sparkles circling her dynamically and rotating on their own axes
         effect.angleOffset += delta * 0.045; // Speed of orbit
         const radius = 45; // Orbit distance around target circle
         
         effect.circle1.x = effect.target.body.x + Math.cos(effect.angleOffset) * radius;
         effect.circle1.y = effect.target.body.y + Math.sin(effect.angleOffset) * radius;
+        effect.circle1.rotation = effect.angleOffset * 2.0; // Self-spinning sparkle
         
         effect.circle2.x = effect.target.body.x + Math.cos(effect.angleOffset + Math.PI) * radius;
         effect.circle2.y = effect.target.body.y + Math.sin(effect.angleOffset + Math.PI) * radius;
+        effect.circle2.rotation = -effect.angleOffset * 2.0; // Self-spinning opposite direction
+
+        // Pre-detonation warning flickering phase: flash white 0.8 seconds before the interval explosion
+        let sparkleColor = 0xffab40; // Light orange
+        if (effect.explosionCD <= 0.8) {
+          const flashRate = 75; // high-frequency flickering speed in ms
+          const isWhite = Math.floor(performance.now() / flashRate) % 2 === 0;
+          sparkleColor = isWhite ? 0xffffff : 0xffab40;
+        }
+        drawSparkle(effect.circle1, sparkleColor);
+        drawSparkle(effect.circle2, sparkleColor);
 
         // Emit sizzling, burning particle trails from both orbiting circles on every frame!
         if (effect.owner.vfx && typeof effect.owner.vfx.triggerMarkTrail === 'function') {
@@ -528,8 +544,10 @@ export class GameLoop {
           const result = effect.target.takeDamage(tickDmg);
           effect.owner.stats.damageDealt.skill += result.actualDamage;
 
-          // Trigger massive Pyrotechnic sparks burst!
-          if (effect.owner.vfx) {
+          // Trigger massive Pyrotechnic interval explosion burst!
+          if (effect.owner.vfx && typeof effect.owner.vfx.triggerBlazeDetonation === 'function') {
+            effect.owner.vfx.triggerBlazeDetonation(effect.target.body.x, effect.target.body.y);
+          } else if (effect.owner.vfx) {
             effect.owner.vfx.triggerCollision(effect.target.body.x, effect.target.body.y);
           }
 
@@ -1204,12 +1222,8 @@ export class GameLoop {
           visual.x = fighter.body.x;
           visual.y = fighter.body.y;
           
-          // Add to the fighter's VFX container so it renders beneath the character circles!
-          if (fighter.vfx && fighter.vfx.container) {
-            fighter.vfx.container.addChild(visual);
-          } else {
-            this.stage.addChild(visual);
-          }
+          // Add to the stage at index 1 so it renders beneath the character circles!
+          this.stage.addChildAt(visual, 1);
 
           const effect = {
             type: 'hyouka',
@@ -1234,12 +1248,8 @@ export class GameLoop {
             sprite.alpha = 0;
             sprite.tint = 0x80deea; // Cryo light-cyan glow
             
-            // Add to the fighter's VFX container so it renders beneath the character circles!
-            if (fighter.vfx && fighter.vfx.container) {
-              fighter.vfx.container.addChild(sprite);
-            } else {
-              this.stage.addChild(sprite);
-            }
+            // Add to the stage at index 1 so it renders beneath the character circles!
+            this.stage.addChildAt(sprite, 1);
             effect.symbolSprite = sprite;
           }).catch(err => console.warn('Could not load Cryo symbol:', err));
         }
@@ -1273,8 +1283,9 @@ export class GameLoop {
           // Phase 1: 2.1s Casting with Laser Telegraph + Contracting Ring
           const telegraphGfx = new Graphics();
           const ringGfx = new Graphics();
-          this.stage.addChild(telegraphGfx);
-          this.stage.addChild(ringGfx);
+          // Add to stage at index 1 so they render beneath the character circles!
+          this.stage.addChildAt(telegraphGfx, 1);
+          this.stage.addChildAt(ringGfx, 1);
 
           const effect = {
             type: 'soumetsu_cast',
@@ -1300,12 +1311,8 @@ export class GameLoop {
             sprite.alpha = 0.2;
             sprite.tint = 0x80deea; // Cryo light-cyan glow
             
-            // Add to the fighter's VFX container so it renders beneath the character circles!
-            if (fighter.vfx && fighter.vfx.container) {
-              fighter.vfx.container.addChild(sprite);
-            } else {
-              this.stage.addChild(sprite);
-            }
+            // Add to the stage at index 1 so it renders beneath the character circles!
+            this.stage.addChildAt(sprite, 1);
             effect.symbolSprite = sprite;
           }).catch(err => console.warn('Could not load Cryo symbol for ultimate:', err));
 
@@ -1321,11 +1328,8 @@ export class GameLoop {
           fighter.stats.casts.burst++;
           // Phase 1: 1.0s Casting with sparkles and orange particles around her
           const ringGfx = new Graphics();
-          if (fighter.vfx && fighter.vfx.container) {
-            fighter.vfx.container.addChild(ringGfx);
-          } else {
-            this.stage.addChild(ringGfx);
-          }
+          // Add to the stage at index 1 so it renders beneath the character circles!
+          this.stage.addChildAt(ringGfx, 1);
 
           this.activeEffects.push({
             type: 'ryuukin_cast',
@@ -1482,7 +1486,8 @@ export class GameLoop {
     if (!this.stage || !fighter.alive || !opponent.alive) return;
 
     if (sound) {
-      playSFX(sound, 0.78);
+      const volume = isFinalShot ? 1.0 : 0.78;
+      playSFX(sound, volume);
     }
 
     const startX = fighter.body.x;
@@ -1801,3 +1806,16 @@ export class GameLoop {
     playSFX('/audio/yoimiya/yoimiya-na_5.mp3', 0.85); // Crisp whistle launcher
   }
 }
+
+/**
+ * Draws a retro neo-brutalist solid circle (sparkle) with a solid color
+ * fill, matching Yoimiya's circular ultimate mark style without borders.
+ * @param {import('pixi.js').Graphics} gfx - The Pixi Graphics object to draw into
+ * @param {number} color - The hex color code for the solid fill
+ */
+function drawSparkle(gfx, color) {
+  gfx.clear();
+  gfx.circle(0, 0, 8);
+  gfx.fill({ color: color, alpha: 1.0 });
+}
+
