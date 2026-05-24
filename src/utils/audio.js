@@ -18,6 +18,17 @@ function getAudioContext() {
   return audioCtx;
 }
 
+let masterVolume = parseFloat(localStorage.getItem('dev-master-volume')) ?? 1.0;
+
+/**
+ * Set the global master volume multiplier.
+ * @param {number} volume - Master multiplier (0.0 to 1.0)
+ */
+export function setMasterVolume(volume) {
+  masterVolume = Math.max(0, Math.min(1, volume));
+  localStorage.setItem('dev-master-volume', masterVolume);
+}
+
 /**
  * Preload an audio file so it is ready to play instantly.
  * @param {string} path - URL path to the audio file
@@ -50,7 +61,8 @@ export function playSFX(path, volume = 0.6) {
       audioNode.preload = 'auto';
       sfxCache[path] = audioNode;
     }
-    audioNode.volume = volume;
+    // Apply master volume multiplier
+    audioNode.volume = Math.max(0, Math.min(1, volume * masterVolume));
     audioNode.play().catch(e => {
       console.debug(`Autoplay policy blocked audio play: ${path}`, e);
     });

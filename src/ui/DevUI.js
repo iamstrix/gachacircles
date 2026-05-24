@@ -1,3 +1,5 @@
+import { setMasterVolume } from '../utils/audio.js';
+
 /**
  * DevUI.js — Developer debug overlay
  * Provides toggles for testing and debugging.
@@ -53,6 +55,11 @@ export class DevUI {
       localStorage.setItem('dev-dmg-multiplier', mult);
       location.reload();
     }, 0.1);
+
+    const currentVol = parseFloat(localStorage.getItem('dev-master-volume')) ?? 1.0;
+    this.addRangeInput(group, 'Master Volume', currentVol, (val) => {
+      setMasterVolume(val);
+    }, 0, 1, 0.05);
   }
 
   addToggle(parent, label, callback) {
@@ -107,6 +114,36 @@ export class DevUI {
     input.style.fontWeight = '700';
 
     input.addEventListener('change', (e) => callback(e.target.value));
+
+    row.appendChild(labelText);
+    row.appendChild(input);
+    parent.appendChild(row);
+  }
+
+  addRangeInput(parent, label, defaultValue, callback, min = 0, max = 1, step = 0.01) {
+    const row = document.createElement('div');
+    row.style.display = 'flex';
+    row.style.flexDirection = 'column';
+    row.style.gap = '6px';
+    row.style.marginTop = '10px';
+
+    const labelText = document.createElement('span');
+    labelText.innerText = label;
+    labelText.style.fontSize = '10px';
+    labelText.style.fontWeight = '900';
+    labelText.style.color = '#8888aa';
+    labelText.style.textTransform = 'uppercase';
+
+    const input = document.createElement('input');
+    input.type = 'range';
+    input.min = min;
+    input.max = max;
+    input.step = step;
+    input.value = defaultValue;
+    input.style.width = '100%';
+    input.style.cursor = 'pointer';
+
+    input.addEventListener('input', (e) => callback(parseFloat(e.target.value)));
 
     row.appendChild(labelText);
     row.appendChild(input);
