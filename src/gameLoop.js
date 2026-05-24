@@ -560,6 +560,14 @@ export class GameLoop {
             this.stage.removeChild(effect.ring);
             effect.ring.destroy();
           }
+          if (effect.symbolSprite) {
+            if (effect.owner.vfx && effect.owner.vfx.container) {
+              effect.owner.vfx.container.removeChild(effect.symbolSprite);
+            } else {
+              this.stage.removeChild(effect.symbolSprite);
+            }
+            effect.symbolSprite.destroy();
+          }
           effect.telegraph.destroy();
 
           const vortex = new Container();
@@ -626,6 +634,17 @@ export class GameLoop {
 
         const progress = 1 - (effect.timer / 1.3); // Divisor reduced to 1.3s to match shorter windup
         const ringRadius = 250 * (1 - progress) + 40; // Starts at 250, closes to 40
+
+        // Sync and spin Cryo symbol sprite
+        if (effect.symbolSprite) {
+          effect.symbolSprite.x = effect.owner.body.x;
+          effect.symbolSprite.y = effect.owner.body.y;
+          const size = 300 * (1 - progress) + 80; // Shrink as ring contracts
+          effect.symbolSprite.width = size;
+          effect.symbolSprite.height = size;
+          effect.symbolSprite.alpha = 0.2 + progress * 0.45; // Get solid as blast nears
+          effect.symbolSprite.rotation = -progress * 1.5; // Spin slowly counter-clockwise
+        }
 
         if (effect.owner.vfx) {
           const range = 800;
@@ -1248,15 +1267,38 @@ export class GameLoop {
           this.stage.addChild(telegraphGfx);
           this.stage.addChild(ringGfx);
 
-          this.activeEffects.push({
+          const effect = {
             type: 'soumetsu_cast',
             owner: fighter,
             target: opponent,
             timer: 1.3, // Windup reduced by another 0.3s (from 1.6s to 1.3s) for snappier feel!
             telegraph: telegraphGfx,
             ring: ringGfx,
-            angle: 0
-          });
+            angle: 0,
+            symbolSprite: null
+          };
+          this.activeEffects.push(effect);
+
+          // Asynchronously load the cryo.png symbol so it doesn't block the loop
+          Assets.load('/cryo.png').then(texture => {
+            if (this.gameOver || !this.activeEffects.includes(effect)) return;
+            const sprite = new Sprite(texture);
+            sprite.anchor.set(0.5);
+            sprite.x = fighter.body.x;
+            sprite.y = fighter.body.y;
+            sprite.width = 300;
+            sprite.height = 300;
+            sprite.alpha = 0.2;
+            sprite.tint = 0x80deea; // Cryo light-cyan glow
+            
+            // Add to the fighter's VFX container so it renders beneath the character circles!
+            if (fighter.vfx && fighter.vfx.container) {
+              fighter.vfx.container.addChild(sprite);
+            } else {
+              this.stage.addChild(sprite);
+            }
+            effect.symbolSprite = sprite;
+          }).catch(err => console.warn('Could not load Cryo symbol for ultimate:', err));
 
           fighter.isInvincible = true; // Invincible during burst cast windup!
 

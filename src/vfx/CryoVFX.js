@@ -212,19 +212,29 @@ export class CryoVFX {
    */
   drawSoumetsuRing(gfx, x, y, radius, progress) {
     gfx.clear();
-    // Color transitions from dark ominous abyss to light blue
-    // Dark: 0x050a14 -> Light: 0x4fc3f7
+    // Stroke transitions from dark navy to bright Cryo cyan
     const r = Math.round(5 * (1 - progress) + 79 * progress);
     const g = Math.round(10 * (1 - progress) + 195 * progress);
     const b = Math.round(20 * (1 - progress) + 247 * progress);
     const color = (r << 16) | (g << 8) | b;
     
-    // Draw the main contracting ring
-    gfx.circle(x, y, radius);
-    gfx.stroke({ color: color, width: 4 + progress * 6, alpha: 0.4 + progress * 0.6 });
+    // Fill transitions from deep dark ominous navy shadow (#05102a) to bright glowing ice cyan (#b3e5fc)
+    const fillStartR = 0x05, fillStartG = 0x10, fillStartB = 0x2a;
+    const fillEndR = 0xb3, fillEndG = 0xe5, fillEndB = 0xfc;
     
-    // Subtle brightening fill
-    gfx.fill({ color: color, alpha: 0.05 + progress * 0.15 });
+    const fillR = Math.round(fillStartR + (fillEndR - fillStartR) * progress);
+    const fillG = Math.round(fillStartG + (fillEndG - fillStartG) * progress);
+    const fillB = Math.round(fillStartB + (fillEndB - fillStartB) * progress);
+    const fillCol = (fillR << 16) | (fillG << 8) | fillB;
+    
+    // Fill alpha builds up density (starts at 0.25, peaks at 0.85 just before unleash)
+    const fillAlpha = 0.25 + 0.60 * progress;
+    
+    gfx.circle(x, y, radius);
+    gfx.fill({ color: fillCol, alpha: fillAlpha });
+    
+    // Elegant glow stroke that solidifies as it gets closer
+    gfx.stroke({ color: color, width: 4.5 + progress * 6.5, alpha: 0.4 + progress * 0.6 });
   }
 
   triggerVacuumParticles(x, y, targetX, targetY) {
