@@ -238,6 +238,11 @@ export class GameLoop {
 
           if (arrow.target.id === 'ayaka' && arrow.target.swingProgress < 0.9 && (!arrow.isBlazing || canParryBlazing)) {
             // PARRY! Sword deflects arrow
+            if (canParryBlazing) {
+              // Trigger spectacular Melt reaction visual clash!
+              if (arrow.target.vfx && typeof arrow.target.vfx.triggerMeltReaction === 'function') {
+                arrow.target.vfx.triggerMeltReaction(arrow.x, arrow.y);
+              }
               // Play special infused parry sound on top of standard deflect
               playSFX('/audio/ayaka/ayaka-parry_infused.wav', 0.6);
 
