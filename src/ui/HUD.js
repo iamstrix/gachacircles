@@ -419,13 +419,7 @@ export class HUD {
     this[`_btn_${element}_Q_fg`] = qBtn.querySelector('.ghud-cd-fg');
     this[`_btn_${element}_Q_text`] = qBtn.querySelector('.ghud-cd-text');
 
-    // Passive Badge
-    const passiveBadge = document.createElement('div');
-    passiveBadge.className = `ghud-passive-badge ${element}`;
-    passiveBadge.innerHTML = element === 'cryo' ? '⚔️' : '🎯';
-    passiveBadge.style.opacity = '0.2'; // Greyed out by default
-    bar.appendChild(passiveBadge);
-    this[`_badge_${element}`] = passiveBadge;
+
 
     this.root.appendChild(bar);
   }
