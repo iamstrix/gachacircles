@@ -319,15 +319,18 @@ function injectStyles() {
     /* ── Winner UI Adaptations ────────────── */
     .hud-active-win .ghud-score-tracker {
       bottom: 78px; /* Moves above the skills */
-      box-shadow: 4px 4px 0px rgba(0,0,0,0.2);
+      background: #1a1a2e; /* Static dark theme */
+      border-color: #000;
+      box-shadow: 4px 4px 0px rgba(0,0,0,0.3);
+    }
+    .hud-active-win .ghud-score-label {
+      color: #fff; /* White text for dark theme */
     }
     .hud-winner-cryo .ghud-score-tracker {
-      background: #00acc1; /* Deep high-saturation Cryo blue */
       left: 123px; /* Centered above left sidebar: 60 + (126/2) */
       transform: translateX(-50%);
     }
     .hud-winner-pyro .ghud-score-tracker {
-      background: #e64a19; /* Deep high-saturation Pyro red/orange */
       left: auto;
       right: 123px; /* Centered above right sidebar: 60 + (126/2) */
       transform: translateX(50%);
