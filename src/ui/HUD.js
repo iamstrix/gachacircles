@@ -105,10 +105,24 @@ function injectStyles() {
       border: 2px solid #000;
       box-shadow: 2px 2px 0px rgba(0,0,0,0.15);
       overflow: hidden;
+      position: relative;
+    }
+    .ghud-hp-bar-ghost {
+      position: absolute;
+      top: 0;
+      left: 0;
+      height: 100%;
+      background: #ffd54f; /* soft yellow for trailing damage */
+      transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+      z-index: 1;
     }
     .ghud-hp-bar-fill {
+      position: absolute;
+      top: 0;
+      left: 0;
       height: 100%;
-      transition: width 0.3s ease;
+      transition: width 0.2s ease;
+      z-index: 2;
     }
     .ghud-hp-bar-fill.cryo { background: #00bcd4; }
     .ghud-hp-bar-fill.pyro { background: #ff3333; }
@@ -351,6 +365,12 @@ export class HUD {
 
     const barBg = document.createElement('div');
     barBg.className = 'ghud-hp-bar-bg';
+    
+    const ghost = document.createElement('div');
+    ghost.className = 'ghud-hp-bar-ghost';
+    ghost.style.width = '100%';
+    barBg.appendChild(ghost);
+
     const fill = document.createElement('div');
     fill.className = `ghud-hp-bar-fill ${element}`;
     fill.style.width = '100%';
@@ -366,6 +386,7 @@ export class HUD {
 
     // Store references
     this[`_hp_${element}_fill`] = fill;
+    this[`_hp_${element}_ghost`] = ghost;
     this[`_hp_${element}_text`] = hpSpan;
   }
 
@@ -440,8 +461,13 @@ export class HUD {
    */
   updateHP(fighter, currentHP, maxHP) {
     const pct = Math.max(0, Math.min(100, (currentHP / maxHP) * 100));
-    if (this[`_hp_${fighter}_fill`]) this[`_hp_${fighter}_fill`].style.width = `${pct}%`;
-    if (this[`_hp_${fighter}_text`]) this[`_hp_${fighter}_text`].textContent = `${Math.round(currentHP)} / ${Math.round(maxHP)}`;
+    const fill = this[`_hp_${fighter}_fill`];
+    const ghost = this[`_hp_${fighter}_ghost`];
+    const text = this[`_hp_${fighter}_text`];
+
+    if (fill) fill.style.width = `${pct}%`;
+    if (ghost) ghost.style.width = `${pct}%`;
+    if (text) text.textContent = `${Math.round(currentHP)} / ${Math.round(maxHP)}`;
   }
 
   /**
