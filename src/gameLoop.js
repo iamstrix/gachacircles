@@ -1176,7 +1176,7 @@ export class GameLoop {
           fighter.isInvincible = true; // Invincible during burst cast windup!
 
           // Play cast audio/whistle
-          playSFX('/audio/yoimiya/yoimiya-ultimate.wav');
+          playSFX('/audio/yoimiya/yoimiya-ultimate.wav', 0.8);
         }
       }
     }
