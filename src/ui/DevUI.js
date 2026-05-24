@@ -79,7 +79,6 @@ export class DevUI {
       location.reload();
     });
   }
-  }
 
   addToggle(parent, label, callback) {
     const row = document.createElement('label');
