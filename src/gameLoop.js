@@ -351,7 +351,9 @@ export class GameLoop {
 
           // Pyro explosion burst VFX only for Blazing Arrows!
           if (arrow.isBlazing && arrow.owner.vfx) {
-            if (typeof arrow.owner.vfx.triggerBlazingCollision === 'function') {
+            if (isFinalShot && typeof arrow.owner.vfx.triggerFinisherImpact === 'function') {
+              arrow.owner.vfx.triggerFinisherImpact(arrow.x, arrow.y);
+            } else if (typeof arrow.owner.vfx.triggerBlazingCollision === 'function') {
               arrow.owner.vfx.triggerBlazingCollision(arrow.x, arrow.y);
             } else {
               arrow.owner.vfx.triggerCollision(arrow.x, arrow.y);
@@ -1320,9 +1322,13 @@ export class GameLoop {
     fighter.body.vx -= Math.cos(angle) * recoilStrength;
     fighter.body.vy -= Math.sin(angle) * recoilStrength;
 
-    // Trigger spark effect muzzle flash originating from Yoimiya's circle ONLY when E is active!
-    if (isBlazing && fighter.vfx) {
-      fighter.vfx.triggerCollision(startX, startY);
+    // Trigger spark effect muzzle flash originating from Yoimiya's circle
+    if (fighter.vfx) {
+      if (isFinalShot && typeof fighter.vfx.triggerFinisherLaunch === 'function') {
+        fighter.vfx.triggerFinisherLaunch(startX, startY, angle);
+      } else if (isBlazing) {
+        fighter.vfx.triggerCollision(startX, startY);
+      }
     }
 
     // Create arrow graphics

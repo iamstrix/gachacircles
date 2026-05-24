@@ -125,6 +125,80 @@ export class PyroVFX {
   }
 
   /**
+   * High-intensity explosion at Yoimiya's position when firing the N5 finisher.
+   * Matches the massive recoil impulse.
+   */
+  triggerFinisherLaunch(x, y, angle) {
+    // 1. Recoil blast cone (opposite to firing direction)
+    this._burst.emit(x, y, {
+      count: 25,
+      speedMin: 2.0,
+      speedMax: 8.0,
+      spreadAngle: 0.8,
+      angleCenter: angle + Math.PI,
+      lifetimeMin: 15,
+      lifetimeMax: 35,
+      sizeMin: 2.0,
+      sizeMax: 5.0,
+      gradient: PYRO_GRADIENT,
+      blendMode: 'add',
+      shrink: true,
+    });
+
+    // 2. Muzzle flash burst
+    this._skill.emit(x, y, {
+      count: 15,
+      speedMin: 1.0,
+      speedMax: 4.0,
+      spreadAngle: Math.PI * 2,
+      lifetimeMin: 10,
+      lifetimeMax: 20,
+      sizeMin: 4,
+      sizeMax: 10,
+      color: PYRO_COLORS.white,
+      blendMode: 'add',
+    });
+  }
+
+  /**
+   * Heavy impact effects for the N5 finisher hit.
+   */
+  triggerFinisherImpact(x, y) {
+    // 1. Denser multi-toned core
+    const colors = [PYRO_COLORS.vividOrange, PYRO_COLORS.brightGold, PYRO_COLORS.white];
+    colors.forEach(c => {
+      this._burst.emit(x, y, {
+        count: 15,
+        speedMin: 3.0,
+        speedMax: 10.0,
+        spreadAngle: Math.PI * 2,
+        lifetimeMin: 20,
+        lifetimeMax: 40,
+        sizeMin: 2.5,
+        sizeMax: 6.5,
+        color: c,
+        blendMode: 'add',
+        shrink: true,
+      });
+    });
+
+    // 2. Lingering embers
+    this._ambient.emit(x, y, {
+      count: 10,
+      speedMin: 0.5,
+      speedMax: 2.0,
+      spreadAngle: Math.PI * 2,
+      lifetimeMin: 40,
+      lifetimeMax: 70,
+      sizeMin: 1.0,
+      sizeMax: 2.5,
+      color: PYRO_COLORS.vividOrange,
+      blendMode: 'add',
+      gravity: 0.05,
+    });
+  }
+
+  /**
    * Intensive trail for the ultimate firework rocket.
    * Sprays a thick volume of multi-toned orange/gold particles.
    */
