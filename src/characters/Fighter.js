@@ -39,6 +39,7 @@ export class Fighter {
     this.swingProgress = 1.0;  // 0 to 1 (animation fraction)
     this.swingDuration = 0;    // Duration in ms
     this.hasHitThisSwing = false;
+    this.hasThrustedThisSwing = false;
     this.visualOffset = { x: 0, y: 0, rotation: 0 };
     this.isInvincible = false;
     this.slowMultiplier = 1.0;
@@ -230,11 +231,12 @@ export class Fighter {
             orbitDist += Math.sin(p * Math.PI) * 25;
           }
 
-          // Apply slight forward impulse for all early hits (Step-in effect)
-          if (p > 0.05 && p < 0.25 && opponent) {
-            const stepForce = 0.36; // Increased to 30% of N5 dash force (1.2 * 0.3 = 0.36)
-            this.body.vx += Math.cos(targetAngle) * stepForce;
-            this.body.vy += Math.sin(targetAngle) * stepForce;
+          // Apply snappy forward impulse for all early hits (Step-in effect)
+          if (p > 0.05 && !this.hasThrustedThisSwing && opponent) {
+            this.hasThrustedThisSwing = true;
+            const impulse = 3.5; // Large snappy instantaneous impulse
+            this.body.vx += Math.cos(targetAngle) * impulse;
+            this.body.vy += Math.sin(targetAngle) * impulse;
           }
           break;
 
@@ -401,6 +403,7 @@ export class Fighter {
     this.swingProgress = 0;
     this.swingDuration = duration;
     this.hasHitThisSwing = false;
+    this.hasThrustedThisSwing = false;
   }
 
   /**
