@@ -1131,7 +1131,7 @@ export class GameLoop {
         }
 
         if (fighter.id === 'ayaka') {
-          playSFX('/audio/ayaka/ayaka-ultimate.mp3');
+          playSFX('/audio/ayaka/ayaka-ultimate.mp3', 0.78);
           // Ayaka Q: Two-phase Soumetsu burst
           // Phase 1: 2.1s Casting with Laser Telegraph + Contracting Ring
           const telegraphGfx = new Graphics();
@@ -1177,7 +1177,7 @@ export class GameLoop {
           fighter.isInvincible = true; // Invincible during burst cast windup!
 
           // Play cast audio/whistle
-          playSFX('/audio/yoimiya/yoimiya-ultimate.wav', 0.8);
+          playSFX('/audio/yoimiya/yoimiya-ultimate.wav', 1.0);
         }
       }
     }
