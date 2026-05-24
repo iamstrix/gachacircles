@@ -346,8 +346,8 @@ function injectStyles() {
       font-size: 32px;
       font-weight: 950;
       color: #000;
-      -webkit-text-stroke: 1.5px #000; /* Bold black outline */
-      text-shadow: 4px 4px 0px rgba(0,0,0,0.15); /* Increased offset to 4px to clearly look like a shadow */
+      /* removed outline */
+      text-shadow: 4px 4px 0px rgba(0,0,0,0.15); 
     }
     .ghud-score-val.cryo { color: #00bcd4; }
     .ghud-score-val.pyro { color: #ff3333; }
