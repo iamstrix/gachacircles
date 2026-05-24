@@ -459,14 +459,26 @@ export class GameLoop {
           const fillB = Math.round(fillStartB + (fillEndB - fillStartB) * progress);
           const fillCol = (fillR << 16) | (fillG << 8) | fillB;
 
-          // Growing fill opacity as energy accumulates (starts at 0.15, peaks at 0.75 for intense flash)
-          const fillAlpha = 0.15 + 0.60 * progress;
+          // Growing fill opacity as energy accumulates (starts at 0.35, peaks at 0.90 for an almost solid core)
+          let fillAlpha = 0.35 + 0.55 * progress;
+
+          // High-frequency white flickering to emphasize detonation (especially in the last 40% of the cast)
+          let finalCol = fillCol;
+          if (progress > 0.6) {
+            const timeScale = performance.now() * 0.08; // High frequency speed
+            const isFlickerWhite = Math.sin(timeScale) > 0.1 || Math.random() < 0.3;
+            
+            if (isFlickerWhite) {
+              finalCol = 0xffffff;
+              fillAlpha = Math.min(1.0, fillAlpha + 0.15); // Boost opacity during flashes
+            }
+          }
 
           effect.ring.clear();
           effect.ring.circle(0, 0, ringRadius);
           
           // Fill the circle
-          effect.ring.fill({ color: fillCol, alpha: fillAlpha });
+          effect.ring.fill({ color: finalCol, alpha: fillAlpha });
           
           // Elegant glow stroke that solidifies as it gets closer
           const alpha = 0.35 + 0.65 * progress;
