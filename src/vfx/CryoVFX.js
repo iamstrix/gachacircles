@@ -436,14 +436,18 @@ export class CryoVFX {
 
   /**
    * Trigger a magnificent elemental Melt reaction clash when a Cryo-infused sword parries a Pyro arrow.
-   * Spawns a massive burst of icy blue crystals, sizzling orange sparks, and dense white vapor mist.
+   * Spawns a massive burst of icy blue crystals, sizzling orange sparks, and dense white vapor mist
+   * directed towards the receiving end in a broad, high-velocity cone.
    */
-  triggerMeltReaction(x, y) {
-    // 1. Central White-Hot Flash
+  triggerMeltReaction(x, y, angle) {
+    const dir = angle || 0;
+    const cone = Math.PI * 0.9; // Broad ~160 degree cone in direction of impact
+
+    // 1. Central White-Hot Flash (Still somewhat omni but fast)
     this._skill.emit(x, y, {
       count: 12,
-      speedMin: 0.5,
-      speedMax: 2.5,
+      speedMin: 1.0,
+      speedMax: 4.5,
       spreadAngle: Math.PI * 2,
       lifetimeMin: 10,
       lifetimeMax: 25,
@@ -455,14 +459,15 @@ export class CryoVFX {
       color: 0xffffff,
     });
 
-    // 2. Multi-toned Pyro Residue (Oranges/Golds)
+    // 2. Multi-toned Pyro Residue (Oranges/Golds) - Directed cone
     const pyroColors = [0xff6d00, 0xffab40, 0xff3d00, 0xffd600];
     pyroColors.forEach(c => {
       this._burst.emit(x, y, {
         count: 12,
-        speedMin: 2.0,
-        speedMax: 8.0,
-        spreadAngle: Math.PI * 2,
+        speedMin: 4.0,
+        speedMax: 12.0,
+        spreadAngle: cone,
+        angleCenter: dir,
         lifetimeMin: 20,
         lifetimeMax: 45,
         sizeMin: 1.5,
@@ -476,15 +481,15 @@ export class CryoVFX {
       });
     });
 
-    // 3. Multi-toned Cryo Shards (Light/Dark Blues)
-    // Using deep navy for "darks" and cyan/ice-blue for "lights"
+    // 3. Multi-toned Cryo Shards (Light/Dark Blues) - Directed cone
     const cryoColors = [0x5ed4fc, 0x00bcd4, 0x1a6dd4, 0x0c3366]; 
     cryoColors.forEach(c => {
       this._burst.emit(x, y, {
         count: 15,
-        speedMin: 3.0,
-        speedMax: 10.0,
-        spreadAngle: Math.PI * 2,
+        speedMin: 5.0,
+        speedMax: 15.0,
+        spreadAngle: cone,
+        angleCenter: dir,
         lifetimeMin: 25,
         lifetimeMax: 55,
         sizeMin: 2.0,
@@ -494,16 +499,17 @@ export class CryoVFX {
         blendMode: Math.random() < 0.4 ? 'normal' : 'add',
         color: c,
         shrink: true,
-        gravity: -0.02, // Some shards float up
+        gravity: -0.02, 
       });
     });
 
-    // 4. Dense White Vapor Steam (Mist)
+    // 4. Dense White Vapor Steam (Mist) - Slow lingering cone
     this._ambient.emit(x, y, {
       count: 35,
-      speedMin: 1.2,
-      speedMax: 5.0,
-      spreadAngle: Math.PI * 2,
+      speedMin: 2.0,
+      speedMax: 7.0,
+      spreadAngle: cone * 1.2,
+      angleCenter: dir,
       lifetimeMin: 30,
       lifetimeMax: 70,
       sizeMin: 4.0,
