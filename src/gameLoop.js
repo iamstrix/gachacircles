@@ -605,10 +605,17 @@ export class GameLoop {
 
         // Emit constant ice particles for "messy" blizzard feel - spread adjusted for 135 radius
         if (effect.owner.vfx && Math.random() < 0.6 * delta) {
-          effect.owner.vfx.triggerCollision(
-            effect.x + (Math.random() - 0.5) * 270, // Spread ~2x radius (2 * 135 = 270)
-            effect.y + (Math.random() - 0.5) * 270
-          );
+          if (typeof effect.owner.vfx.triggerVortexParticles === 'function') {
+            effect.owner.vfx.triggerVortexParticles(
+              effect.x + (Math.random() - 0.5) * 270,
+              effect.y + (Math.random() - 0.5) * 270
+            );
+          } else {
+            effect.owner.vfx.triggerCollision(
+              effect.x + (Math.random() - 0.5) * 270, // Spread ~2x radius (2 * 135 = 270)
+              effect.y + (Math.random() - 0.5) * 270
+            );
+          }
         }
 
         // Sticky logic: if very close to enemy, stop moving entirely

@@ -146,6 +146,27 @@ export class CryoVFX {
   }
 
   /**
+   * Trigger multi-toned blizzard particles for the Soumetsu vortex.
+   * Uses a diverse gradient (white, light blue, dark blue) and normal blend mode
+   * to ensure visibility and depth.
+   */
+  triggerVortexParticles(x, y) {
+    this._skill.emit(x, y, {
+      count: 2,
+      speedMin: 0.5,
+      speedMax: 2.5,
+      spreadAngle: Math.PI * 2,
+      lifetimeMin: 20,
+      lifetimeMax: 45,
+      sizeMin: 1.5,
+      sizeMax: 4.0,
+      gradient: HYOUKA_BURST_GRADIENT,
+      blendMode: 'normal',
+      shrink: true,
+    });
+  }
+
+  /**
    * Draw the laser sight telegraph line.
    * @param {Graphics} gfx
    * @param {number} x1, y1 - Start
