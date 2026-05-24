@@ -406,6 +406,7 @@ body {
   z-index: 50;
   opacity: 0;
   animation: win-fadein 0.8s ease forwards;
+  padding: 24px;
 }
 
 .win-screen__title {
@@ -414,6 +415,8 @@ body {
   letter-spacing: 4px;
   text-transform: uppercase;
   margin-bottom: 8px;
+  text-align: center;
+  max-width: 95%;
 }
 
 .win-screen__subtitle {
@@ -422,6 +425,8 @@ body {
   color: var(--text-secondary);
   letter-spacing: 2px;
   margin-bottom: 32px;
+  text-align: center;
+  max-width: 95%;
 }
 
 .win-screen__restart {

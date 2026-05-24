@@ -46,13 +46,13 @@ function injectStyles() {
     /* ── Top Banner ──────────────────────── */
     .ghud-banner {
       position: absolute;
-      top: 12px;
+      top: 4px; /* Moved up since they are being covered by the health bars */
       left: 50%;
       transform: translateX(-50%);
       display: flex;
       align-items: center;
       gap: 16px;
-      font-size: 24px;
+      font-size: 22px; /* Slightly reduced to give clearance */
       font-weight: 900;
       white-space: nowrap;
       text-transform: uppercase;
@@ -77,8 +77,8 @@ function injectStyles() {
     /* ── Health Bars (Active & Readable) ─────────────────────── */
     .ghud-hp-wrap {
       position: absolute;
-      top: 48px;
-      width: 220px;
+      top: 28px; /* Moved down to vertically stack below banner text and clear overlap */
+      width: 180px; /* Sized to fit elegantly with banner */
       display: flex;
       flex-direction: column;
       gap: 4px;
@@ -97,7 +97,7 @@ function injectStyles() {
 
     .ghud-hp-bar-bg {
       width: 100%;
-      height: 12px;
+      height: 10px; /* Reduced to save vertical space */
       background: #fff;
       border: 2px solid #000;
       box-shadow: 2px 2px 0px rgba(0,0,0,0.15);
@@ -110,58 +110,29 @@ function injectStyles() {
     .ghud-hp-bar-fill.cryo { background: #00bcd4; }
     .ghud-hp-bar-fill.pyro { background: #ff3333; }
 
-    /* ── Stats ────────────────────────────── */
-    .ghud-stats {
-      position: absolute;
-      bottom: 58px; /* Positioned directly above the action buttons */
-      display: flex;
-      font-size: 12px;
-      font-weight: 900;
-      text-transform: uppercase;
-      white-space: nowrap;
-    }
-    .ghud-stats.left {
-      left: 60px;
-      color: #00bcd4; /* cyan */
-      -webkit-text-stroke: 1px #000;
-      text-shadow: 1.5px 1.5px 0px #000;
-    }
-    .ghud-stats.right {
-      right: 60px;
-      color: #ff3333; /* red */
-      -webkit-text-stroke: 1px #000;
-      text-shadow: 1.5px 1.5px 0px #000;
-    }
-
-    .ghud-stat-val {
-      font-weight: 900;
-    }
-    .ghud-stat-val.cryo { color: #00bcd4; }
-    .ghud-stat-val.pyro { color: #ff3333; }
-
     /* ── Sidebars ────────────────────────── */
     .ghud-sidebar {
       position: absolute;
-      bottom: 8px; /* Put them below the arena */
+      top: 50%;
+      transform: translateY(-50%); /* Centered vertically alongside arena */
       display: flex;
-      flex-direction: row; /* Horizontal row */
+      flex-direction: column; /* Vertical stack */
       align-items: center;
-      gap: 12px;
+      gap: 16px;
       z-index: 1005;
     }
     .ghud-sidebar.left {
-      left: 60px;
+      left: 6px; /* Centered in the 60px left margin */
     }
     .ghud-sidebar.right {
-      right: 60px;
-      flex-direction: row-reverse; /* Mirrored layout on right side */
+      right: 6px; /* Centered in the 60px right margin */
     }
 
     /* ── Action Buttons ──────────────────── */
     .ghud-action-btn {
       position: relative;
-      width: 44px; /* Larger action buttons */
-      height: 44px;
+      width: 48px; /* Enlarged skill icons */
+      height: 48px;
       border-radius: 50%;
       border: 2px solid #000;
       background: #fff;
@@ -171,20 +142,8 @@ function injectStyles() {
       box-shadow: 2px 2px 0px rgba(0,0,0,0.15);
       pointer-events: auto;
     }
-    .ghud-action-name {
-      position: absolute;
-      top: -18px;
-      font-size: 9px;
-      font-weight: 900;
-      color: #000;
-      background: #ffd54f;
-      padding: 1px 4px;
-      border: 1.5px solid #000;
-      border-radius: 4px;
-      white-space: nowrap;
-    }
     .ghud-emoji {
-      font-size: 22px; /* Larger emoji */
+      font-size: 24px; /* Enlarged emoji */
     }
 
     /* ── Cooldown Overlays ───────────────── */
@@ -218,7 +177,7 @@ function injectStyles() {
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 13px; /* Slightly larger countdown text */
+      font-size: 14px; /* Enlarged countdown text */
       font-weight: 900;
       color: #000;
       -webkit-text-stroke: 0.5px #fff;
@@ -280,9 +239,6 @@ function injectStyles() {
     /* ── Retro Tooltip Cards ─────────────── */
     .ghud-tooltip {
       position: absolute;
-      bottom: 54px; /* Float directly above the action button */
-      left: 50%;
-      transform: translateX(-50%);
       width: 220px;
       padding: 10px;
       border: 2px solid #000;
@@ -295,6 +251,16 @@ function injectStyles() {
       white-space: normal;
       pointer-events: none;
       text-align: left;
+    }
+    .ghud-sidebar.left .ghud-tooltip {
+      left: 58px;
+      top: 50%;
+      transform: translateY(-50%);
+    }
+    .ghud-sidebar.right .ghud-tooltip {
+      right: 58px;
+      top: 50%;
+      transform: translateY(-50%);
     }
     
     .ghud-tooltip.cryo {
@@ -357,8 +323,6 @@ export class HUD {
     this._buildBanner();
     this._buildHP('cryo', 'left');
     this._buildHP('pyro', 'right');
-    this._buildStats('cryo', 'left');
-    this._buildStats('pyro', 'right');
     
     // Build sidebars on left and right margins
     this._buildSidebar('cryo', 'left');
@@ -451,7 +415,6 @@ export class HUD {
     const btn = document.createElement('div');
     btn.className = `ghud-action-btn ${element}`;
     btn.innerHTML = `
-      <div class="ghud-action-name">${abilityData.name}</div>
       <div class="ghud-emoji">${emoji}</div>
       <svg viewBox="0 0 32 32" class="ghud-cd-svg">
         <circle cx="16" cy="16" r="13" class="ghud-cd-bg"></circle>
