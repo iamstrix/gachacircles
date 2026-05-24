@@ -167,12 +167,16 @@ export class GameLoop {
         arrow.visual.rotation = arrow.angle;
 
         // ── 1. Vortex Shield Check (Soumetsu shreds arrows) ────────────
+        let shreddingVortex = null;
         const isInVortex = !arrow.isFireworkRocket && this.activeEffects && this.activeEffects.some(effect => {
           if (effect.type === 'soumetsu_vortex') {
             const vdx = arrow.x - effect.x;
             const vdy = arrow.y - effect.y;
             const vdist = Math.sqrt(vdx * vdx + vdy * vdy);
-            return vdist <= effect.radius;
+            if (vdist <= effect.radius) {
+              shreddingVortex = effect;
+              return true;
+            }
           }
           return false;
         });
@@ -198,7 +202,7 @@ export class GameLoop {
           playSynthDeflect();
           
           // Spawn the anime-style sliced arrow shards (respecting blazing state!)
-          this._spawnSlicedArrowShards(arrow.x, arrow.y, arrow.angle, arrow.isBlazing);
+          this._spawnSlicedArrowShards(arrow.x, arrow.y, arrow.angle, arrow.isBlazing, shreddingVortex);
 
           this.stage.removeChild(arrow.visual);
           arrow.visual.destroy();
@@ -901,6 +905,59 @@ export class GameLoop {
     // Update tumbling sliced shards
     if (this.shards) {
       this.shards = this.shards.filter(shard => {
+        // ── Persistent Shard Logic (Orbiting Vortex) ─────────────────
+        if (shard.isPersistent && shard.parentVortex) {
+          const vortex = shard.parentVortex;
+          
+          // Check if parent vortex is still active in the game
+          const vortexStillAlive = this.activeEffects.includes(vortex);
+          
+          if (vortexStillAlive && !shard.isDying) {
+            // Orbiting physics: tangential force around vortex center
+            const dx = shard.x - vortex.x;
+            const dy = shard.y - vortex.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            
+            if (dist > 5) {
+              const orbitalForce = 0.5 * delta;
+              const tx = -dy / dist;
+              const ty = dx / dist;
+              
+              // Apply centripetal pull to stay in circle + tangential spin
+              const pull = 0.15 * delta;
+              shard.vx += tx * orbitalForce - (dx / dist) * pull;
+              shard.vy += ty * orbitalForce - (dy / dist) * pull;
+            }
+            
+            // Damping to prevent infinite acceleration
+            shard.vx *= Math.pow(0.96, delta);
+            shard.vy *= Math.pow(0.96, delta);
+          } 
+          else if (!shard.isDying) {
+            // Vortex disappeared! Trigger death sequence
+            shard.isDying = true;
+            shard.life = 0.8; // Final 0.8s life
+            shard.maxLife = 0.8;
+            
+            // Calculate outward "slingshot" trajectory
+            const dx = shard.x - vortex.x;
+            const dy = shard.y - vortex.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            const dirX = dx / dist;
+            const dirY = dy / dist;
+            
+            // Perpendicular spin component
+            const tx = -dirY;
+            const ty = dirX;
+            
+            // Flings them out in a spiral depending on their last orbit position
+            const flingSpeed = 6.0;
+            shard.vx = (dirX + tx * 0.5) * flingSpeed;
+            shard.vy = (dirY + ty * 0.5) * flingSpeed;
+          }
+        }
+
+        // Standard lifespan processing
         shard.life -= delta * 0.016;
         if (shard.life <= 0) {
           this.stage.removeChild(shard.visual);
@@ -1497,7 +1554,7 @@ export class GameLoop {
    * Spawn two realistic, tumbling arrow shards (sliced in half) that fly
    * outward to the sides and fade away, representing an anime-style sword cut!
    */
-  _spawnSlicedArrowShards(x, y, angle, isBlazing = false) {
+  _spawnSlicedArrowShards(x, y, angle, isBlazing = false, parentVortex = null) {
     if (!this.stage) return;
 
     // ── Shard 1: The Silver Metal Tip (Front Half) ────────────────────
@@ -1548,6 +1605,10 @@ export class GameLoop {
     const baseSpeed = 8.0;    // Increased from 4.0 for wider spread
     const forwardSpeed = 5.0; // Increased from 2.0 to fly past the parryer
 
+    // Determine if these shards should be persistent (unenhanced arrow hitting vortex)
+    const isPersistent = !isBlazing && parentVortex !== null;
+    const life = isPersistent ? 99.0 : 0.7; // Effectively infinite until vortex dies
+
     // Store shards in loop queue
     this.shards.push(
       {
@@ -1557,8 +1618,11 @@ export class GameLoop {
         vy: Math.sin(angle) * forwardSpeed + Math.sin(angleLeft) * baseSpeed,
         rotSpeed: 0.22,
         visual: shardA,
-        life: 0.7,
-        maxLife: 0.7
+        life: life,
+        maxLife: life,
+        isPersistent: isPersistent,
+        parentVortex: parentVortex,
+        isDying: false
       },
       {
         x: x,
@@ -1567,8 +1631,11 @@ export class GameLoop {
         vy: Math.sin(angle) * forwardSpeed + Math.sin(angleRight) * baseSpeed,
         rotSpeed: -0.22,
         visual: shardB,
-        life: 0.7,
-        maxLife: 0.7
+        life: life,
+        maxLife: life,
+        isPersistent: isPersistent,
+        parentVortex: parentVortex,
+        isDying: false
       }
     );
   }
