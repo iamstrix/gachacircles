@@ -684,7 +684,7 @@ export class GameLoop {
       } 
       else if (effect.type === 'soumetsu_vortex') {
         // Phase 2: Vortex Movement & Damage
-        let currentSpeed = 1.17; // Base speed increased by 30% (from 0.9 to 1.17)
+        let currentSpeed = 1.755; // Base speed increased by another 50% (from 1.17 to 1.755)
         const distToEnemy = Math.sqrt((effect.x - effect.target.body.x)**2 + (effect.y - effect.target.body.y)**2);
         const isEnemyInside = distToEnemy < 135; // Reduced to 75% of 180 (135px)
 
