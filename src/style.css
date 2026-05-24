@@ -424,8 +424,10 @@ body {
 }
 
 .win-screen__panel--text {
-  padding: 40px;
+  padding: 0px 40px 60px 40px; /* Shifted padding to move content up */
   text-align: center;
+  justify-content: flex-start; /* Align to top instead of center */
+  padding-top: 15%; /* Custom offset from top */
 }
 
 .win-screen__panel--left {
@@ -474,12 +476,29 @@ body {
   100% { opacity: 0; }
 }
 
-.win-screen__title {
-  font-size: 40px;
+.win-screen__placard {
+  display: inline-block;
+  background: #000000;
+  color: #ffffff;
+  font-family: var(--font-main);
+  font-size: 11px;
   font-weight: 900;
-  letter-spacing: 4px;
+  letter-spacing: 3px;
+  padding: 6px 18px;
+  border: 3.5px solid #000;
+  box-shadow: 3px 3px 0px rgba(255, 255, 255, 0.1);
   text-transform: uppercase;
   margin-bottom: 12px;
+  opacity: 0;
+  animation: win-fadein 0.8s ease-out 1.7s forwards;
+}
+
+.win-screen__title {
+  font-size: 42px;
+  font-weight: 900;
+  letter-spacing: 5px;
+  text-transform: uppercase;
+  margin-bottom: 6px;
   text-align: center;
   max-width: 95%;
   opacity: 0;
@@ -499,10 +518,10 @@ body {
 
 /* ── Victory Statistics ────────────────────── */
 .win-screen__stats {
-  margin-top: 32px;
+  margin-top: 18px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
   width: 100%;
   max-width: 320px;
   opacity: 0;
@@ -530,6 +549,37 @@ body {
   color: var(--text-primary);
 }
 
+.win-stat-value--diff-badge {
+  font-size: 15px !important;
+  font-weight: 900 !important;
+  color: #fff !important;
+  border: 3.5px solid #000;
+  padding: 10px 22px;
+  letter-spacing: 2px;
+  box-shadow: 4px 4px 0px #000;
+  text-transform: uppercase;
+  display: inline-block;
+  text-shadow: 1px 1px 0px rgba(0,0,0,0.3);
+  border-radius: 0px;
+  margin-top: 6px;
+}
+
+.win-stat-value--diff-badge.diff-clutch {
+  animation: clutch-pulse 0.4s infinite alternate;
+}
+
+@keyframes clutch-pulse {
+  from {
+    transform: scale(1.0);
+    box-shadow: 4px 4px 0px #000;
+  }
+  to {
+    transform: scale(1.06);
+    box-shadow: 6px 6px 0px #000;
+    background-color: #b71c1c !important; /* brighter red peak */
+  }
+}
+
 .win-stat-divider {
   height: 2px;
   background: rgba(0, 0, 0, 0.05);
@@ -545,7 +595,7 @@ body {
   background: #1b1b24;
   overflow: hidden;
   box-shadow: 4px 4px 0px rgba(0, 0, 0, 0.15);
-  margin: 12px 0 8px 0;
+  margin: 8px 0 6px 0;
   box-sizing: border-box;
 }
 
@@ -564,8 +614,8 @@ body {
 .win-stat-legend-container {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px 16px;
-  margin-top: 8px;
+  gap: 8px 16px;
+  margin-top: 4px;
   width: 100%;
 }
 
