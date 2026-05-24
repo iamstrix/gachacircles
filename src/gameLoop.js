@@ -1311,8 +1311,8 @@ export class GameLoop {
     const speed = isBlazing ? 33.0 : 16.5; // Buffed arrows retain old speed (+50%), unbuffed reduced to 50% (+50%)
 
     // Apply snappy recoil to the shooter (push Yoimiya backward)
-    // Buffed last shot has massive 16.5 recoil to create an epic escape impulse!
-    let recoilStrength = isBlazing ? (isFinalShot ? 16.5 : 8.5) : 5.5;
+    // Normal recoil is scaled to 0.6 of the enhanced (isBlazing) recoil strength.
+    let recoilStrength = (isFinalShot ? 16.5 : 8.5) * (isBlazing ? 1.0 : 0.6);
     if (!isFinalShot) {
       recoilStrength *= 0.25;
     }
