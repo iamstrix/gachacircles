@@ -86,9 +86,16 @@ function injectStyles() {
     .ghud-hp-text {
       font-size: 11px;
       font-weight: 900;
-      text-align: center;
       color: #000;
       margin-top: 2px;
+    }
+    .ghud-hp-wrap.left .ghud-hp-text {
+      text-align: right; /* Aligns HP counter with the right end (under Ayaka's name) */
+      padding-right: 4px;
+    }
+    .ghud-hp-wrap.right .ghud-hp-text {
+      text-align: left; /* Aligns HP counter with the left end (under Yoimiya's name) */
+      padding-left: 4px;
     }
 
     .ghud-hp-bar-bg {
