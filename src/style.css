@@ -62,7 +62,7 @@ body {
   width: var(--game-width);
   height: var(--game-height);
   border-radius: 0px;
-  overflow: hidden;
+  overflow: visible; /* Changed from hidden to show volume placard below */
   background: #a8f5b4;
   box-shadow: 8px 8px 0px rgba(0, 0, 0, 0.15);
 }

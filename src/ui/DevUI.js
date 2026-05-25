@@ -35,6 +35,19 @@ export class DevUI {
       this.gameLoop.fighter2.isInvincible = val;
     });
 
+    const bo3Visible = localStorage.getItem('dev-bo3-visible') !== 'false';
+    this.addToggle(group, 'Show Best of Three UI', (val) => {
+      localStorage.setItem('dev-bo3-visible', val);
+      if (this.gameLoop.hud) {
+        this.gameLoop.hud.setScoreVisibility(val);
+      }
+    }, bo3Visible);
+
+    // Initial apply
+    if (this.gameLoop.hud) {
+      this.gameLoop.hud.setScoreVisibility(bo3Visible);
+    }
+
     const savedHP = localStorage.getItem('dev-hp-config') || 500;
     this.addNumericInput(group, 'HP Config (Integer)', savedHP, (val) => {
       // Manual save via button now
@@ -81,7 +94,7 @@ export class DevUI {
     });
   }
 
-  addToggle(parent, label, callback) {
+  addToggle(parent, label, callback, initialValue = false) {
     const row = document.createElement('label');
     row.style.display = 'flex';
     row.style.alignItems = 'center';
@@ -93,6 +106,7 @@ export class DevUI {
 
     const checkbox = document.createElement('input');
     checkbox.type = 'checkbox';
+    checkbox.checked = initialValue;
     checkbox.addEventListener('change', (e) => callback(e.target.checked));
 
     const text = document.createElement('span');

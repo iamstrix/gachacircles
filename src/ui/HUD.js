@@ -354,6 +354,32 @@ function injectStyles() {
     }
     .ghud-score-val.cryo { color: #00bcd4; }
     .ghud-score-val.pyro { color: #ff3333; }
+
+    /* ── Volume Up Placard ───────────────── */
+    .ghud-volume-placard {
+      position: absolute;
+      bottom: -45px; /* Lowered further below the container */
+      left: 20px;    /* Shifted to the left side */
+      background: #000;
+      color: #ffd54f;
+      padding: 4px 14px;
+      font-size: 11px;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      border: 2px solid #000;
+      box-shadow: 4px 4px 0px rgba(0,0,0,0.15);
+      z-index: 2000;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      pointer-events: none;
+      white-space: nowrap;
+      opacity: 0.95;
+    }
+    .ghud-volume-icon {
+      font-size: 14px;
+    }
   `;
   document.head.appendChild(style);
 }
@@ -379,9 +405,23 @@ export class HUD {
     this._buildSidebar('pyro', 'right');
 
     this._buildScoreTracker();
+    
+    // Build volume placard OUTSIDE the HUD root but inside the game-container (which needs overflow:visible)
+    this._buildVolumePlacard(container);
   }
 
   // ── Build helpers ────────────────────────────────────────
+
+  _buildVolumePlacard(parent) {
+    const d = document.createElement('div');
+    d.className = 'ghud-volume-placard';
+    d.innerHTML = `
+      <span class="ghud-volume-icon">🔊</span>
+      <span>Volume Up!</span>
+    `;
+    parent.appendChild(d);
+    this._volumePlacard = d;
+  }
 
   _buildScoreTracker() {
     const d = document.createElement('div');
@@ -393,6 +433,7 @@ export class HUD {
     `;
     this.root.appendChild(d);
     
+    this._score_tracker = d;
     this._score_cryo = d.querySelector('#ghud-score-cryo');
     this._score_pyro = d.querySelector('#ghud-score-pyro');
   }
@@ -595,6 +636,16 @@ export class HUD {
   updateScore(cryoScore, pyroScore) {
     if (this._score_cryo) this._score_cryo.textContent = String(cryoScore);
     if (this._score_pyro) this._score_pyro.textContent = String(pyroScore);
+  }
+
+  /**
+   * Show or hide the score tracker.
+   * @param {boolean} visible 
+   */
+  setScoreVisibility(visible) {
+    if (this._score_tracker) {
+      this._score_tracker.style.display = visible ? 'flex' : 'none';
+    }
   }
 
   /** Remove the HUD from the DOM. */
