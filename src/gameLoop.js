@@ -1393,7 +1393,11 @@ export class GameLoop {
 
             // VFX slash arc
             if (effect.owner.vfx && typeof effect.owner.vfx.triggerSlashArc === 'function') {
-              effect.owner.vfx.triggerSlashArc(effect.owner.body.x, effect.owner.body.y, sAngle);
+              // Fire multiple arcs per slash for better visibility
+              for (let i = 0; i < 3; i++) {
+                const randomOffset = (Math.random() - 0.5) * 0.5;
+                effect.owner.vfx.triggerSlashArc(effect.owner.body.x, effect.owner.body.y, sAngle + randomOffset);
+              }
             }
           }
         }
