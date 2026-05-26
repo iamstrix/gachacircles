@@ -22,40 +22,56 @@ export class DevUI {
     divider.className = 'dev-divider';
     this.container.appendChild(divider);
 
-    const group = document.createElement('div');
-    group.className = 'dev-button-group';
-    group.style.marginTop = '0';
-    this.container.appendChild(group);
+    const columnsWrap = document.createElement('div');
+    columnsWrap.style.display = 'flex';
+    columnsWrap.style.gap = '20px';
+    this.container.appendChild(columnsWrap);
 
-    this.addToggle(group, 'Invincible: Ayaka', (val) => {
+    const leftCol = document.createElement('div');
+    leftCol.className = 'dev-button-group';
+    leftCol.style.flex = '1';
+    leftCol.style.marginTop = '0';
+    
+    const rightCol = document.createElement('div');
+    rightCol.className = 'dev-button-group';
+    rightCol.style.flex = '1';
+    rightCol.style.marginTop = '0';
+
+    columnsWrap.appendChild(leftCol);
+    columnsWrap.appendChild(rightCol);
+
+    const f1Name = this.gameLoop.fighter1.data.name;
+    const f2Name = this.gameLoop.fighter2.data.name;
+
+    this.addToggle(leftCol, `Invincible: ${f1Name}`, (val) => {
       this.gameLoop.fighter1.isInvincible = val;
     });
 
-    this.addToggle(group, 'Invincible: Yoimiya', (val) => {
+    this.addToggle(rightCol, `Invincible: ${f2Name}`, (val) => {
       this.gameLoop.fighter2.isInvincible = val;
     });
 
     const bo3Visible = localStorage.getItem('dev-bo3-visible') !== 'false';
-    this.addToggle(group, 'Show Best of Three UI', (val) => {
+    this.addToggle(leftCol, 'Show Best of Three UI', (val) => {
       localStorage.setItem('dev-bo3-visible', val);
       if (this.gameLoop.hud) {
         this.gameLoop.hud.setScoreVisibility(val);
       }
     }, bo3Visible);
 
-    const f1Id = localStorage.getItem('dev-fighter1-id') || 'ayaka';
-    this.addTextInput(group, 'Fighter 1 ID', f1Id, 'f1_id');
-
-    const f2Id = localStorage.getItem('dev-fighter2-id') || 'yoimiya';
-    this.addTextInput(group, 'Fighter 2 ID', f2Id, 'f2_id');
-
     const autoRematch = localStorage.getItem('dev-auto-rematch') === 'true';
-    this.addToggle(group, 'Auto-Rematch (5s)', (val) => {
+    this.addToggle(rightCol, 'Auto-Rematch (5s)', (val) => {
       localStorage.setItem('dev-auto-rematch', val);
     }, autoRematch);
 
+    const f1Id = localStorage.getItem('dev-fighter1-id') || 'ayaka';
+    this.addTextInput(leftCol, 'Fighter 1 ID', f1Id, 'f1_id');
+
+    const f2Id = localStorage.getItem('dev-fighter2-id') || 'yoimiya';
+    this.addTextInput(rightCol, 'Fighter 2 ID', f2Id, 'f2_id');
+
     const instantCast = localStorage.getItem('dev-instant-cast') === 'true';
-    this.addToggle(group, 'Instant Cast (Start)', (val) => {
+    this.addToggle(leftCol, 'Instant Cast (Start)', (val) => {
       localStorage.setItem('dev-instant-cast', val);
       if (val) {
         if (this.gameLoop.fighter1) {
@@ -75,31 +91,23 @@ export class DevUI {
     }
 
     const savedHP = localStorage.getItem('dev-hp-config') || 500;
-    this.addNumericInput(group, 'HP Config (Integer)', savedHP, (val) => {
-      // Manual save via button now
-    }, 1, 'hp');
+    this.addNumericInput(leftCol, 'HP Config (Integer)', savedHP, (val) => {}, 1, 'hp');
 
     const savedDmgMult = localStorage.getItem('dev-dmg-multiplier') || 1.0;
-    this.addNumericInput(group, 'Damage Multiplier (Float)', savedDmgMult, (val) => {
-      // Manual save via button now
-    }, 0.1, 'dmg');
+    this.addNumericInput(rightCol, 'Damage Multiplier', savedDmgMult, (val) => {}, 0.1, 'dmg');
 
-    const scoreAyaka = localStorage.getItem('match-score-cryo') || 0;
-    this.addNumericInput(group, 'Score: Ayaka', scoreAyaka, (val) => {
-      // Manual save via button now
-    }, 1, 'score1');
+    const scoreF1 = localStorage.getItem('match-score-cryo') || 0;
+    this.addNumericInput(leftCol, `Score: ${f1Name}`, scoreF1, (val) => {}, 1, 'score1');
 
-    const scoreYoimiya = localStorage.getItem('match-score-pyro') || 0;
-    this.addNumericInput(group, 'Score: Yoimiya', scoreYoimiya, (val) => {
-      // Manual save via button now
-    }, 1, 'score2');
+    const scoreF2 = localStorage.getItem('match-score-pyro') || 0;
+    this.addNumericInput(rightCol, `Score: ${f2Name}`, scoreF2, (val) => {}, 1, 'score2');
 
     const currentVol = parseFloat(localStorage.getItem('dev-master-volume')) ?? 1.0;
-    this.addRangeInput(group, 'Master Volume', currentVol, (val) => {
+    this.addRangeInput(leftCol, 'Master Volume', currentVol, (val) => {
       setMasterVolume(val);
     }, 0, 1, 0.05);
 
-    this.addButton(group, 'Save & Restart', () => {
+    this.addButton(leftCol, 'Save & Restart', () => {
       const hp = this.container.querySelector('[data-key="hp"]').value;
       const dmg = this.container.querySelector('[data-key="dmg"]').value;
       const s1 = this.container.querySelector('[data-key="score1"]').value;
@@ -117,14 +125,20 @@ export class DevUI {
       location.reload();
     }, '#2e7d32'); // Green for Save
 
-    this.addButton(group, 'Reset Match Scores', () => {
+    this.addButton(rightCol, 'Reset Match Scores', () => {
       localStorage.removeItem('match-score-cryo');
       localStorage.removeItem('match-score-pyro');
       location.reload();
     });
 
     // ── Export & Import Replay buttons ─────────────
-    const replayFileActions = document.getElementById('dev-replay-file-actions') || group;
+    // Since replayFileActions doesn't have an ID, we'll append to rightCol
+    const replayFileActions = document.createElement('div');
+    replayFileActions.style.display = 'flex';
+    replayFileActions.style.flexDirection = 'column';
+    replayFileActions.style.gap = '10px';
+    replayFileActions.style.marginTop = '10px';
+    rightCol.appendChild(replayFileActions);
 
     this.addButton(replayFileActions, 'Export Match Replay', () => {
       const frames = this.gameLoop.replayFrames;
