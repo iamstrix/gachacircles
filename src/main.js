@@ -4,13 +4,11 @@
  */
 
 import { Application, Container, Graphics } from 'pixi.js';
-import { getCharacter } from './characters/CharacterData.js';
+import { getCharacterRegistry } from './characters/CharacterRegistry.js';
 import { Fighter } from './characters/Fighter.js';
 import { GameLoop } from './gameLoop.js';
 import { randomVelocity } from './physics.js';
 import { playSFX } from './utils/audio.js';
-import { CryoVFX } from './vfx/CryoVFX.js';
-import { PyroVFX } from './vfx/PyroVFX.js';
 import { HUD } from './ui/HUD.js';
 import { DamageNumbers } from './ui/DamageNumbers.js';
 import { DevUI } from './ui/DevUI.js';
@@ -57,20 +55,22 @@ async function init() {
   // Draw arena background
   createArenaBackground();
 
-  // Create VFX systems
-  const cryoVFX = new CryoVFX();
-  const pyroVFX = new PyroVFX();
-
   // Create fighters
-  const ayakaData = getCharacter('ayaka');
-  const yoimiyaData = getCharacter('yoimiya');
+  const f1Id = localStorage.getItem('dev-fighter1-id') || 'ayaka';
+  const f2Id = localStorage.getItem('dev-fighter2-id') || 'yoimiya';
+
+  const fighter1Reg = getCharacterRegistry(f1Id);
+  const fighter2Reg = getCharacterRegistry(f2Id);
+
+  const f1Data = fighter1Reg.data;
+  const f2Data = fighter2Reg.data;
 
   // Override HP from dev storage if present
   const devHP = localStorage.getItem('dev-hp-config');
   if (devHP) {
     const hp = parseInt(devHP, 10);
-    ayakaData.hp = hp;
-    yoimiyaData.hp = hp;
+    f1Data.hp = hp;
+    f2Data.hp = hp;
   }
 
   // Override Damage from dev storage if present
@@ -78,16 +78,16 @@ async function init() {
   if (devDmgMult) {
     const mult = parseFloat(devDmgMult);
     if (!isNaN(mult)) {
-      ayakaData.damage *= mult;
-      yoimiyaData.damage *= mult;
+      f1Data.damage *= mult;
+      f2Data.damage *= mult;
     }
   }
 
-  const vel1 = randomVelocity(ayakaData.speed);
-  const vel2 = randomVelocity(yoimiyaData.speed);
+  const vel1 = randomVelocity(f1Data.speed);
+  const vel2 = randomVelocity(f2Data.speed);
 
-  fighter1 = new Fighter(ayakaData, GAME_WIDTH * 0.25, GAME_HEIGHT * 0.5, vel1);
-  fighter2 = new Fighter(yoimiyaData, GAME_WIDTH * 0.75, GAME_HEIGHT * 0.5, vel2);
+  fighter1 = new Fighter(f1Data, GAME_WIDTH * 0.25, GAME_HEIGHT * 0.5, vel1);
+  fighter2 = new Fighter(f2Data, GAME_WIDTH * 0.75, GAME_HEIGHT * 0.5, vel2);
 
   // Apply instant cast if enabled in dev panel
   if (localStorage.getItem('dev-instant-cast') === 'true') {
@@ -97,9 +97,17 @@ async function init() {
     fighter2.burstCDTimer = 0;
   }
 
+  // Assign behaviors (CharacterBehavior interface)
+  fighter1.behavior = fighter1Reg.behavior;
+  fighter2.behavior = fighter2Reg.behavior;
+
+  // Create VFX via behavior factory
+  const vfx1 = fighter1.behavior.createVFX();
+  const vfx2 = fighter2.behavior.createVFX();
+
   // Assign VFX to fighters
-  fighter1.vfx = cryoVFX;
-  fighter2.vfx = pyroVFX;
+  fighter1.vfx = vfx1;
+  fighter2.vfx = vfx2;
 
   // Create visuals
   await fighter1.createVisuals();
@@ -109,24 +117,24 @@ async function init() {
   app.stage.addChild(fighter1.container);
   app.stage.addChild(fighter2.container);
 
-  // Add VFX containers to stage (on top of fighters so marks and particles sit higher than character circles)
-  app.stage.addChild(cryoVFX.container);
-  app.stage.addChild(pyroVFX.container);
+  // Add VFX containers to stage
+  app.stage.addChild(vfx1.container);
+  app.stage.addChild(vfx2.container);
 
   // Set up UI
-  const hud = new HUD();
+  const hud = new HUD(fighter1, fighter2);
   const damageNumbers = new DamageNumbers();
 
   // Set initial stats on HUD
-  hud.updateStats('cryo', ayakaData.damage, ayakaData.attackSpeed);
-  hud.updateStats('pyro', yoimiyaData.damage, yoimiyaData.attackSpeed);
-  hud.updateHP('cryo', ayakaData.hp, ayakaData.hp);
-  hud.updateHP('pyro', yoimiyaData.hp, yoimiyaData.hp);
+  hud.updateStats('left', f1Data.damage, f1Data.attackSpeed);
+  hud.updateStats('right', f2Data.damage, f2Data.attackSpeed);
+  hud.updateHP('left', f1Data.hp, f1Data.hp);
+  hud.updateHP('right', f2Data.hp, f2Data.hp);
 
   // Initialize and display scores
-  const cryoScore = parseInt(localStorage.getItem('match-score-cryo') || '0', 10);
-  const pyroScore = parseInt(localStorage.getItem('match-score-pyro') || '0', 10);
-  hud.updateScore(cryoScore, pyroScore);
+  const score1 = parseInt(localStorage.getItem('match-score-cryo') || '0', 10);
+  const score2 = parseInt(localStorage.getItem('match-score-pyro') || '0', 10);
+  hud.updateScore(score1, score2);
 
   // Create game loop
   gameLoop = new GameLoop(fighter1, fighter2, ARENA, hud, damageNumbers, app.stage);
@@ -151,9 +159,9 @@ async function init() {
   app.ticker.add((ticker) => {
     gameLoop.update(ticker.deltaTime);
 
-    // Update VFX skill animations (pass Ayaka's position so the ice cyclone tracks her circle center)
-    cryoVFX.updateSkill(ticker.deltaTime, fighter1.body.x, fighter1.body.y);
-    pyroVFX.updateSkill(ticker.deltaTime);
+    // Update VFX skill animations
+    vfx1.updateSkill(ticker.deltaTime, fighter1.body.x, fighter1.body.y);
+    vfx2.updateSkill(ticker.deltaTime, fighter2.body.x, fighter2.body.y);
   });
 
   // Wire up Dev Panel controls
@@ -172,7 +180,7 @@ async function init() {
     });
   }
 
-  console.log('🎮 Gacha Circles initialized! Ayaka vs Yoimiya — FIGHT!');
+  console.log(`🎮 Gacha Circles initialized! ${f1Data.name} vs ${f2Data.name} — FIGHT!`);
 }
 
 /**

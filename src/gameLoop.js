@@ -207,15 +207,18 @@ export class GameLoop {
     for (let i = 1; i <= 5; i++) {
       preloadSFX(`/audio/yoimiya/yoimiya-na_${i}.mp3`);
       preloadSFX(`/audio/ayaka/ayaka-na_${i}.wav`);
+      preloadSFX(`/audio/keqing/keqing-na_${i}.wav`);
     }
 
     // Preload skill and burst sound files
     preloadSFX('/audio/ayaka/ayaka-skill.mp3');
     preloadSFX('/audio/ayaka/ayaka-ultimate.wav');
     preloadSFX('/audio/ayaka/ayaka-ultimate_tick.wav');
-    preloadSFX('/audio/yoimiya/ayaka-skill.mp3'); // Existing misnamed file or just preloading for safety
     preloadSFX('/audio/yoimiya/yoimiya-skill.wav');
     preloadSFX('/audio/yoimiya/yoimiya-ultimate.wav');
+    preloadSFX('/audio/keqing/keqing-skill.wav');
+    preloadSFX('/audio/keqing/keqing-skill2.wav');
+    preloadSFX('/audio/keqing/keqing-ultimate.wav');
     preloadSFX('/audio/circle-bounce.wav');
     preloadSFX('/audio/winner-splash.wav');
 
@@ -226,6 +229,8 @@ export class GameLoop {
     preloadSFX('/audio/ayaka/ayaka-parry_infused.wav');
     preloadSFX('/audio/ayaka/ayaka-hit.wav');
     preloadSFX('/audio/ayaka/ayaka-hit_infused.wav');
+    preloadSFX('/audio/keqing/keqing-hit.wav');
+    preloadSFX('/audio/keqing/keqing-hit_infused.wav');
 
     // ── Bouncing Watermark Setup ──────────────────
     const style = new TextStyle({
@@ -317,7 +322,13 @@ export class GameLoop {
         'triggerCastAura',
         'triggerBlazeDetonation',
         'triggerUltimateHitGust',
-        'triggerRocketImpact'
+        'triggerRocketImpact',
+        // Keqing / Electro methods
+        'triggerStilettoThrow',
+        'triggerTeleportBurst',
+        'triggerStarwardSword',
+        'triggerStarwardExplosion',
+        'triggerSlashArc',
       ];
 
       methodsToWrap.forEach(method => {
@@ -1234,6 +1245,107 @@ export class GameLoop {
           return false; // remove effect from active list
         }
       }
+      // ── Keqing: Stellar Stiletto auto-detonation ──────────────
+      else if (effect.type === 'stellar_stiletto') {
+        if (effect.timer <= 0) {
+          // Auto-detonate: time expired, Keqing forcibly recalled
+          if (effect.owner.stilettoThrown) {
+            const beh = effect.owner.behavior;
+            if (beh && typeof beh._detonateStiletto === 'function') {
+              beh._detonateStiletto(effect.owner, effect.target, this, Graphics);
+            }
+          }
+          return false; // remove effect
+        }
+        // Flicker stiletto marker visually
+        if (effect.visual && !this.headlessMode) {
+          const pulse = 0.6 + 0.4 * Math.sin(performance.now() * 0.012);
+          effect.visual.alpha = pulse;
+          // Rotate the lightning bolt icon
+          effect.visual.rotation = (effect.visual.rotation || 0) + 0.04;
+        }
+        return true;
+      }
+      // ── Keqing: Starward Sword slash sequence ──────────────
+      else if (effect.type === 'starward_cast') {
+        if (effect.timer <= 0) {
+          // Burst complete — clean up ring
+          effect.owner.isInvincible = false;
+          if (effect.ring) {
+            this.stage.removeChild(effect.ring);
+            effect.ring.destroy();
+          }
+          // Final explosion
+          if (effect.owner.vfx && typeof effect.owner.vfx.triggerStarwardExplosion === 'function') {
+            effect.owner.vfx.triggerStarwardExplosion(effect.owner.body.x, effect.owner.body.y);
+          }
+          // AoE damage to opponent
+          const expDmg = Math.round(effect.owner.data.damage * (effect.owner.data.burstQ.explosionMultiplier || 3.0));
+          const expRadius = effect.owner.data.burstQ.aoeRadius || 150;
+          const edx = effect.target.body.x - effect.owner.body.x;
+          const edy = effect.target.body.y - effect.owner.body.y;
+          if (Math.sqrt(edx * edx + edy * edy) < expRadius) {
+            const expResult = effect.target.takeDamage(expDmg);
+            effect.owner.stats.damageDealt.burst += expResult.actualDamage;
+            if (this.damageNumbers) {
+              this.damageNumbers.spawn(effect.target.body.x, effect.target.body.y - 30, expDmg, effect.owner.element, true);
+            }
+            this._screenShake();
+            if (expResult.died) this._endGame(effect.owner);
+          }
+          return false;
+        }
+
+        // Per-slash damage pulses
+        const totalSlashes = effect.totalSlashes || 8;
+        const slashInterval = 1.0 / totalSlashes;
+        const timeElapsed = (effect.owner.data.burstQ.cooldown ? 1.0 : 1.0) - effect.timer; // time into cast
+        const expectedSlash = Math.floor(timeElapsed / slashInterval);
+
+        if (expectedSlash > (effect.slashIndex || 0)) {
+          effect.slashIndex = expectedSlash;
+          // Slash damage
+          const slashDmg = Math.round(effect.owner.data.damage * (effect.owner.data.burstQ.damageMultiplier || 1.5));
+          const sAngle = (effect.slashIndex / totalSlashes) * Math.PI * 2;
+          const dx2 = effect.target.body.x - effect.owner.body.x;
+          const dy2 = effect.target.body.y - effect.owner.body.y;
+          const aoeR = 100;
+          if (Math.sqrt(dx2 * dx2 + dy2 * dy2) < aoeR) {
+            const slashResult = effect.target.takeDamage(slashDmg);
+            effect.owner.stats.damageDealt.burst += slashResult.actualDamage;
+            if (this.damageNumbers) {
+              this.damageNumbers.spawn(effect.target.body.x, effect.target.body.y - 15, slashDmg, effect.owner.element, false);
+            }
+            if (slashResult.died) {
+              this._endGame(effect.owner);
+              return false;
+            }
+          }
+          // VFX slash arc
+          if (effect.owner.vfx && typeof effect.owner.vfx.triggerSlashArc === 'function') {
+            effect.owner.vfx.triggerSlashArc(effect.owner.body.x, effect.owner.body.y, sAngle);
+          }
+        }
+
+        // Windup sparks
+        if (effect.owner.vfx && typeof effect.owner.vfx.triggerWindupSparks === 'function') {
+          effect.owner.vfx.triggerWindupSparks(effect.owner.body.x, effect.owner.body.y);
+        }
+
+        // Update ring
+        if (effect.ring && !this.headlessMode) {
+          const prog = Math.min(1.0, Math.max(0.0, 1 - effect.timer));
+          const ringRadius = 150 * (1 - prog) + 30;
+          const alpha = 0.3 + 0.7 * prog;
+          effect.ring.clear();
+          effect.ring.circle(0, 0, ringRadius);
+          effect.ring.fill({ color: 0xc77dff, alpha: alpha * 0.25 });
+          effect.ring.stroke({ color: 0xe040fb, width: 3, alpha });
+          effect.ring.x = effect.owner.body.x;
+          effect.ring.y = effect.owner.body.y;
+        }
+        return true;
+      }
       return effect.timer > 0;
     });
 
@@ -1242,35 +1354,38 @@ export class GameLoop {
       this._checkAbilityActivation(this.fighter1, this.fighter2);
       this._checkAbilityActivation(this.fighter2, this.fighter1);
 
-      // Auto standard attacks for Yoimiya (ranged Normal Attacks)
-      if (this.fighter2.id === 'yoimiya' && this.fighter2.alive) {
-        let currentAttackSpeed = this.fighter2.data.attackSpeed;
-        if (this.fighter2.isInfused) {
-          currentAttackSpeed *= 2.0; // Double attack speed during infusion!
-        }
-        // 2-second base interval (2000ms) at base speed (2.5), which scales with attack speed: 5000 / speed.
-        // Begin the interval timer only after the last shot has been fired (the 7-arrow combo takes exactly 1400ms from first shot to last shot).
-        const comboDurationMs = 1400;
-        const baseIntervalMs = 2500 / currentAttackSpeed; // Was 5000, halved for faster combo cycles
-        const cooldownMs = comboDurationMs + baseIntervalMs + this.fighter2.attackIntervalOffset;
-        
-        if (currentTime - this.fighter2.lastAttackTime >= cooldownMs) {
-          this.fighter2.registerAttack(currentTime);
-          this._startYoimiyaArrowCombo(this.fighter2, this.fighter1);
-        }
-      }
+      // Auto standard attacks — uses behavior.isRanged and behavior.startAttackCombo
+      [this.fighter1, this.fighter2].forEach((fighter, idx) => {
+        const opponent = idx === 0 ? this.fighter2 : this.fighter1;
+        const beh = fighter.behavior;
+        if (!fighter.alive) return;
 
-      // Auto standard attacks for Ayaka (melee Normal Attacks)
-      if (this.fighter1.id === 'ayaka' && this.fighter1.alive) {
-        const comboDurationMs = 1500; // Ayaka's N1-N5 string takes ~1.5s
-        const delayBetweenCombosMs = 1000; // Restart 1s after last attack finishes
-        const cooldownMs = comboDurationMs + delayBetweenCombosMs + this.fighter1.attackIntervalOffset;
-
-        if (currentTime - this.fighter1.lastAttackTime >= cooldownMs) {
-          this.fighter1.registerAttack(currentTime);
-          this._startAyakaMeleeCombo(this.fighter1, this.fighter2);
+        if (beh && beh.isRanged) {
+          // Ranged auto-attack scheduling (Yoimiya pattern)
+          let currentAttackSpeed = fighter.data.attackSpeed;
+          if (fighter.isInfused) currentAttackSpeed *= 2.0;
+          const comboDurationMs = 1400;
+          const baseIntervalMs = 2500 / currentAttackSpeed;
+          const cooldownMs = comboDurationMs + baseIntervalMs + fighter.attackIntervalOffset;
+          if (currentTime - fighter.lastAttackTime >= cooldownMs) {
+            fighter.registerAttack(currentTime);
+            if (typeof beh.startAttackCombo === 'function') {
+              beh.startAttackCombo(fighter, opponent, this);
+            }
+          }
+        } else if (beh && !beh.isRanged) {
+          // Melee auto-attack scheduling (Ayaka/Keqing pattern)
+          const comboDurationMs = 1500;
+          const delayBetweenCombosMs = 1000;
+          const cooldownMs = comboDurationMs + delayBetweenCombosMs + fighter.attackIntervalOffset;
+          if (currentTime - fighter.lastAttackTime >= cooldownMs) {
+            fighter.registerAttack(currentTime);
+            if (typeof beh.startAttackCombo === 'function') {
+              beh.startAttackCombo(fighter, opponent, this);
+            }
+          }
         }
-      }
+      });
     }
 
     // 4. Update physics positions (NOW respecting slowMultiplier set by activeEffects)
@@ -1417,55 +1532,51 @@ export class GameLoop {
   _handleCombat(collision, currentTime) {
     if (this.elapsedTime < 2.0) return;
 
-    // Note: Melee damage is now primarily handled by _performMeleeHit for Ayaka
-    // However, N5 lunge deals damage on contact during the dash phase
-    const isAyakaLunging = this.fighter1.id === 'ayaka' && 
-                           this.fighter1.comboIndex === 4 && 
-                           this.fighter1.swingProgress > 0.1 && 
-                           this.fighter1.swingProgress < 0.6;
+    // Behavior-driven lunge detection (N5 dash damage on contact)
+    const beh1 = this.fighter1.behavior;
+    const isLunging1 = beh1 && typeof beh1.isLunging === 'function'
+      ? beh1.isLunging(this.fighter1)
+      : false;
 
-    // Apply damage from fighter1 (Ayaka) to fighter2 (Yoimiya)
-    // Fix: check hasHitThisSwing for lunging hits to prevent multi-hit stuttering
-    const canLungeHit = isAyakaLunging && !this.fighter1.hasHitThisSwing;
-    
-    if (canLungeHit || (this.fighter1.canAttack(currentTime) && this.fighter1.id !== 'ayaka')) {
+    // Fighter1 collision attack:
+    // – If lunging (N5 dash), deal contact damage once per swing
+    // – If not a ranged fighter and not a melee-combo fighter mid-combo, deal standard collision damage
+    const isRanged1 = beh1 && beh1.isRanged;
+    const canLungeHit = isLunging1 && !this.fighter1.hasHitThisSwing;
+    const canStdHit1 = !isRanged1 && !isLunging1 && this.fighter1.canAttack(currentTime) && this.fighter1.comboIndex === 0 && this.fighter1.swingProgress >= 1.0;
+
+    if (canLungeHit || canStdHit1) {
       const damage = this.fighter1.getCurrentDamage();
-      const isCrit = (this.fighter1.id === 'ayaka' && this.fighter1.passiveTimer > 0);
+      const isCrit = beh1 && typeof beh1.isCrit === 'function' ? beh1.isCrit(this.fighter1) : false;
       const result = this.fighter2.takeDamage(damage);
 
       if (result.actualDamage > 0) {
-        if (this.fighter1.id === 'ayaka') {
-          if (this.fighter1.passiveTimer > 0) {
-            playSFX('/audio/ayaka/ayaka-hit_infused.wav', 0.9);
-          } else {
-            playSFX('/audio/ayaka/ayaka-hit.wav', 0.85);
-          }
+        // Delegate hit audio / passive logic to behavior
+        let hitType = 'normal';
+        if (beh1 && typeof beh1.onMeleeHit === 'function') {
+          hitType = beh1.onMeleeHit(this.fighter1, this.fighter2, this, result);
         }
-        if (this.fighter1.passiveTimer > 0) {
+
+        if (hitType === 'enhanced') {
           this.fighter1.stats.damageDealt.enhancedNormal += result.actualDamage;
         } else {
           this.fighter1.stats.damageDealt.normal += result.actualDamage;
         }
 
-        if (isAyakaLunging) {
-          this.fighter1.hasHitThisSwing = true; // Block further hits this animation step
+        if (isLunging1) {
+          this.fighter1.hasHitThisSwing = true;
         } else {
           this.fighter1.registerAttack(currentTime);
         }
 
-        // Trigger collision VFX
         if (this.fighter1.vfx) {
           this.fighter1.vfx.triggerCollision(collision.contactX, collision.contactY);
         }
 
-        // Spawn damage number
         if (this.damageNumbers) {
           this.damageNumbers.spawn(
-            collision.contactX,
-            collision.contactY - 20,
-            result.actualDamage,
-            this.fighter1.element,
-            isCrit
+            collision.contactX, collision.contactY - 20,
+            result.actualDamage, this.fighter1.element, isCrit
           );
         }
 
@@ -1476,8 +1587,10 @@ export class GameLoop {
       }
     }
 
-    // Apply damage from fighter2 to fighter1 (only for melee fighters, not ranged Yoimiya)
-    if (this.fighter2.id !== 'yoimiya' && this.fighter2.canAttack(currentTime)) {
+    // Apply damage from fighter2 to fighter1 (only for melee fighters, not ranged)
+    const beh2 = this.fighter2.behavior;
+    const isRanged2 = beh2 && beh2.isRanged;
+    if (!isRanged2 && this.fighter2.canAttack(currentTime)) {
       const damage = this.fighter2.getCurrentDamage();
       const isCrit = (this.fighter2.id === 'ayaka' && this.fighter2.passiveTimer > 0) ||
                      (this.fighter2.id === 'yoimiya' && this.fighter2.isInfused);
@@ -1486,11 +1599,12 @@ export class GameLoop {
       if (result.actualDamage > 0) {
         this.fighter2.registerAttack(currentTime);
 
-        // Trigger passive stack for Yoimiya
-        if (this.fighter2.id === 'yoimiya') {
-          this.fighter2.passiveStacks = Math.min(10, this.fighter2.passiveStacks + 1);
-          this.fighter2.passiveTimer = this.fighter2.data.passive.duration;
+        // Collision passive hook (e.g. Yoimiya passive stacks)
+        if (beh2 && typeof beh2.onCollisionHit === 'function') {
+          beh2.onCollisionHit(this.fighter2);
         }
+
+        const isCrit2 = beh2 && typeof beh2.isCrit === 'function' ? beh2.isCrit(this.fighter2) : false;
 
         // Trigger collision VFX
         if (this.fighter2.vfx) {
@@ -1500,15 +1614,12 @@ export class GameLoop {
         // Spawn damage number
         if (this.damageNumbers) {
           this.damageNumbers.spawn(
-            collision.contactX,
-            collision.contactY + 20,
-            result.actualDamage,
-            this.fighter2.element,
-            isCrit
+            collision.contactX, collision.contactY + 20,
+            result.actualDamage, this.fighter2.element, isCrit2
           );
         }
 
-        if (isCrit) {
+        if (isCrit2) {
           this._screenShake();
         }
 
@@ -1525,73 +1636,24 @@ export class GameLoop {
    */
   _checkAbilityActivation(fighter, opponent) {
     if (this.gameOver) return;
+    const beh = fighter.behavior;
 
     // ── Check Elemental Skill (E) ────────────────
-    if (fighter.skillCDTimer <= 0) {
+    // For Keqing: skillCDTimer may be 0 when stiletto is out (recast window)
+    const canActivateSkill = fighter.skillCDTimer <= 0 ||
+      (fighter.id === 'keqing' && fighter.stilettoThrown && fighter.skillCDTimer <= 0);
+
+    if (canActivateSkill) {
       const activated = fighter.activateSkill();
       if (activated) {
-        if (fighter.id === 'ayaka') {
-          playSFX('/audio/ayaka/ayaka-skill.mp3', 0.78);
-          fighter.stats.casts.skill++;
-          // Create the frost blooming ice radius visual indicator
-          const visual = new Graphics();
-          visual.circle(0, 0, 180);
-          visual.fill({ color: 0x80deea, alpha: 0.06 }); // very soft Cryo blue fill
-          visual.stroke({ color: 0x4fc3f7, width: 2, alpha: 0.6 }); // bold Cryo blue border
-          visual.circle(0, 0, 90);
-          visual.stroke({ color: 0x4fc3f7, width: 1, alpha: 0.3 }); // inner target ring
-          
-          visual.x = fighter.body.x;
-          visual.y = fighter.body.y;
-          
-          // Add to the stage at index 1 so it renders beneath the character circles!
-          this.stage.addChildAt(visual, 1);
-
-          const effect = {
-            type: 'hyouka',
-            owner: fighter,
-            target: opponent,
-            timer: 1.0, // 1.0 second delay before bloom
-            radius: 180,
-            visual: visual,
-            symbolSprite: null
-          };
-          this.activeEffects.push(effect);
-
-          // Asynchronously load the cryo.png symbol so it doesn't block the loop
-          if (!this.headlessMode) {
-            Assets.load('/cryo.png').then(texture => {
-              if (this.gameOver) return;
-              const sprite = new Sprite(texture);
-              sprite.anchor.set(0.5);
-              sprite.x = fighter.body.x;
-              sprite.y = fighter.body.y;
-              sprite.width = 0;
-              sprite.height = 0;
-              sprite.alpha = 0;
-              sprite.tint = 0x80deea; // Cryo light-cyan glow
-              
-              // Add to the stage at index 1 so it renders beneath the character circles!
-              this.stage.addChildAt(sprite, 1);
-              effect.symbolSprite = sprite;
-            }).catch(err => console.warn('Could not load Cryo symbol:', err));
-          }
-        }
-        if (fighter.id === 'yoimiya') {
-          playSFX('/audio/yoimiya/yoimiya-skill.wav');
-          fighter.stats.casts.skill++;
-          // Yoimiya E: Infusion, triggers aura visual (VFX triggered inside activateSkill)
-          
-          // Do NOT call _startYoimiyaArrowCombo directly here to avoid double streams of arrows.
-          // Instead, if she is not already shooting, reset the cooldown so the auto standard attack loop fires immediately.
-          const isShooting = this.scheduledArrows && this.scheduledArrows.some(shot => shot.owner === fighter);
-          if (!isShooting) {
-            fighter.lastAttackTime = 0;
-          }
+        // Delegate to behavior module
+        if (beh && typeof beh.onSkillActivate === 'function') {
+          beh.onSkillActivate(fighter, opponent, this, Graphics, Sprite, Assets);
         }
       }
     }
 
+    // ── Check Elemental Burst (Q) ────────────────
     if (fighter.burstCDTimer <= 0) {
       const activated = fighter.activateBurst();
       if (activated) {
@@ -1607,78 +1669,20 @@ export class GameLoop {
           fighter.playUltAnimation();
         }
 
-        if (fighter.id === 'ayaka') {
-          playSFX('/audio/ayaka/ayaka-ultimate.wav', 0.6);
-          fighter.stats.casts.burst++;
-          // Ayaka Q: Two-phase Soumetsu burst
-          // Phase 1: 2.1s Casting with Laser Telegraph + Contracting Ring
-          const telegraphGfx = new Graphics();
-          const ringGfx = new Graphics();
-          // Add to stage at index 1 so they render beneath the character circles!
-          this.stage.addChildAt(telegraphGfx, 1);
-          this.stage.addChildAt(ringGfx, 1);
-
-          const effect = {
-            type: 'soumetsu_cast',
-            owner: fighter,
-            target: opponent,
-            timer: 1.3, // Windup reduced by another 0.3s (from 1.6s to 1.3s) for snappier feel!
-            telegraph: telegraphGfx,
-            ring: ringGfx,
-            angle: 0,
-            symbolSprite: null
-          };
-          this.activeEffects.push(effect);
-
-          // Asynchronously load the cryo.png symbol so it doesn't block the loop
-          if (!this.headlessMode) {
-            Assets.load('/cryo.png').then(texture => {
-              if (this.gameOver || !this.activeEffects.includes(effect)) return;
-              const sprite = new Sprite(texture);
-              sprite.anchor.set(0.5);
-              sprite.x = fighter.body.x;
-              sprite.y = fighter.body.y;
-              sprite.width = 300;
-              sprite.height = 300;
-              sprite.alpha = 0.2;
-              sprite.tint = 0x80deea; // Cryo light-cyan glow
-              
-              // Add to the stage at index 1 so it renders beneath the character circles!
-              this.stage.addChildAt(sprite, 1);
-              effect.symbolSprite = sprite;
-            }).catch(err => console.warn('Could not load Cryo symbol for ultimate:', err));
-          }
-
-          fighter.isInvincible = true; // Invincible during burst cast windup!
-
-          if (fighter.vfx) {
-            fighter.vfx.triggerCastAura(fighter.body.x, fighter.body.y);
-          }
-          this._screenShake();
-        }
-        else if (fighter.id === 'yoimiya') {
-          // Yoimiya Q: Two-phase Ryuukin Saxifrage burst
-          fighter.stats.casts.burst++;
-          // Phase 1: 1.0s Casting with sparkles and orange particles around her
-          const ringGfx = new Graphics();
-          // Add to the stage at index 1 so it renders beneath the character circles!
-          this.stage.addChildAt(ringGfx, 1);
-
-          this.activeEffects.push({
-            type: 'ryuukin_cast',
-            owner: fighter,
-            target: opponent,
-            timer: 1.0,
-            ring: ringGfx
-          });
-
-          fighter.isInvincible = true; // Invincible during burst cast windup!
-
-          // Play cast audio/whistle
-          playSFX('/audio/yoimiya/yoimiya-ultimate.wav', 1.0);
+        // Delegate to behavior module
+        if (beh && typeof beh.onBurstActivate === 'function') {
+          beh.onBurstActivate(fighter, opponent, this, Graphics, Sprite, Assets);
         }
       }
     }
+  }
+
+  /**
+   * Convenience SFX wrapper for use by behavior modules.
+   * Respects headless mode and replay interceptors.
+   */
+  _playSFX(path, volume) {
+    playSFX(path, volume);
   }
 
   /**
@@ -1735,25 +1739,21 @@ export class GameLoop {
 
     if (dist < range) {
       const damage = fighter.getCurrentDamage();
-      const isCrit = fighter.passiveTimer > 0;
+      const beh = fighter.behavior;
+      const isCrit = beh && typeof beh.isCrit === 'function' ? beh.isCrit(fighter) : fighter.passiveTimer > 0;
       const result = opponent.takeDamage(damage);
 
       if (result.actualDamage > 0) {
-        if (fighter.id === 'ayaka') {
-          if (fighter.passiveTimer > 0) {
-            playSFX('/audio/ayaka/ayaka-hit_infused.wav', 0.9);
-          } else {
-            playSFX('/audio/ayaka/ayaka-hit.wav', 0.85);
-          }
+        // Delegate hit audio / passive logic to behavior
+        let hitType = 'normal';
+        if (beh && typeof beh.onMeleeHit === 'function') {
+          hitType = beh.onMeleeHit(fighter, opponent, this, result);
         }
-        if (fighter.passiveTimer > 0) {
+
+        if (hitType === 'enhanced') {
           fighter.stats.damageDealt.enhancedNormal += result.actualDamage;
         } else {
           fighter.stats.damageDealt.normal += result.actualDamage;
-        }
-        // Ayaka C1: Every hit during Cryo infusion reduces Hyouka (E) cooldown by 1.0s
-        if (fighter.id === 'ayaka' && fighter.passiveTimer > 0) {
-          fighter.skillCDTimer = Math.max(0, fighter.skillCDTimer - 1.0);
         }
 
         // VFX
@@ -1955,23 +1955,24 @@ export class GameLoop {
     if (this.headlessMode) return;
     if (!this.hud) return;
 
-    this.hud.updateHP(this.fighter1.element, this.fighter1.hp, this.fighter1.maxHp);
-    this.hud.updateHP(this.fighter2.element, this.fighter2.hp, this.fighter2.maxHp);
+    this.hud.updateHP('left', this.fighter1.hp, this.fighter1.maxHp);
+    this.hud.updateHP('right', this.fighter2.hp, this.fighter2.maxHp);
 
     // Update dynamic stats in footer
-    const ySpeed = this.fighter2.data.attackSpeed * (this.fighter2.isInfused ? 2.0 : 1.0);
-    this.hud.updateStats('cryo', this.fighter1.getCurrentDamage(), this.fighter1.data.attackSpeed);
-    this.hud.updateStats('pyro', this.fighter2.getCurrentDamage(), ySpeed);
+    const f1Speed = this.fighter1.data.attackSpeed;
+    const f2Speed = this.fighter2.data.attackSpeed * (this.fighter2.isInfused ? 2.0 : 1.0);
+    this.hud.updateStats('left', this.fighter1.getCurrentDamage(), f1Speed);
+    this.hud.updateStats('right', this.fighter2.getCurrentDamage(), f2Speed);
 
     // Update sidebar cooldown indicators
-    this.hud.updateAbilityCD('cryo', 'E', this.fighter1.skillCDTimer, this.fighter1.data.skillE.cooldown);
-    this.hud.updateAbilityCD('cryo', 'Q', this.fighter1.burstCDTimer, this.fighter1.data.burstQ.cooldown);
-    this.hud.updateAbilityCD('pyro', 'E', this.fighter2.skillCDTimer, this.fighter2.data.skillE.cooldown);
-    this.hud.updateAbilityCD('pyro', 'Q', this.fighter2.burstCDTimer, this.fighter2.data.burstQ.cooldown);
+    this.hud.updateAbilityCD('left', 'E', this.fighter1.skillCDTimer, this.fighter1.data.skillE.cooldown);
+    this.hud.updateAbilityCD('left', 'Q', this.fighter1.burstCDTimer, this.fighter1.data.burstQ.cooldown);
+    this.hud.updateAbilityCD('right', 'E', this.fighter2.skillCDTimer, this.fighter2.data.skillE.cooldown);
+    this.hud.updateAbilityCD('right', 'Q', this.fighter2.burstCDTimer, this.fighter2.data.burstQ.cooldown);
 
-    // Update passive indicators below circular icons
-    this.hud.updatePassiveState('cryo', this.fighter1.passiveTimer, 0);
-    this.hud.updatePassiveState('pyro', this.fighter2.passiveTimer, this.fighter2.passiveStacks);
+    // Update passive indicators (if implemented in HUD)
+    this.hud.updatePassiveState('left', this.fighter1.passiveTimer, this.fighter1.passiveStacks || 0);
+    this.hud.updatePassiveState('right', this.fighter2.passiveTimer, this.fighter2.passiveStacks || 0);
   }
 
   /**
@@ -2941,8 +2942,8 @@ export class GameLoop {
 
     // 5. Update HUD stats & HP
     if (this.hud) {
-      this.hud.updateHP('cryo', f1.hp, f1.maxHp);
-      this.hud.updateHP('pyro', f2.hp, f2.maxHp);
+      this.hud.updateHP('left', f1.hp, f1.maxHp);
+      this.hud.updateHP('right', f2.hp, f2.maxHp);
 
       // Reconstruct and update cooldown timers from snapshot progress values during replay
       f1.skillCDTimer = f1.data.skillE.cooldown * (1 - (s1.skillCDProgress ?? 1));
@@ -2955,17 +2956,18 @@ export class GameLoop {
       f2.burstCDTimer = f2.data.burstQ.cooldown * (1 - (s2.burstCDProgress ?? 1));
       if (s2.burstCDProgress === 1) f2.burstCDTimer = 0;
 
-      this.hud.updateAbilityCD('cryo', 'E', f1.skillCDTimer, f1.data.skillE.cooldown);
-      this.hud.updateAbilityCD('cryo', 'Q', f1.burstCDTimer, f1.data.burstQ.cooldown);
-      this.hud.updateAbilityCD('pyro', 'E', f2.skillCDTimer, f2.data.skillE.cooldown);
-      this.hud.updateAbilityCD('pyro', 'Q', f2.burstCDTimer, f2.data.burstQ.cooldown);
+      this.hud.updateAbilityCD('left', 'E', f1.skillCDTimer, f1.data.skillE.cooldown);
+      this.hud.updateAbilityCD('left', 'Q', f1.burstCDTimer, f1.data.burstQ.cooldown);
+      this.hud.updateAbilityCD('right', 'E', f2.skillCDTimer, f2.data.skillE.cooldown);
+      this.hud.updateAbilityCD('right', 'Q', f2.burstCDTimer, f2.data.burstQ.cooldown);
 
+      const f1Speed = f1.data.attackSpeed;
       const ySpeed = f2.data.attackSpeed * (f2.isInfused ? 2.0 : 1.0);
-      this.hud.updateStats('cryo', f1.getCurrentDamage(), f1.data.attackSpeed);
-      this.hud.updateStats('pyro', f2.getCurrentDamage(), ySpeed);
+      this.hud.updateStats('left', f1.getCurrentDamage(), f1Speed);
+      this.hud.updateStats('right', f2.getCurrentDamage(), ySpeed);
 
-      this.hud.updatePassiveState('cryo', f1.passiveTimer, 0);
-      this.hud.updatePassiveState('pyro', f2.passiveTimer, f2.passiveStacks);
+      this.hud.updatePassiveState('left', f1.passiveTimer, f1.passiveStacks || 0);
+      this.hud.updatePassiveState('right', f2.passiveTimer, f2.passiveStacks || 0);
 
       if (typeof this.hud.updateReplayScrubber === 'function') {
         this.hud.updateReplayScrubber(Math.floor(this.replayPlayhead), this.replayFrames.length, this.elapsedTime);

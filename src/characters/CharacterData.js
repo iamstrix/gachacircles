@@ -21,6 +21,16 @@ export const WEAPONS = {
   CATALYST: 'catalyst',
 };
 
+/**
+ * Weapon attack type — drives combat dispatch in gameLoop.
+ * 'melee' : close-range combo fighter
+ * 'ranged': fires projectiles from a distance
+ */
+export const ATTACK_TYPE = {
+  MELEE: 'melee',
+  RANGED: 'ranged',
+};
+
 export const CHARACTERS = {
   ayaka: {
     id: 'ayaka',
@@ -28,6 +38,7 @@ export const CHARACTERS = {
     title: 'Frostflake Heron',
     element: ELEMENTS.CRYO,
     weapon: WEAPONS.SWORD,
+    attackType: ATTACK_TYPE.MELEE,
 
     // Combat stats
     hp: 500,
@@ -83,6 +94,7 @@ export const CHARACTERS = {
     title: 'Frolicking Flames',
     element: ELEMENTS.PYRO,
     weapon: WEAPONS.BOW,
+    attackType: ATTACK_TYPE.RANGED,
 
     // Combat stats
     hp: 500,
@@ -128,6 +140,64 @@ export const CHARACTERS = {
       glow: 'rgba(255, 152, 0, 0.4)',
       circle: '#5c3a1a',
       circleStroke: '#FF9800',
+    },
+  },
+
+  keqing: {
+    id: 'keqing',
+    name: 'Keqing',
+    title: 'Driving Thunder',
+    element: ELEMENTS.ELECTRO,
+    weapon: WEAPONS.SWORD,
+    attackType: ATTACK_TYPE.MELEE,
+
+    // Combat stats
+    hp: 500,
+    damage: 9,              // Slightly higher base melee damage
+    attackSpeed: 1.2,       // Slightly faster than Ayaka
+    speed: 3.8,             // Very agile — fastest on foot
+
+    // Skills & Burst
+    skillE: {
+      name: 'Stellar Restoration',
+      description: 'Throws a Lightning Stiletto. Re-casting teleports Keqing to it, dealing AoE Electro damage.',
+      damageMultiplier: 2.5,
+      cooldown: 8,
+      teleportRadius: 120,  // AoE radius on teleport detonation
+      emoji: '⚡',
+      icon: '/keqing-skill_icon.png'
+    },
+    burstQ: {
+      name: 'Starward Sword',
+      description: 'Unleashes a rapid fan of 8 lightning slashes, then detonates a massive Electro explosion.',
+      damageMultiplier: 1.5,  // per slash
+      slashCount: 8,
+      explosionMultiplier: 3.0,
+      aoeRadius: 150,
+      cooldown: 20,
+      emoji: '🗡️',
+      icon: '/keqing-ultimate_icon.png'
+    },
+    passive: {
+      name: 'Thundering Poise',
+      description: 'After using Stellar Restoration, Normal Attacks deal +25% Electro DMG for 5s.',
+      duration: 5000,
+      emoji: '💜'
+    },
+
+    // Visual config
+    circleRadius: 42,
+    portrait: '/characters/keqing_portrait.png',
+    splash: '/characters/keqing-splash.png',
+    ultAnimation: '/characters/keqing-ultimate_animation.mp4',
+    weaponSprite: '/weapons/sword.png',
+    colors: {
+      primary: '#c77dff',
+      light: '#e0b0ff',
+      dark: '#7b2d8b',
+      glow: 'rgba(199, 125, 255, 0.45)',
+      circle: '#2d1a40',
+      circleStroke: '#c77dff',
     },
   },
 };

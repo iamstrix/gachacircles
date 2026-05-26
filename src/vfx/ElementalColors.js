@@ -1,6 +1,6 @@
 // ─────────────────────────────────────────────────────────────
 // ElementalColors.js – Color palettes & gradient helpers for
-// Cryo and Pyro elemental VFX
+// Cryo, Pyro, and Electro elemental VFX
 // ─────────────────────────────────────────────────────────────
 
 /**
@@ -56,6 +56,39 @@ export const PYRO_GRADIENT = [
   { t: 0.4, color: PYRO_COLORS.vividOrange },
   { t: 0.8, color: PYRO_COLORS.bloodOrange },
   { t: 1.0, color: PYRO_COLORS.dark },
+];
+
+export const ELECTRO_COLORS = {
+  white:       0xffffff,
+  brightViolet: 0xe040fb, // vivid magenta-violet
+  purple:      0xc77dff, // Keqing primary
+  deepPurple:  0x7b2d8b, // rich violet
+  accent:      0xf48dff, // bright pinkish highlight
+  dark:        0x1a0a2e, // dark void-purple
+};
+
+/**
+ * Electro gradient — starts as a bright white flash, blooms through vivid violet,
+ * deepens to rich electric purple, and fades into dark void.
+ */
+export const ELECTRO_GRADIENT = [
+  { t: 0.0,  color: ELECTRO_COLORS.white },
+  { t: 0.15, color: ELECTRO_COLORS.accent },
+  { t: 0.40, color: ELECTRO_COLORS.brightViolet },
+  { t: 0.70, color: ELECTRO_COLORS.purple },
+  { t: 1.0,  color: ELECTRO_COLORS.dark },
+];
+
+/**
+ * Electro stiletto/teleport burst gradient — intense, fast, electric.
+ * Pure white hot center → vivid violet → fades quickly.
+ */
+export const ELECTRO_TELEPORT_GRADIENT = [
+  { t: 0.0,  color: 0xffffff },
+  { t: 0.10, color: 0xf48dff },
+  { t: 0.35, color: 0xe040fb },
+  { t: 0.65, color: 0x9c27b0 },
+  { t: 1.0,  color: 0x1a0a2e },
 ];
 
 // ── Helpers ──────────────────────────────────────────────────
@@ -117,7 +150,10 @@ export function sampleGradient(gradient, lifeFraction) {
  * @returns {number} colour as 0xRRGGBB
  */
 export function getParticleColor(element, lifeFraction) {
-  const gradient = element === 'cryo' ? CRYO_GRADIENT : PYRO_GRADIENT;
+  let gradient;
+  if (element === 'cryo') gradient = CRYO_GRADIENT;
+  else if (element === 'electro') gradient = ELECTRO_GRADIENT;
+  else gradient = PYRO_GRADIENT;
   return sampleGradient(gradient, lifeFraction);
 }
 
@@ -125,7 +161,9 @@ export function getParticleColor(element, lifeFraction) {
  * Get the full palette object for an element.
  */
 export function getPalette(element) {
-  return element === 'cryo' ? CRYO_COLORS : PYRO_COLORS;
+  if (element === 'cryo') return CRYO_COLORS;
+  if (element === 'electro') return ELECTRO_COLORS;
+  return PYRO_COLORS;
 }
 
 /**

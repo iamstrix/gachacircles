@@ -2,6 +2,8 @@
  * Fighter.js — In-game fighter entity
  * Wraps a character's visual representation and combat state.
  * Contains the circle, portrait, orbiting weapon, and glow effects.
+ *
+ * Character-specific combat logic is delegated to fighter.behavior (CharacterBehavior).
  */
 
 import { Container, Graphics, Sprite, Assets, Text, Texture } from 'pixi.js';
@@ -35,7 +37,7 @@ export class Fighter {
     this.passiveStacks = 0; // Yoimiya's stacks
     this.passiveTimer = 0; // duration tracking
 
-    // Ayaka Melee Combo State
+    // Melee Combo State (Ayaka / Keqing sword)
     this.comboIndex = 0;       // N1 to N5 (0-4)
     this.swingProgress = 1.0;  // 0 to 1 (animation fraction)
     this.swingDuration = 0;    // Duration in ms
@@ -44,6 +46,13 @@ export class Fighter {
     this.visualOffset = { x: 0, y: 0, rotation: 0 };
     this.isInvincible = false;
     this.slowMultiplier = 1.0;
+
+    // Keqing-specific: Stellar Restoration stiletto state
+    this.stilettoThrown = false;
+    this.stilettoX = 0;
+    this.stilettoY = 0;
+    this.stilettoTimer = 0;
+    this.stilettoVisual = null;
 
     // Statistics tracking
     this.stats = {
@@ -87,6 +96,12 @@ export class Fighter {
 
     // VFX reference (set externally)
     this.vfx = null;
+
+    // Behavior module (set externally from main.js)
+    // Must implement: isRanged, onSkillActivate, onBurstActivate, startAttackCombo,
+    //                 onMeleeHit, getDamageModifier, isCrit, isLunging,
+    //                 tickPassive, tickInfusion, updateWeaponTint, createVFX
+    this.behavior = null;
   }
 
   /**
@@ -170,7 +185,9 @@ export class Fighter {
       this.weaponSprite = new Sprite(weaponTexture);
       this.weaponSprite.anchor.set(0.5);
       const weaponSize = this.id === 'yoimiya' ? 110 : 130;
-      this.weaponSprite.width = this.id === 'ayaka' ? -weaponSize : weaponSize; // Mirror sword horizontally so cutting edge leads
+      // Mirror swords horizontally so cutting edge leads (ayaka & keqing both use sword)
+      const isSword = this.data.weapon === 'sword';
+      this.weaponSprite.width = isSword ? -weaponSize : weaponSize;
       this.weaponSprite.height = weaponSize;
       this.container.addChild(this.weaponSprite);
     } catch (e) {
@@ -225,33 +242,23 @@ export class Fighter {
     if (!this.alive) return;
 
     if (window.headlessGachaMode) {
-      // Cooldown ticks
+      // Headless: tick timers only, skip all visuals
       if (this.skillCDTimer > 0) {
         this.skillCDTimer -= delta * 0.016;
         if (this.skillCDTimer < 0) this.skillCDTimer = 0;
       }
-
       if (this.burstCDTimer > 0) {
         this.burstCDTimer -= delta * 0.016;
         if (this.burstCDTimer < 0) this.burstCDTimer = 0;
       }
-
-      // Yoimiya infusion duration tick
-      if (this.id === 'yoimiya' && this.isInfused) {
-        this.infusionActiveTimer -= delta * 16.67;
-        if (this.infusionActiveTimer <= 0) {
-          this.isInfused = false;
-          this.infusionActiveTimer = 0;
-        }
+      // Delegate timer ticks to behavior
+      if (this.behavior) {
+        this.behavior.tickPassive(this, delta);
+        this.behavior.tickInfusion(this, delta);
       }
-
-      // Passive timers tick
-      if (this.passiveTimer > 0) {
-        this.passiveTimer -= delta * 16.67;
-        if (this.passiveTimer <= 0) {
-          this.passiveTimer = 0;
-          this.passiveStacks = 0; // Stacks expire
-        }
+      // Keqing stiletto auto-detonation timer
+      if (this.stilettoThrown && this.stilettoTimer > 0) {
+        this.stilettoTimer -= delta * 0.016;
       }
       return;
     }
@@ -273,8 +280,8 @@ export class Fighter {
         // Face the opponent (front of bow is up-left in original image, i.e., 3 * PI / 4 offset)
         this.weaponSprite.rotation = angle + 3 * Math.PI / 4;
       }
-    } else if (this.id === 'ayaka') {
-      // ── Ayaka's Procedural Sword Animation ────────────────
+    } else if (this.data.weapon === 'sword') {
+      // ── Procedural Sword Animation (Ayaka & Keqing) ────────────────
       const dx = opponent ? (opponent.body.x - this.body.x) : 0;
       const dy = opponent ? (opponent.body.y - this.body.y) : 0;
       const targetAngle = opponent ? Math.atan2(dy, dx) : this.weaponAngle;
@@ -341,17 +348,13 @@ export class Fighter {
         this.weaponSprite.rotation = finalAngle - Math.PI / 4;
       }
     } else {
-      // Standard orbital behavior for Ayaka and others
+      // Standard orbital behavior for other weapons
       let currentOrbitSpeed = this.weaponOrbitSpeed;
-      if (this.id === 'yoimiya' && this.isInfused) {
-        currentOrbitSpeed *= 2.0;
-      }
       this.weaponAngle += currentOrbitSpeed * delta * 0.016;
 
       if (this.weaponSprite) {
         this.weaponSprite.x = Math.cos(this.weaponAngle) * this.weaponOrbitRadius;
         this.weaponSprite.y = Math.sin(this.weaponAngle) * this.weaponOrbitRadius;
-        // Match offensive offset
         this.weaponSprite.rotation = this.weaponAngle - Math.PI / 4;
       }
     }
@@ -380,7 +383,6 @@ export class Fighter {
               // Convert local particle pos to world pos for emission
               const worldX = this.body.x + p.x;
               const worldY = this.body.y + p.y;
-              // Use triggerCollision as a base for sparks
               this.vfx.triggerCollision(worldX, worldY);
             }
           }
@@ -399,6 +401,17 @@ export class Fighter {
       if (this.burstCDTimer < 0) this.burstCDTimer = 0;
     }
 
+    // Delegate passive/infusion ticks to behavior
+    if (this.behavior) {
+      this.behavior.tickPassive(this, delta);
+      this.behavior.tickInfusion(this, delta);
+    }
+
+    // Keqing: stiletto auto-detonation timer (handled by gameLoop activeEffects, just tick here)
+    if (this.stilettoThrown && this.stilettoTimer > 0) {
+      this.stilettoTimer -= delta * 0.016;
+    }
+
     // Update ultimate video fade-out to portrait
     if (this.ultVideoFading && this.ultVideoSprite && this.portraitSprite) {
       const fadeSpeed = (delta * 16.67) / 800; // 800ms fade speed
@@ -410,24 +423,6 @@ export class Fighter {
         this.portraitSprite.alpha = 1;
         this.ultVideoSprite.visible = false;
         this.ultVideoFading = false;
-      }
-    }
-
-    // Yoimiya infusion duration tick
-    if (this.id === 'yoimiya' && this.isInfused) {
-      this.infusionActiveTimer -= delta * 16.67;
-      if (this.infusionActiveTimer <= 0) {
-        this.isInfused = false;
-        this.infusionActiveTimer = 0;
-      }
-    }
-
-    // Passive timers tick
-    if (this.passiveTimer > 0) {
-      this.passiveTimer -= delta * 16.67;
-      if (this.passiveTimer <= 0) {
-        this.passiveTimer = 0;
-        this.passiveStacks = 0; // Stacks expire
       }
     }
 
@@ -451,18 +446,9 @@ export class Fighter {
       this.circleGraphics.tint = 0xffffff;
     }
 
-    // Tint Ayaka's sword with a beautiful glowing cyan/light blue color when she has passive Cryo Infusion!
-    if (this.weaponSprite && this.id === 'ayaka') {
-      if (this.passiveTimer > 0) {
-        this.weaponSprite.tint = 0x80deea; // Icy cyan glow
-        
-        // Emit beautiful trailing snowy ice crystal particles from the sword!
-        if (this.vfx && typeof this.vfx.triggerSwordInfusionParticles === 'function') {
-          this.vfx.triggerSwordInfusionParticles(this.body.x + this.weaponSprite.x, this.body.y + this.weaponSprite.y);
-        }
-      } else {
-        this.weaponSprite.tint = 0xffffff; // Revert to original texture color
-      }
+    // Weapon visual tinting — delegated to behavior
+    if (this.behavior) {
+      this.behavior.updateWeaponTint(this);
     }
   }
 
@@ -491,7 +477,7 @@ export class Fighter {
   }
 
   /**
-   * Trigger a melee swing animation (Ayaka)
+   * Trigger a melee swing animation
    * @param {number} index - N-step index (0-4)
    * @param {number} duration - Animation duration in ms
    */
@@ -544,21 +530,27 @@ export class Fighter {
    * @returns {boolean} true if skill was activated
    */
   activateSkill() {
-    if (this.skillCDTimer > 0) return false;
+    // For Keqing: phase 2 (stiletto already thrown) — reset CD to short window, let behavior handle detonation
+    // For all others: check normal CD
+    if (this.id !== 'keqing' && this.skillCDTimer > 0) return false;
+    if (this.id === 'keqing' && !this.stilettoThrown && this.skillCDTimer > 0) return false;
+    if (this.id === 'keqing' && this.stilettoThrown && this.skillCDTimer > 0) return false;
 
-    this.skillCDTimer = this.data.skillE.cooldown;
+    if (this.id !== 'keqing') {
+      this.skillCDTimer = this.data.skillE.cooldown;
+    }
 
+    // Legacy path for Ayaka's passive (kept for backwards compat, but behavior will override)
     if (this.id === 'ayaka') {
-      // Ayaka's passive activates: NA dmg +30% for 3s
       this.passiveTimer = this.data.passive.duration;
     } else if (this.id === 'yoimiya') {
-      // Yoimiya's Pyro infusion activates for 4s
+      // Yoimiya's Pyro infusion activates for duration
       this.isInfused = true;
       this.infusionActiveTimer = this.data.skillE.duration;
     }
 
-    // Trigger VFX E (Yoimiya's E triggers immediately, Ayaka's E triggers on bloom after 1 second)
-    if (this.vfx && this.id !== 'ayaka') {
+    // Trigger VFX E (non-Ayaka and non-Keqing, since those handle it in behavior)
+    if (this.vfx && this.id !== 'ayaka' && this.id !== 'keqing') {
       if (this.id === 'yoimiya' && typeof this.vfx.triggerInfusion === 'function') {
         this.vfx.triggerInfusion(this.body.x, this.body.y);
       } else {
@@ -575,9 +567,7 @@ export class Fighter {
    */
   activateBurst() {
     if (this.burstCDTimer > 0) return false;
-
     this.burstCDTimer = this.data.burstQ.cooldown;
-
     return true;
   }
 
@@ -630,24 +620,21 @@ export class Fighter {
   }
 
   /**
-   * Get the damage this fighter deals (considering active skills and passives)
+   * Get the damage this fighter deals (considering active skills and passives).
+   * Delegates multiplier to behavior module.
    */
   getCurrentDamage() {
     let dmg = this.data.damage;
 
-    if (this.id === 'ayaka') {
-      // Passive: Kanten Senmyou Blessing (+30% Normal Attack DMG)
-      if (this.passiveTimer > 0) {
-        dmg = Math.round(dmg * 1.30);
-      }
-    } else if (this.id === 'yoimiya') {
-      // Skill E Pyro Infusion (+50% DMG)
-      if (this.isInfused) {
-        dmg = Math.round(dmg * 1.50);
-      }
-      // Passive: Tricks of the Trouble-Maker (+2% DMG per stack, up to 10 stacks)
-      if (this.passiveStacks > 0) {
-        dmg = Math.round(dmg * (1 + this.passiveStacks * 0.02));
+    if (this.behavior && typeof this.behavior.getDamageModifier === 'function') {
+      dmg = Math.round(dmg * this.behavior.getDamageModifier(this));
+    } else {
+      // Legacy fallback for fighters without behavior set
+      if (this.id === 'ayaka') {
+        if (this.passiveTimer > 0) dmg = Math.round(dmg * 1.30);
+      } else if (this.id === 'yoimiya') {
+        if (this.isInfused) dmg = Math.round(dmg * 1.50);
+        if (this.passiveStacks > 0) dmg = Math.round(dmg * (1 + this.passiveStacks * 0.02));
       }
     }
 

@@ -43,6 +43,12 @@ export class DevUI {
       }
     }, bo3Visible);
 
+    const f1Id = localStorage.getItem('dev-fighter1-id') || 'ayaka';
+    this.addTextInput(group, 'Fighter 1 ID', f1Id, 'f1_id');
+
+    const f2Id = localStorage.getItem('dev-fighter2-id') || 'yoimiya';
+    this.addTextInput(group, 'Fighter 2 ID', f2Id, 'f2_id');
+
     const autoRematch = localStorage.getItem('dev-auto-rematch') === 'true';
     this.addToggle(group, 'Auto-Rematch (5s)', (val) => {
       localStorage.setItem('dev-auto-rematch', val);
@@ -98,11 +104,15 @@ export class DevUI {
       const dmg = this.container.querySelector('[data-key="dmg"]').value;
       const s1 = this.container.querySelector('[data-key="score1"]').value;
       const s2 = this.container.querySelector('[data-key="score2"]').value;
+      const f1 = this.container.querySelector('[data-key="f1_id"]').value.toLowerCase().trim();
+      const f2 = this.container.querySelector('[data-key="f2_id"]').value.toLowerCase().trim();
 
       localStorage.setItem('dev-hp-config', hp);
       localStorage.setItem('dev-dmg-multiplier', dmg);
       localStorage.setItem('match-score-cryo', s1);
       localStorage.setItem('match-score-pyro', s2);
+      localStorage.setItem('dev-fighter1-id', f1);
+      localStorage.setItem('dev-fighter2-id', f2);
 
       location.reload();
     }, '#2e7d32'); // Green for Save
@@ -235,6 +245,39 @@ export class DevUI {
     input.style.fontWeight = '700';
 
     input.addEventListener('change', (e) => callback(e.target.value));
+
+    row.appendChild(labelText);
+    row.appendChild(input);
+    parent.appendChild(row);
+  }
+
+  addTextInput(parent, label, defaultValue, key = '') {
+    const row = document.createElement('div');
+    row.style.display = 'flex';
+    row.style.flexDirection = 'column';
+    row.style.gap = '6px';
+    row.style.marginTop = '10px';
+
+    const labelText = document.createElement('span');
+    labelText.innerText = label;
+    labelText.style.fontSize = '10px';
+    labelText.style.fontWeight = '900';
+    labelText.style.color = '#8888aa';
+    labelText.style.textTransform = 'uppercase';
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.value = defaultValue;
+    if (key) input.setAttribute('data-key', key);
+    input.style.width = '100%';
+    input.style.backgroundColor = '#1a1a2e';
+    input.style.color = 'white';
+    input.style.border = '2px solid #000';
+    input.style.padding = '8px';
+    input.style.borderRadius = '0px';
+    input.style.fontFamily = 'inherit';
+    input.style.fontSize = '14px';
+    input.style.fontWeight = '700';
 
     row.appendChild(labelText);
     row.appendChild(input);
