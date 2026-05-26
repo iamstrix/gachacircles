@@ -1309,7 +1309,7 @@ export class GameLoop {
       }
       // ── Keqing: Stellar Stiletto auto-detonation ──────────────
       else if (effect.type === 'keqing_stiletto_mark') {
-        if (effect.timer <= 0) {
+        if (effect.timer <= 0 || !effect.owner.stilettoThrown) {
           const beh = effect.owner.behavior;
           if (beh && typeof beh._cleanupMark === 'function') {
             beh._cleanupMark(effect.owner);
@@ -1317,7 +1317,7 @@ export class GameLoop {
           return false;
         }
         // Rotate, pulse, flicker, and emit sparks
-        if (effect.visual && !this.headlessMode) {
+        if (effect.visual && !effect.visual.destroyed && !this.headlessMode) {
           const isWarning = effect.timer <= 1.0;
           const rotSpeed = isWarning ? 0.15 : 0.05;
           const pulseSpeed = isWarning ? 0.03 : 0.01;
@@ -1340,9 +1340,9 @@ export class GameLoop {
         return true;
       }
       else if (effect.type === 'stellar_stiletto') {
-        if (effect.timer <= 0) {
+        if (effect.timer <= 0 || !effect.owner.stilettoThrown) {
           // Auto-detonate: time expired, Keqing forcibly recalled
-          if (effect.owner.stilettoThrown) {
+          if (effect.timer <= 0 && effect.owner.stilettoThrown) {
             const beh = effect.owner.behavior;
             if (beh && typeof beh._detonateStiletto === 'function') {
               beh._detonateStiletto(effect.owner, effect.target, this, Graphics);
@@ -1351,7 +1351,7 @@ export class GameLoop {
           return false; // remove effect
         }
         // Flicker stiletto marker visually
-        if (effect.visual && !this.headlessMode) {
+        if (effect.visual && !effect.visual.destroyed && !this.headlessMode) {
           const pulse = 0.6 + 0.4 * Math.sin(performance.now() * 0.012);
           effect.visual.alpha = pulse;
           // Rotate the lightning bolt icon
