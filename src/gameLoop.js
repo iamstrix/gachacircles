@@ -1590,21 +1590,39 @@ export class GameLoop {
     // Apply damage from fighter2 to fighter1 (only for melee fighters, not ranged)
     const beh2 = this.fighter2.behavior;
     const isRanged2 = beh2 && beh2.isRanged;
-    if (!isRanged2 && this.fighter2.canAttack(currentTime)) {
+    const isLunging2 = beh2 && typeof beh2.isLunging === 'function' ? beh2.isLunging(this.fighter2) : false;
+
+    const canLungeHit2 = isLunging2 && !this.fighter2.hasHitThisSwing;
+    const canStdHit2 = !isRanged2 && !isLunging2 && this.fighter2.canAttack(currentTime) && this.fighter2.comboIndex === 0 && this.fighter2.swingProgress >= 1.0;
+
+    if (canLungeHit2 || canStdHit2) {
       const damage = this.fighter2.getCurrentDamage();
-      const isCrit = (this.fighter2.id === 'ayaka' && this.fighter2.passiveTimer > 0) ||
-                     (this.fighter2.id === 'yoimiya' && this.fighter2.isInfused);
+      const isCrit = beh2 && typeof beh2.isCrit === 'function' ? beh2.isCrit(this.fighter2) : false;
       const result = this.fighter1.takeDamage(damage);
 
       if (result.actualDamage > 0) {
-        this.fighter2.registerAttack(currentTime);
+        // Delegate hit audio / passive logic to behavior
+        let hitType = 'normal';
+        if (beh2 && typeof beh2.onMeleeHit === 'function') {
+          hitType = beh2.onMeleeHit(this.fighter2, this.fighter1, this, result);
+        }
+
+        if (hitType === 'enhanced') {
+          this.fighter2.stats.damageDealt.enhancedNormal += result.actualDamage;
+        } else {
+          this.fighter2.stats.damageDealt.normal += result.actualDamage;
+        }
+
+        if (isLunging2) {
+          this.fighter2.hasHitThisSwing = true;
+        } else {
+          this.fighter2.registerAttack(currentTime);
+        }
 
         // Collision passive hook (e.g. Yoimiya passive stacks)
         if (beh2 && typeof beh2.onCollisionHit === 'function') {
           beh2.onCollisionHit(this.fighter2);
         }
-
-        const isCrit2 = beh2 && typeof beh2.isCrit === 'function' ? beh2.isCrit(this.fighter2) : false;
 
         // Trigger collision VFX
         if (this.fighter2.vfx) {
@@ -1615,11 +1633,11 @@ export class GameLoop {
         if (this.damageNumbers) {
           this.damageNumbers.spawn(
             collision.contactX, collision.contactY + 20,
-            result.actualDamage, this.fighter2.element, isCrit2
+            result.actualDamage, this.fighter2.element, isCrit
           );
         }
 
-        if (isCrit2) {
+        if (isCrit) {
           this._screenShake();
         }
 
