@@ -1371,7 +1371,11 @@ export class GameLoop {
 
             // Hits 2-9: Rapid slashes
             const slashDmg = Math.round(effect.owner.getCurrentDamage() * (effect.owner.data.burstQ.slashMultiplier || 0.41));
-            const sAngle = (effect.slashIndex / totalSlashes) * Math.PI * 2;
+            
+            // Preset naturalistic criss-cross angles matching diagonal cuts
+            const angles = [0.52, 2.18, 3.84, 0.87, 2.53, 4.19, 1.22, 2.88];
+            const sAngle = angles[(effect.slashIndex - 1) % angles.length];
+
             const dx2 = effect.target.body.x - effect.owner.body.x;
             const dy2 = effect.target.body.y - effect.owner.body.y;
             const aoeR = 120;
@@ -1391,12 +1395,37 @@ export class GameLoop {
               }
             }
 
-            // VFX slash arc
-            if (effect.owner.vfx && typeof effect.owner.vfx.triggerSlashArc === 'function') {
-              // Fire multiple arcs per slash for better visibility
-              for (let i = 0; i < 3; i++) {
-                const randomOffset = (Math.random() - 0.5) * 0.5;
-                effect.owner.vfx.triggerSlashArc(effect.owner.body.x, effect.owner.body.y, sAngle + randomOffset);
+            // VFX premium additions
+            if (effect.owner.vfx) {
+              const maxR = effect.owner.data.burstQ.aoeRadius || 150;
+              
+              // 1. Draw static full-screen luminous beam crossing the epicenter
+              if (typeof effect.owner.vfx.triggerBeamSlash === 'function') {
+                effect.owner.vfx.triggerBeamSlash(effect.owner.body.x, effect.owner.body.y, sAngle, 750, 10);
+              }
+
+              // 2. Spawn a ghostly afterimage silhouette orbiting the epicenter
+              const orbitRadius = 40 + Math.random() * (maxR * 0.7); // 40px to 105px orbit
+              const orbitAngle = Math.random() * Math.PI * 2;
+              const ax = effect.owner.body.x + Math.cos(orbitAngle) * orbitRadius;
+              const ay = effect.owner.body.y + Math.sin(orbitAngle) * orbitRadius;
+
+              if (typeof effect.owner.vfx.triggerAfterimage === 'function') {
+                effect.owner.vfx.triggerAfterimage(ax, ay, sAngle);
+              }
+
+              // 3. Connect consecutive strikes with jagged lightning tendrils
+              if (effect.lastAfterimageX !== undefined && typeof effect.owner.vfx.triggerLightningTendril === 'function') {
+                effect.owner.vfx.triggerLightningTendril(effect.lastAfterimageX, effect.lastAfterimageY, ax, ay);
+              }
+
+              // Save coordinate for next lightning connect
+              effect.lastAfterimageX = ax;
+              effect.lastAfterimageY = ay;
+
+              // 4. Retain localized particle sparks at strike location for impact debris
+              if (typeof effect.owner.vfx.triggerSlashArc === 'function') {
+                effect.owner.vfx.triggerSlashArc(ax, ay, sAngle);
               }
             }
           }

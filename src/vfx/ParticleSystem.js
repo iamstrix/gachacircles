@@ -43,7 +43,7 @@ function createParticleData() {
     alpha: 1,
     blendMode: 'normal',
     active: false,
-    // reference to its Graphics visual
+    // references to Graphics visuals
     gfxCircle: null,
     gfxRect: null,
     activeGfx: null,
@@ -149,9 +149,9 @@ export class ParticleSystem {
       p.maxLife = life;
       p.size = size;
       p.startSize = size;
-      p.scaleX = c.scaleX;
-      p.scaleY = c.scaleY;
-      p.autoRotate = c.autoRotate;
+      p.scaleX = c.scaleX ?? 1;
+      p.scaleY = c.scaleY ?? 1;
+      p.autoRotate = !!c.autoRotate;
       p.alpha = c.startAlpha;
       p.startAlpha = c.startAlpha;
       p.endAlpha = c.endAlpha;
@@ -178,7 +178,7 @@ export class ParticleSystem {
       gfx.scale.set(size * p.scaleX, size * p.scaleY);
       gfx.alpha = c.startAlpha;
       gfx.blendMode = c.blendMode;
-      
+
       if (p.autoRotate) {
         gfx.rotation = angle;
       } else {
@@ -190,17 +190,9 @@ export class ParticleSystem {
       gfx.tint = birthColor;
     }
   }
-// ... rest of file (emitContinuous, update, etc) ...
-
 
   /**
    * Start a continuous emitter that fires particles every frame.
-   *
-   * @param {number} x
-   * @param {number} y
-   * @param {object} [cfg]
-   * @param {number} [cfg.rate=1] – particles per frame
-   * @returns {object} handle – set handle.active = false to stop, or update handle.x / handle.y
    */
   emitContinuous(x, y, cfg = {}) {
     const handle = {
@@ -215,23 +207,17 @@ export class ParticleSystem {
     return handle;
   }
 
-  /**
-   * Stop and remove a continuous emitter.
-   */
+  /** Stop and remove a continuous emitter. */
   stopContinuous(handle) {
     if (handle) handle.active = false;
   }
 
   // ── Update loop ──────────────────────────────────────────
 
-  /**
-   * Call once per frame.
-   *
-   * @param {number} delta – Ticker delta (1 = 60 fps frame)
-   */
   update(delta) {
     if (window.headlessGachaMode) return;
-    // 1. Process continuous emitters
+    
+    // 1. Continuous emitters
     for (let i = this._continuousEmitters.length - 1; i >= 0; i--) {
       const e = this._continuousEmitters[i];
       if (!e.active) {
@@ -245,7 +231,7 @@ export class ParticleSystem {
       }
     }
 
-    // 2. Update every active particle
+    // 2. Active particles
     for (let i = 0; i < this._pool.length; i++) {
       const p = this._pool[i];
       if (!p.active) continue;
@@ -254,24 +240,20 @@ export class ParticleSystem {
 
       if (p.life <= 0) {
         p.active = false;
-        p.gfx.visible = false;
+        if (p.activeGfx) p.activeGfx.visible = false;
         continue;
       }
 
-      // Fraction of life elapsed (0 = born, 1 = dead)
       const f = 1 - p.life / p.maxLife;
 
-      // Physics
       p.vy += (p.gravity ?? 0) * delta;
 
-      // Orbital Physics: tangential force around (centerX, centerY)
       if (p.orbitalForce !== 0) {
         const dx = p.x - p.centerX;
         const dy = p.y - p.centerY;
         const distSq = dx * dx + dy * dy;
         if (distSq > 1) {
           const dist = Math.sqrt(distSq);
-          // Tangential vector is (-dy, dx) normalized
           const tx = -dy / dist;
           const ty = dx / dist;
           p.vx += tx * p.orbitalForce * delta;
@@ -279,7 +261,6 @@ export class ParticleSystem {
         }
       }
 
-      // Attraction / Black Hole logic
       if (p.attractionForce !== 0) {
         const dx = p.targetX - p.x;
         const dy = p.targetY - p.y;
@@ -295,52 +276,47 @@ export class ParticleSystem {
       p.x += p.vx * delta;
       p.y += p.vy * delta;
 
-      // Alpha fade
       p.alpha = p.startAlpha + (p.endAlpha - p.startAlpha) * f;
 
-      // Size shrink
       if (p.shrink) {
-        p.size = p.startSize * (1 - f * 0.7); // shrink to 30 %
+        p.size = p.startSize * (1 - f * 0.7);
       }
 
-      // Colour gradient
       if (p.gradient) {
         p.color = sampleGradient(p.gradient, f);
       }
 
-      // Sync Graphics
       const gfx = p.activeGfx;
-      gfx.position.set(p.x, p.y);
-      gfx.scale.set(p.size * p.scaleX, p.size * p.scaleY);
-      gfx.alpha = Math.max(0, p.alpha);
-      gfx.tint = p.color;
+      if (gfx) {
+        gfx.position.set(p.x, p.y);
+        gfx.scale.set(p.size * p.scaleX, p.size * p.scaleY);
+        gfx.alpha = Math.max(0, p.alpha);
+        gfx.tint = p.color;
 
-      if (p.autoRotate) {
-        const angle = Math.atan2(p.vy, p.vx);
-        gfx.rotation = angle;
+        if (p.autoRotate) {
+          gfx.rotation = Math.atan2(p.vy, p.vx);
+        }
       }
     }
   }
 
   // ── Utilities ────────────────────────────────────────────
 
-  /** Kill all active particles instantly. */
   clear() {
     for (const p of this._pool) {
       p.active = false;
-      p.gfx.visible = false;
+      if (p.gfxCircle) p.gfxCircle.visible = false;
+      if (p.gfxRect) p.gfxRect.visible = false;
     }
     this._continuousEmitters.length = 0;
   }
 
-  /** Number of currently active particles. */
   get activeCount() {
     let n = 0;
     for (const p of this._pool) if (p.active) n++;
     return n;
   }
 
-  /** Destroy the system and free GPU resources. */
   destroy() {
     this.clear();
     this.container.destroy({ children: true });

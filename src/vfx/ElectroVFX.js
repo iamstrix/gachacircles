@@ -5,7 +5,7 @@
 //   • skill effect    – Stellar Restoration teleport flash
 //   • burst effect    – Starward Sword spiral lightning dance
 // ─────────────────────────────────────────────────────────────
-import { Container } from 'pixi.js';
+import { Container, Graphics } from 'pixi.js';
 import { ParticleSystem } from './ParticleSystem.js';
 import {
   ELECTRO_GRADIENT,
@@ -21,6 +21,10 @@ export class ElectroVFX {
   constructor({ poolSize = 1000 } = {}) {
     this.container = new Container();
 
+    // Luminous layers drawn procedurally (under the particle sparks)
+    this._vfxGraphicsContainer = new Container();
+    this.container.addChild(this._vfxGraphicsContainer);
+
     // Sub-systems layered for visual depth
     this._ambient  = new ParticleSystem({ poolSize: 200 });
     this._burst    = new ParticleSystem({ poolSize: 1000 });
@@ -31,6 +35,11 @@ export class ElectroVFX {
     this.container.addChild(this._skill.container);
 
     this._ambientHandle = null;
+
+    // Pools for procedural beam lines, outlines, and tendrils
+    this._beams = [];
+    this._afterimages = [];
+    this._tendrils = [];
 
     // Skill / burst animation state
     this._skillActive  = false;
@@ -326,7 +335,24 @@ export class ElectroVFX {
    * @param {number} y
    */
   triggerStarwardExplosion(x, y) {
-    // Massive outer ring
+    // 1. Giant horizontal beam slash crossing the entire stage
+    this.triggerBeamSlash(x, y, 0, 900, 24); // 24px extra wide horizontal final beam
+
+    // 2. Trigger expanding white flash circle shockwave
+    let flash = this._beams.find(f => f.isFlash && !f.active);
+    if (!flash) {
+      const g = new Graphics();
+      this._vfxGraphicsContainer.addChild(g);
+      flash = { gfx: g, active: false, isFlash: true };
+      this._beams.push(flash);
+    }
+    flash.active = true;
+    flash.timer = 0.35; // 350ms lifespan
+    flash.maxTimer = 0.35;
+    flash.x = x;
+    flash.y = y;
+
+    // Massive outer ring of particles
     this._skill.emit(x, y, {
       count: 80,
       speedMin: 3.0,
@@ -345,7 +371,7 @@ export class ElectroVFX {
       shrink: true,
     });
 
-    // Bright inner core burst
+    // Bright inner core burst of particles
     this._skill.emit(x, y, {
       count: 30,
       speedMin: 0.5,
@@ -440,6 +466,109 @@ export class ElectroVFX {
     this._burst.update(0);
   }
 
+  /**
+   * Draw a wide, full-screen beam slash crossing through (cx, cy) at angle.
+   * @param {number} cx Epicenter X
+   * @param {number} cy Epicenter Y
+   * @param {number} angle Slash direction
+   * @param {number} length Custom line length
+   * @param {number} width Custom line width
+   */
+  triggerBeamSlash(cx, cy, angle, length = 750, width = 12) {
+    let beam = this._beams.find(b => !b.active);
+    if (!beam) {
+      const g = new Graphics();
+      this._vfxGraphicsContainer.addChild(g);
+      beam = { gfx: g, active: false };
+      this._beams.push(beam);
+    }
+
+    beam.active = true;
+    beam.isFlash = false;
+    beam.timer = 0.16; // 160ms lifespan
+    beam.maxTimer = 0.16;
+    beam.cx = cx;
+    beam.cy = cy;
+    beam.angle = angle;
+    beam.length = length;
+    beam.width = width;
+  }
+
+  /**
+   * Spawn a ghostly outlines-only silhouette representing Keqing's circle body and sword.
+   * @param {number} x Position X
+   * @param {number} y Position Y
+   * @param {number} angle Swing direction
+   */
+  triggerAfterimage(x, y, angle) {
+    let afterimage = this._afterimages.find(ai => !ai.active);
+    if (!afterimage) {
+      const g = new Graphics();
+      this._vfxGraphicsContainer.addChild(g);
+      afterimage = { gfx: g, active: false };
+      this._afterimages.push(afterimage);
+    }
+
+    afterimage.active = true;
+    afterimage.timer = 0.28; // 280ms lifespan
+    afterimage.maxTimer = 0.28;
+    afterimage.x = x;
+    afterimage.y = y;
+    afterimage.angle = angle;
+  }
+
+  /**
+   * Draw a jagged, crackling vector lightning polyline connecting two points.
+   * @param {number} x1 Start X
+   * @param {number} y1 Start Y
+   * @param {number} x2 End X
+   * @param {number} y2 End Y
+   */
+  triggerLightningTendril(x1, y1, x2, y2) {
+    let tendril = this._tendrils.find(t => !t.active);
+    if (!tendril) {
+      const g = new Graphics();
+      this._vfxGraphicsContainer.addChild(g);
+      tendril = { gfx: g, active: false };
+      this._tendrils.push(tendril);
+    }
+
+    tendril.active = true;
+    tendril.timer = 0.12; // 120ms lifespan
+    tendril.maxTimer = 0.12;
+
+    // Generate jagged segment points
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+
+    // Zig-zag every 35-40px
+    const segments = Math.max(4, Math.ceil(dist / 35));
+    const points = [];
+    points.push({ x: x1, y: y1 });
+
+    const angle = Math.atan2(dy, dx);
+    const perpAngle = angle + Math.PI / 2;
+
+    for (let i = 1; i < segments; i++) {
+      const t = i / segments;
+      const px = x1 + dx * t;
+      const py = y1 + dy * t;
+
+      // Peak the distortion in the middle of the lightning
+      const factor = Math.sin(t * Math.PI);
+      const offset = (Math.random() - 0.5) * 22 * factor;
+
+      points.push({
+        x: px + Math.cos(perpAngle) * offset,
+        y: py + Math.sin(perpAngle) * offset
+      });
+    }
+
+    points.push({ x: x2, y: y2 });
+    tendril.points = points;
+  }
+
   // ── Cast aura (for burst windup) ─────────────────────────
 
   /**
@@ -498,6 +627,169 @@ export class ElectroVFX {
    * @param {number} ky  Keqing's current y
    */
   updateSkill(delta, kx, ky) {
+    // 1. Update and draw active beams and shockwave flashes
+    for (const beam of this._beams) {
+      if (!beam.active) continue;
+      beam.timer -= delta * 0.016;
+      if (beam.timer <= 0) {
+        beam.active = false;
+        beam.gfx.clear();
+      } else {
+        const progress = beam.timer / beam.maxTimer; // 1.0 down to 0.0
+        beam.gfx.clear();
+
+        if (beam.isFlash) {
+          // Expanding shockwave flash ring
+          const prog = 1 - progress; // 0.0 up to 1.0
+          const alpha = prog * (1 - prog) * 4; // smooth ease-in-out-like fade
+          const radius = 40 + prog * 240;
+          
+          beam.gfx.blendMode = 'add';
+          beam.gfx.circle(beam.x, beam.y, radius);
+          beam.gfx.fill({ color: 0xffffff, alpha: alpha * 0.45 });
+          beam.gfx.stroke({ color: 0xc77dff, width: 4 * alpha, alpha: alpha });
+        } else {
+          // Straight line beam slash
+          const alpha = progress;
+          const halfL = beam.length / 2;
+          const dx = Math.cos(beam.angle) * halfL;
+          const dy = Math.sin(beam.angle) * halfL;
+          
+          const x1 = beam.cx - dx;
+          const y1 = beam.cy - dy;
+          const x2 = beam.cx + dx;
+          const y2 = beam.cy + dy;
+          
+          beam.gfx.blendMode = 'add';
+          
+          // Outer purple halo
+          beam.gfx.moveTo(x1, y1);
+          beam.gfx.lineTo(x2, y2);
+          beam.gfx.stroke({
+            color: 0x7b2d8b,
+            width: beam.width * 3.5,
+            alpha: alpha * 0.35
+          });
+          
+          // Medium neon-violet glow
+          beam.gfx.moveTo(x1, y1);
+          beam.gfx.lineTo(x2, y2);
+          beam.gfx.stroke({
+            color: 0xc77dff,
+            width: beam.width * 2.0,
+            alpha: alpha * 0.65
+          });
+
+          // Bright white core
+          beam.gfx.moveTo(x1, y1);
+          beam.gfx.lineTo(x2, y2);
+          beam.gfx.stroke({
+            color: 0xffffff,
+            width: beam.width * 0.6,
+            alpha: alpha * 0.95
+          });
+        }
+      }
+    }
+
+    // 2. Update and draw active afterimages
+    for (const ai of this._afterimages) {
+      if (!ai.active) continue;
+      ai.timer -= delta * 0.016;
+      if (ai.timer <= 0) {
+        ai.active = false;
+        ai.gfx.clear();
+      } else {
+        const progress = ai.timer / ai.maxTimer; // 1.0 down to 0.0
+        const alpha = progress * 0.8;
+        
+        ai.gfx.clear();
+        
+        // Draw the circle outline body
+        ai.gfx.circle(ai.x, ai.y, 42);
+        ai.gfx.fill({ color: 0x2d1a40, alpha: alpha * 0.3 }); // Dark purple translucent body
+        ai.gfx.stroke({ color: 0xc77dff, width: 2.5, alpha: alpha }); // Neon outline
+
+        // Draw inner lightning bolt emblem inside the circle body
+        ai.gfx.moveTo(ai.x - 4, ai.y - 12);
+        ai.gfx.lineTo(ai.x + 6, ai.y - 2);
+        ai.gfx.lineTo(ai.x + 1, ai.y - 2);
+        ai.gfx.lineTo(ai.x + 8, ai.y + 10);
+        ai.gfx.lineTo(ai.x - 2, ai.y + 0);
+        ai.gfx.lineTo(ai.x + 2, ai.y + 0);
+        ai.gfx.lineTo(ai.x - 4, ai.y - 12);
+        ai.gfx.closePath();
+        ai.gfx.fill({ color: 0xffffff, alpha: alpha * 0.7 });
+        ai.gfx.stroke({ color: 0xc77dff, width: 1.5, alpha: alpha });
+
+        // Draw stylized sword outline extending from the circle
+        const startR = 40;
+        const swordLen = 70;
+        
+        const sx = ai.x + Math.cos(ai.angle) * startR;
+        const sy = ai.y + Math.sin(ai.angle) * startR;
+        const ex = ai.x + Math.cos(ai.angle) * (startR + swordLen);
+        const ey = ai.y + Math.sin(ai.angle) * (startR + swordLen);
+        
+        // Crossguard
+        const crossAngle = ai.angle + Math.PI / 2;
+        const crossW = 10;
+        const cx1 = sx + Math.cos(crossAngle) * crossW;
+        const cy1 = sy + Math.sin(crossAngle) * crossW;
+        const cx2 = sx - Math.cos(crossAngle) * crossW;
+        const cy2 = sy - Math.sin(crossAngle) * crossW;
+        
+        ai.gfx.moveTo(cx1, cy1);
+        ai.gfx.lineTo(cx2, cy2);
+        ai.gfx.stroke({ color: 0xc77dff, width: 3, alpha: alpha });
+        
+        // Blade
+        ai.gfx.moveTo(sx, sy);
+        ai.gfx.lineTo(ex, ey);
+        ai.gfx.stroke({ color: 0xffffff, width: 2.5, alpha: alpha });
+        ai.gfx.stroke({ color: 0xc77dff, width: 4.5, alpha: alpha * 0.5 });
+      }
+    }
+
+    // 3. Update and draw active lightning tendrils
+    for (const tendril of this._tendrils) {
+      if (!tendril.active) continue;
+      tendril.timer -= delta * 0.016;
+      if (tendril.timer <= 0) {
+        tendril.active = false;
+        tendril.gfx.clear();
+      } else {
+        const progress = tendril.timer / tendril.maxTimer;
+        const alpha = progress;
+        
+        tendril.gfx.clear();
+        tendril.gfx.blendMode = 'add';
+        
+        if (tendril.points.length > 0) {
+          tendril.gfx.moveTo(tendril.points[0].x, tendril.points[0].y);
+          for (let i = 1; i < tendril.points.length; i++) {
+            tendril.gfx.lineTo(tendril.points[i].x, tendril.points[i].y);
+          }
+          
+          tendril.gfx.stroke({
+            color: 0xc77dff,
+            width: 3.5,
+            alpha: alpha * 0.65
+          });
+          
+          tendril.gfx.moveTo(tendril.points[0].x, tendril.points[0].y);
+          for (let i = 1; i < tendril.points.length; i++) {
+            tendril.gfx.lineTo(tendril.points[i].x, tendril.points[i].y);
+          }
+          tendril.gfx.stroke({
+            color: 0xffffff,
+            width: 1.2,
+            alpha: alpha * 0.95
+          });
+        }
+      }
+    }
+
     // Skill afterglow ring
     if (this._skillActive) {
       this._skillTimer -= delta * 0.016;
