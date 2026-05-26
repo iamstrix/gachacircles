@@ -16,6 +16,10 @@ const DEFAULT_CONFIG = {
   lifetimeMax: 60,
   sizeMin: 2,
   sizeMax: 5,
+  scaleX: 1,              // width multiplier
+  scaleY: 1,              // height multiplier
+  shape: 'circle',        // 'circle' or 'rect'
+  autoRotate: false,      // face velocity vector
   startAlpha: 1,
   endAlpha: 0,
   gravity: 0,             // px / frame²
@@ -32,12 +36,17 @@ function createParticleData() {
     vx: 0, vy: 0,
     life: 0, maxLife: 1,
     size: 3,
+    scaleX: 1,
+    scaleY: 1,
+    autoRotate: false,
     color: 0xffffff,
     alpha: 1,
     blendMode: 'normal',
     active: false,
     // reference to its Graphics visual
-    gfx: null,
+    gfxCircle: null,
+    gfxRect: null,
+    activeGfx: null,
     // config snapshot so we can shade over lifetime
     gradient: null,
     startAlpha: 1,
@@ -81,11 +90,19 @@ export class ParticleSystem {
   _initPool(size) {
     for (let i = 0; i < size; i++) {
       const p = createParticleData();
-      const gfx = new Graphics();
-      gfx.circle(0, 0, 1).fill(0xffffff);
-      gfx.visible = false;
-      this.container.addChild(gfx);
-      p.gfx = gfx;
+      
+      const gfxCircle = new Graphics();
+      gfxCircle.circle(0, 0, 1).fill(0xffffff);
+      gfxCircle.visible = false;
+      this.container.addChild(gfxCircle);
+      
+      const gfxRect = new Graphics();
+      gfxRect.rect(-0.5, -0.5, 1, 1).fill(0xffffff);
+      gfxRect.visible = false;
+      this.container.addChild(gfxRect);
+
+      p.gfxCircle = gfxCircle;
+      p.gfxRect = gfxRect;
       this._pool.push(p);
     }
   }
@@ -132,6 +149,9 @@ export class ParticleSystem {
       p.maxLife = life;
       p.size = size;
       p.startSize = size;
+      p.scaleX = c.scaleX;
+      p.scaleY = c.scaleY;
+      p.autoRotate = c.autoRotate;
       p.alpha = c.startAlpha;
       p.startAlpha = c.startAlpha;
       p.endAlpha = c.endAlpha;
@@ -148,19 +168,30 @@ export class ParticleSystem {
       p.orbitalForce = c.orbitalForce || 0;
       p.active = true;
 
-      // Initialise Graphics visual
-      const gfx = p.gfx;
+      // Swap active GFX based on shape
+      if (p.activeGfx) p.activeGfx.visible = false;
+      p.activeGfx = (c.shape === 'rect') ? p.gfxRect : p.gfxCircle;
+      
+      const gfx = p.activeGfx;
       gfx.visible = true;
       gfx.position.set(x, y);
-      gfx.scale.set(size, size);
+      gfx.scale.set(size * p.scaleX, size * p.scaleY);
       gfx.alpha = c.startAlpha;
       gfx.blendMode = c.blendMode;
+      
+      if (p.autoRotate) {
+        gfx.rotation = angle;
+      } else {
+        gfx.rotation = 0;
+      }
 
       // Tint the circle to its birth colour
       const birthColor = c.gradient ? sampleGradient(c.gradient, 0) : c.color;
       gfx.tint = birthColor;
     }
   }
+// ... rest of file (emitContinuous, update, etc) ...
+
 
   /**
    * Start a continuous emitter that fires particles every frame.
@@ -278,11 +309,16 @@ export class ParticleSystem {
       }
 
       // Sync Graphics
-      const gfx = p.gfx;
+      const gfx = p.activeGfx;
       gfx.position.set(p.x, p.y);
-      gfx.scale.set(p.size, p.size);
+      gfx.scale.set(p.size * p.scaleX, p.size * p.scaleY);
       gfx.alpha = Math.max(0, p.alpha);
       gfx.tint = p.color;
+
+      if (p.autoRotate) {
+        const angle = Math.atan2(p.vy, p.vx);
+        gfx.rotation = angle;
+      }
     }
   }
 

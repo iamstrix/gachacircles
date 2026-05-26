@@ -373,56 +373,64 @@ export class ElectroVFX {
    * @param {number} angle  direction of slash
    */
   triggerSlashArc(x, y, angle) {
-    const spread = Math.PI * 0.5;
+    const spread = Math.PI * 0.55;
     
-    // 1. High-Contrast White-Hot Core (The "Edge")
+    // 1. Sharp White-Hot Cut (Elongated Rects)
     this._burst.emit(x, y, {
-      count: 45,
-      speedMin: 5.0,
-      speedMax: 18.0,
+      count: 40,
+      speedMin: 12.0,
+      speedMax: 22.0,
       spreadAngle: spread,
       angleCenter: angle,
-      lifetimeMin: 10,
-      lifetimeMax: 30,
-      sizeMin: 1.0,
-      sizeMax: 3.5,
+      lifetimeMin: 8,
+      lifetimeMax: 18,
+      sizeMin: 1.5,
+      sizeMax: 2.5,
+      scaleX: 18.0,      // VERY long cut
+      scaleY: 0.8,       // VERY thin cut
+      shape: 'rect',
+      autoRotate: true,
       startAlpha: 1.0,
       endAlpha: 0,
       blendMode: 'add',
-      color: 0xffffff, // Pure white for contrast
-      shrink: true,
+      color: 0xffffff,
+      shrink: false,     // Don't shrink length
     });
 
-    // 2. Violet Lightning Streaks
+    // 2. Violet Lightning Trails (Elongated Rects)
     this._burst.emit(x, y, {
-      count: 30,
-      speedMin: 4.0,
-      speedMax: 12.0,
+      count: 35,
+      speedMin: 8.0,
+      speedMax: 16.0,
       spreadAngle: spread,
       angleCenter: angle,
-      lifetimeMin: 20,
-      lifetimeMax: 45,
-      sizeMin: 2.5,
-      sizeMax: 6.5,
-      startAlpha: 0.9,
+      lifetimeMin: 15,
+      lifetimeMax: 35,
+      sizeMin: 1.2,
+      sizeMax: 2.2,
+      scaleX: 12.0,      // long streak
+      scaleY: 1.2,
+      shape: 'rect',
+      autoRotate: true,
+      startAlpha: 0.8,
       endAlpha: 0,
       blendMode: 'add',
       gradient: ELECTRO_TELEPORT_GRADIENT,
       shrink: true,
     });
 
-    // 3. MASSIVE Energy Blooms (The "Impact")
+    // 3. Diffuse Impact Glow (Circles - reduced size to prevent hiding the cuts)
     this._burst.emit(x, y, {
-      count: 12,
+      count: 8,
       speedMin: 1.0,
-      speedMax: 3.0,
+      speedMax: 3.5,
       spreadAngle: Math.PI * 2,
       angleCenter: 0,
-      lifetimeMin: 25,
-      lifetimeMax: 60,
-      sizeMin: 25.0,
-      sizeMax: 80.0, // Huge 80px energy explosions
-      startAlpha: 0.7,
+      lifetimeMin: 20,
+      lifetimeMax: 40,
+      sizeMin: 10.0,
+      sizeMax: 25.0, // Back to reasonable 25px glow
+      startAlpha: 0.5,
       endAlpha: 0,
       blendMode: 'add',
       gradient: ELECTRO_GRADIENT,
