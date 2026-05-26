@@ -1361,11 +1361,11 @@ export class GameLoop {
         if (!fighter.alive) return;
 
         if (beh && beh.isRanged) {
-          // Ranged auto-attack scheduling (Yoimiya pattern)
+          // Ranged auto-attack scheduling
           let currentAttackSpeed = fighter.data.attackSpeed;
           if (fighter.isInfused) currentAttackSpeed *= 2.0;
-          const comboDurationMs = 1400;
-          const baseIntervalMs = 2500 / currentAttackSpeed;
+          const comboDurationMs = fighter.data.comboDurationMs || 1400;
+          const baseIntervalMs = (fighter.data.delayBetweenCombosMs || 2500) / currentAttackSpeed;
           const cooldownMs = comboDurationMs + baseIntervalMs + fighter.attackIntervalOffset;
           if (currentTime - fighter.lastAttackTime >= cooldownMs) {
             fighter.registerAttack(currentTime);
@@ -1374,9 +1374,9 @@ export class GameLoop {
             }
           }
         } else if (beh && !beh.isRanged) {
-          // Melee auto-attack scheduling (Ayaka/Keqing pattern)
-          const comboDurationMs = 1500;
-          const delayBetweenCombosMs = 1000;
+          // Melee auto-attack scheduling
+          const comboDurationMs = fighter.data.comboDurationMs || 1500;
+          const delayBetweenCombosMs = fighter.data.delayBetweenCombosMs || 1000;
           const cooldownMs = comboDurationMs + delayBetweenCombosMs + fighter.attackIntervalOffset;
           if (currentTime - fighter.lastAttackTime >= cooldownMs) {
             fighter.registerAttack(currentTime);

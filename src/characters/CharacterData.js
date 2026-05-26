@@ -45,6 +45,8 @@ export const CHARACTERS = {
     damage: 8,
     attackSpeed: 1.0,       // Attacks per second during collision
     speed: 3.0,             // Movement speed multiplier
+    comboDurationMs: 1500,
+    delayBetweenCombosMs: 1000,
 
     // Skills & Burst
     skillE: {
@@ -101,6 +103,8 @@ export const CHARACTERS = {
     damage: 6,
     attackSpeed: 2.5,       // Faster base attacks
     speed: 3.5,             // Slightly faster movement
+    comboDurationMs: 1400,
+    delayBetweenCombosMs: 2500,
 
     // Skills & Burst
     skillE: {
@@ -156,6 +160,8 @@ export const CHARACTERS = {
     damage: 9,              // Slightly higher base melee damage
     attackSpeed: 1.2,       // Slightly faster than Ayaka
     speed: 3.8,             // Very agile — fastest on foot
+    comboDurationMs: 1400,  // Faster sword swings
+    delayBetweenCombosMs: 800, // Faster recovery before next combo
 
     // Skills & Burst
     skillE: {
