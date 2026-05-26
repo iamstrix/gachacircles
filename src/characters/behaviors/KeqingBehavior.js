@@ -54,29 +54,77 @@ export const KeqingBehavior = {
 
       // Create stiletto projectile visual
       const visual = new Graphics();
-      visual.moveTo(-12, 0);
-      visual.lineTo(12, 0);
-      visual.lineTo(0, -4);
+      
+      // 1. Outer violet glow layer (slightly larger, elongated diamond)
+      visual.moveTo(-18, 0);
+      visual.lineTo(0, -6);
+      visual.lineTo(18, 0);
+      visual.lineTo(0, 6);
       visual.closePath();
-      visual.fill({ color: 0xc77dff });
-      visual.stroke({ color: 0xffffff, width: 1.5 });
+      visual.fill({ color: 0x7b2d8b, alpha: 0.5 });
+      
+      // 2. Middle neon violet layer
+      visual.moveTo(-15, 0);
+      visual.lineTo(0, -4);
+      visual.lineTo(15, 0);
+      visual.lineTo(0, 4);
+      visual.closePath();
+      visual.fill({ color: 0xc77dff, alpha: 0.8 });
+      visual.stroke({ color: 0xc77dff, width: 2, alpha: 0.7 });
+      
+      // 3. Inner bright white core (narrow and sharp)
+      visual.moveTo(-10, 0);
+      visual.lineTo(0, -1.5);
+      visual.lineTo(12, 0);
+      visual.lineTo(0, 1.5);
+      visual.closePath();
+      visual.fill({ color: 0xffffff, alpha: 0.95 });
+
       visual.x = startX;
       visual.y = startY;
       visual.rotation = angle;
       gameLoop.stage.addChild(visual);
 
-      // Pre-allocate the Mark visual for later
+      // Trigger stiletto launch flash VFX
+      if (fighter.vfx && typeof fighter.vfx.triggerStilettoLaunchFlash === 'function') {
+        fighter.vfx.triggerStilettoLaunchFlash(startX, startY);
+      }
+
+      // Pre-allocate the Mark visual for later - premium Electro Element symbol
       const mark = new Graphics();
-      mark.moveTo(0, -12);
-      mark.lineTo(5, -2);
-      mark.lineTo(2, -2);
-      mark.lineTo(8, 10);
-      mark.lineTo(2, 0);
-      mark.lineTo(5, 0);
-      mark.lineTo(-2, -12);
-      mark.closePath();
-      mark.fill({ color: 0xc77dff });
-      mark.stroke({ color: 0xffffff, width: 2 });
+      
+      // A. Ground ring & glow backplane
+      mark.circle(0, 0, 30);
+      mark.stroke({ color: 0xc77dff, width: 1.5, alpha: 0.35 });
+      mark.circle(0, 0, 36);
+      mark.stroke({ color: 0x7b2d8b, width: 1, alpha: 0.2 });
+      mark.circle(0, 0, 26);
+      mark.fill({ color: 0x7b2d8b, alpha: 0.15 });
+
+      // B. Inner white-hot circle core
+      mark.circle(0, 0, 5);
+      mark.fill({ color: 0xffffff, alpha: 0.95 });
+
+      // C. Outer violet circle ring
+      mark.circle(0, 0, 14);
+      mark.stroke({ color: 0xc77dff, width: 2, alpha: 0.8 });
+
+      // D. Three radiating curved/jagged prongs at 120-degree intervals (styled Electro emblem)
+      for (let i = 0; i < 3; i++) {
+        const theta = (i * Math.PI * 2) / 3 - Math.PI / 2; // one points straight up
+        const x1 = Math.cos(theta) * 14;
+        const y1 = Math.sin(theta) * 14;
+        const x2 = Math.cos(theta + 0.15) * 22;
+        const y2 = Math.sin(theta + 0.15) * 22;
+        const x3 = Math.cos(theta) * 25;
+        const y3 = Math.sin(theta) * 25;
+        
+        mark.moveTo(x1, y1);
+        mark.lineTo(x2, y2);
+        mark.lineTo(x3, y3);
+        mark.stroke({ color: 0xc77dff, width: 2, alpha: 0.8 });
+      }
+
       mark.visible = false; // Hidden until impact
       gameLoop.stage.addChildAt(mark, 1);
       fighter.stilettoVisual = mark;
@@ -149,6 +197,17 @@ export const KeqingBehavior = {
     fighter.body.y = destY;
     fighter.body.vx = 0;
     fighter.body.vy = 0;
+
+    // Trigger arrival slash VFX
+    const dxBlink = destX - startX;
+    const dyBlink = destY - startY;
+    const blinkAngle = (dxBlink === 0 && dyBlink === 0)
+      ? Math.atan2(opponent.body.y - destY, opponent.body.x - destX)
+      : Math.atan2(dyBlink, dxBlink);
+
+    if (fighter.vfx && typeof fighter.vfx.triggerTeleportArrivalSlash === 'function') {
+      fighter.vfx.triggerTeleportArrivalSlash(destX, destY, blinkAngle);
+    }
 
     this._cleanupMark(fighter);
     gameLoop._playSFX('/audio/keqing/keqing-skill2.wav', 0.9);
