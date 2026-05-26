@@ -297,9 +297,6 @@ export class Fighter {
       let orbitDist = this.weaponOrbitRadius;
 
       if (this.id === 'keqing') {
-        // Keqing Blink opacity for N5
-        this.container.alpha = (this.comboIndex === 4 && p > 0.1 && p < 0.6) ? 0.0 : 1.0;
-
         // Animation Logic per N-step
         switch(this.comboIndex) {
           case 0: // N1: Swift horizontal outward slash
