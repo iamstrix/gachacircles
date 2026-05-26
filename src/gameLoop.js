@@ -469,6 +469,42 @@ export class GameLoop {
     // Update active projectiles (Yoimiya's flaming arrows)
     if (this.stage) {
       this.projectiles = this.projectiles.filter(arrow => {
+        // ── Keqing: Stiletto Projectile ───────────────────────────
+        if (arrow.isStiletto) {
+          const shooter = arrow.owner;
+          if (shooter && shooter.vfx && typeof shooter.vfx.triggerStilettoTrail === 'function') {
+            shooter.vfx.triggerStilettoTrail(arrow.x, arrow.y, arrow.angle);
+          }
+          
+          arrow.x += Math.cos(arrow.angle) * arrow.speed * delta;
+          arrow.y += Math.sin(arrow.angle) * arrow.speed * delta;
+          
+          arrow.visual.x = arrow.x;
+          arrow.visual.y = arrow.y;
+          arrow.visual.rotation = arrow.angle;
+
+          const dx = arrow.x - arrow.target.body.x;
+          const dy = arrow.y - arrow.target.body.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+
+          // Placement conditions: hits enemy or reaches target destination
+          const tx = arrow.targetX - arrow.x;
+          const ty = arrow.targetY - arrow.y;
+          const distToDest = Math.sqrt(tx * tx + ty * ty);
+
+          if (dist < arrow.target.body.radius + 10 || distToDest < 20) {
+            // Place mark at impact
+            const beh = shooter.behavior;
+            if (beh && typeof beh._placeStilettoMark === 'function') {
+              beh._placeStilettoMark(shooter, arrow.target, this, arrow.x, arrow.y);
+            }
+            this.stage.removeChild(arrow.visual);
+            arrow.visual.destroy();
+            return false;
+          }
+          return true;
+        }
+
         // ── 0. Homing tracking for Yoimiya's Kindling Sparks ───────────
         if (arrow.isKindlingSpark && arrow.target && arrow.target.alive) {
           const targetAngle = Math.atan2(arrow.target.body.y - arrow.y, arrow.target.body.x - arrow.x);
@@ -1249,6 +1285,21 @@ export class GameLoop {
         }
       }
       // ── Keqing: Stellar Stiletto auto-detonation ──────────────
+      else if (effect.type === 'keqing_stiletto_mark') {
+        if (effect.timer <= 0) {
+          const beh = effect.owner.behavior;
+          if (beh && typeof beh._cleanupMark === 'function') {
+            beh._cleanupMark(effect.owner);
+          }
+          return false;
+        }
+        // Rotate and flicker the mark
+        if (effect.visual && !this.headlessMode) {
+          effect.visual.rotation += 0.05 * delta;
+          effect.visual.alpha = 0.7 + 0.3 * Math.sin(performance.now() * 0.01);
+        }
+        return true;
+      }
       else if (effect.type === 'stellar_stiletto') {
         if (effect.timer <= 0) {
           // Auto-detonate: time expired, Keqing forcibly recalled

@@ -130,6 +130,70 @@ export class ElectroVFX {
     this._burst.update(0);
   }
 
+  /**
+   * Emit a trail of digital electro particles for the flying stiletto.
+   */
+  triggerStilettoTrail(x, y, angle) {
+    this._skill.emit(x, y, {
+      count: 2,
+      speedMin: 0.5,
+      speedMax: 2.0,
+      spreadAngle: 0.4,
+      angleCenter: angle + Math.PI, // emit behind
+      lifetimeMin: 15,
+      lifetimeMax: 25,
+      sizeMin: 1.0,
+      sizeMax: 2.5,
+      startAlpha: 0.8,
+      endAlpha: 0,
+      blendMode: 'add',
+      gradient: ELECTRO_TELEPORT_GRADIENT,
+      shrink: true,
+    });
+  }
+
+  /**
+   * Emit a directional streak of lightning representing Keqing's blink.
+   */
+  triggerTeleportStreak(x1, y1, x2, y2) {
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    const angle = Math.atan2(dy, dx);
+    const steps = Math.ceil(dist / 15);
+
+    for (let i = 0; i <= steps; i++) {
+      const px = x1 + (dx * i) / steps;
+      const py = y1 + (dy * i) / steps;
+      this._skill.emit(px, py, {
+        count: 3,
+        speedMin: 0.2,
+        speedMax: 1.5,
+        spreadAngle: Math.PI * 2,
+        angleCenter: 0,
+        lifetimeMin: 10,
+        lifetimeMax: 25,
+        sizeMin: 1.5,
+        sizeMax: 4.0,
+        startAlpha: 1.0,
+        endAlpha: 0,
+        blendMode: 'add',
+        gradient: ELECTRO_TELEPORT_GRADIENT,
+        shrink: true,
+      });
+    }
+  }
+
+  /**
+   * Emit multiple rapid criss-crossing lightning cuts for the CA detonation.
+   */
+  triggerThunderclapSlashes(x, y) {
+    for (let i = 0; i < 4; i++) {
+      const angle = (i / 4) * Math.PI * 2 + Math.random() * 0.5;
+      this.triggerSlashArc(x, y, angle);
+    }
+  }
+
   // ── Sword infusion particles ──────────────────────────────
 
   /**

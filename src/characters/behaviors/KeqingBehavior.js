@@ -29,150 +29,188 @@ export const KeqingBehavior = {
   // ── Elemental Skill: Stellar Restoration ───────────────────
 
   /**
-   * Two-phase skill:
-   *   Phase 1 (stiletto not thrown yet): throw the stiletto — place a marker
-   *   Phase 2 (stiletto already out): teleport to it and detonate AoE
-   *
-   * The Fighter stores:
-   *   fighter.stilettoThrown  — boolean
-   *   fighter.stilettoX/Y     — world position
-   *   fighter.stilettoTimer   — time until auto-detonate (~2.5s)
-   *   fighter.stilettoVisual  — Graphics object on stage
+   * Three-phase skill overhaul:
+   *   Phase 1: Throw Lightning Stiletto (Projectile)
+   *   Phase 2: Teleport & Slash (Recast E)
+   *   Phase 3: Thunderclap Slashes (Charged Attack Detonation)
    */
   onSkillActivate(fighter, opponent, gameLoop, Graphics, Sprite, Assets) {
     if (!fighter.stilettoThrown) {
-      // ── Phase 1: Throw stiletto ─────────────────────────────
+      // ── Phase 1: Throw stiletto projectile ───────────────────
       gameLoop._playSFX('/audio/keqing/keqing-skill.wav', 0.85);
       fighter.stats.casts.skill++;
 
-      // Place stiletto at a mid-point toward the opponent
-      const dx = opponent.body.x - fighter.body.x;
-      const dy = opponent.body.y - fighter.body.y;
+      const startX = fighter.body.x;
+      const startY = fighter.body.y;
+      const dx = opponent.body.x - startX;
+      const dy = opponent.body.y - startY;
+      const angle = Math.atan2(dy, dx);
       const dist = Math.sqrt(dx * dx + dy * dy);
-      const travelFrac = Math.min(0.75, 160 / dist); // travel up to 160px or 75% of gap
+      
+      // Target destination for the mark (up to 200px away)
+      const travelDist = Math.min(200, dist * 0.8);
+      const targetX = startX + Math.cos(angle) * travelDist;
+      const targetY = startY + Math.sin(angle) * travelDist;
 
-      fighter.stilettoX = fighter.body.x + dx * travelFrac;
-      fighter.stilettoY = fighter.body.y + dy * travelFrac;
-      fighter.stilettoThrown = true;
-      fighter.stilettoTimer = 2.5; // auto-detonate after 2.5s if not recast
+      // Create stiletto projectile visual
+      const visual = new Graphics();
+      visual.moveTo(-12, 0);
+      visual.lineTo(12, 0);
+      visual.lineTo(0, -4);
+      visual.closePath();
+      visual.fill({ color: 0xc77dff });
+      visual.stroke({ color: 0xffffff, width: 1.5 });
+      visual.x = startX;
+      visual.y = startY;
+      visual.rotation = angle;
+      gameLoop.stage.addChild(visual);
 
-      // Draw stiletto marker on stage
-      if (!gameLoop.headlessMode) {
-        const stilettoGfx = new Graphics();
-        // Draw a small lightning bolt shape
-        stilettoGfx.moveTo(0, -12);
-        stilettoGfx.lineTo(5, -2);
-        stilettoGfx.lineTo(2, -2);
-        stilettoGfx.lineTo(8, 10);
-        stilettoGfx.lineTo(2, 0);
-        stilettoGfx.lineTo(5, 0);
-        stilettoGfx.lineTo(-2, -12);
-        stilettoGfx.closePath();
-        stilettoGfx.fill({ color: 0xc77dff });
-        stilettoGfx.stroke({ color: 0xffffff, width: 1.5, alpha: 0.8 });
-
-        // Outer glow ring
-        stilettoGfx.circle(0, 0, 14);
-        stilettoGfx.stroke({ color: 0xe040fb, width: 1.5, alpha: 0.5 });
-
-        stilettoGfx.x = fighter.stilettoX;
-        stilettoGfx.y = fighter.stilettoY;
-        gameLoop.stage.addChildAt(stilettoGfx, 1);
-        fighter.stilettoVisual = stilettoGfx;
-      }
-
-      // VFX: launch flash at throw point
-      if (fighter.vfx && typeof fighter.vfx.triggerStilettoThrow === 'function') {
-        fighter.vfx.triggerStilettoThrow(fighter.body.x, fighter.body.y);
-      }
-
-      // Push a timed effect to handle auto-detonation + forced recall
-      gameLoop.activeEffects.push({
-        type: 'stellar_stiletto',
+      gameLoop.projectiles.push({
+        isStiletto: true,
+        x: startX,
+        y: startY,
+        targetX: targetX,
+        targetY: targetY,
+        angle: angle,
+        speed: 18.0,
+        visual: visual,
         owner: fighter,
-        target: opponent,
-        timer: 2.5,
-        stilettoX: fighter.stilettoX,
-        stilettoY: fighter.stilettoY,
-        visual: fighter.stilettoVisual || null,
+        target: opponent
       });
 
-      // Override the CD to 0.5s (short recast window) then it will be reset to full CD
-      fighter.skillCDTimer = 0.5;
-
+      // Put skill on a very short internal CD for the recast window
+      fighter.skillCDTimer = 0.2; 
     } else {
-      // ── Phase 2: Teleport & detonate ────────────────────────
-      KeqingBehavior._detonateStiletto(fighter, opponent, gameLoop, Graphics);
+      // ── Phase 2: Teleport & Recast Slash ────────────────────
+      this._teleportToStiletto(fighter, opponent, gameLoop, Graphics);
     }
   },
 
   /**
-   * Internal: teleport Keqing to stiletto and explode.
-   * Also called by the stellar_stiletto effect timer when it expires.
+   * Internal: Place the pulsing stiletto mark at a location.
+   * Called when the stiletto projectile hits or reaches destination.
    */
-  _detonateStiletto(fighter, opponent, gameLoop, Graphics) {
-    if (!fighter.stilettoThrown) return;
+  _placeStilettoMark(fighter, opponent, gameLoop, x, y) {
+    fighter.stilettoX = x;
+    fighter.stilettoY = y;
+    fighter.stilettoThrown = true;
+    fighter.stilettoTimer = 5.0; // Mark lasts 5 seconds
 
-    const sx = fighter.stilettoX;
-    const sy = fighter.stilettoY;
+    if (!gameLoop.headlessMode) {
+      const mark = new gameLoop.constructor.Graphics(); // Use loop's Graphics for headless safety
+      mark.moveTo(0, -12);
+      mark.lineTo(5, -2);
+      mark.lineTo(2, -2);
+      mark.lineTo(8, 10);
+      mark.lineTo(2, 0);
+      mark.lineTo(5, 0);
+      mark.lineTo(-2, -12);
+      mark.closePath();
+      mark.fill({ color: 0xc77dff });
+      mark.stroke({ color: 0xffffff, width: 2 });
+      mark.x = x;
+      mark.y = y;
+      gameLoop.stage.addChildAt(mark, 1);
+      fighter.stilettoVisual = mark;
+    }
 
-    // Teleport Keqing's physics body
-    fighter.body.x = sx;
-    fighter.body.y = sy;
+    // Effect to track mark expiration
+    gameLoop.activeEffects.push({
+      type: 'keqing_stiletto_mark',
+      owner: fighter,
+      timer: 5.0,
+      visual: fighter.stilettoVisual
+    });
+
+    // Reset skill CD to allow for recast or CA detonation
+    fighter.skillCDTimer = 0;
+  },
+
+  /**
+   * Internal: Perform the purple lightning blink teleport.
+   */
+  _teleportToStiletto(fighter, opponent, gameLoop, Graphics) {
+    const startX = fighter.body.x;
+    const startY = fighter.body.y;
+    const destX = fighter.stilettoX;
+    const destY = fighter.stilettoY;
+
+    // VFX: Lightning streak between start and end
+    if (fighter.vfx && typeof fighter.vfx.triggerTeleportStreak === 'function') {
+      fighter.vfx.triggerTeleportStreak(startX, startY, destX, destY);
+    }
+
+    // Physical move
+    fighter.body.x = destX;
+    fighter.body.y = destY;
     fighter.body.vx = 0;
     fighter.body.vy = 0;
 
-    // Reset stiletto state
-    fighter.stilettoThrown = false;
-    fighter.stilettoTimer = 0;
-
-    // Remove stiletto marker from stage
-    if (fighter.stilettoVisual && fighter.stilettoVisual.parent) {
-      fighter.stilettoVisual.parent.removeChild(fighter.stilettoVisual);
-      fighter.stilettoVisual.destroy();
-      fighter.stilettoVisual = null;
-    }
-
-    // VFX: big teleport burst at detonation point
-    if (fighter.vfx && typeof fighter.vfx.triggerTeleportBurst === 'function') {
-      fighter.vfx.triggerTeleportBurst(sx, sy);
-    }
-
+    this._cleanupMark(fighter);
     gameLoop._playSFX('/audio/keqing/keqing-skill2.wav', 0.9);
 
-    // AoE damage check
-    const dx = opponent.body.x - sx;
-    const dy = opponent.body.y - sy;
+    // E2 AoE Slash Damage
+    const dx = opponent.body.x - destX;
+    const dy = opponent.body.y - destY;
     const dist = Math.sqrt(dx * dx + dy * dy);
-    const radius = fighter.data.skillE.teleportRadius || 120;
-
-    if (dist < radius) {
-      const damage = Math.round(fighter.data.damage * fighter.data.skillE.damageMultiplier);
-      const result = opponent.takeDamage(damage);
-      if (result.actualDamage > 0) {
-        fighter.stats.damageDealt.skill += result.actualDamage;
-        if (gameLoop.damageNumbers) {
-          gameLoop.damageNumbers.spawn(sx, sy - 25, result.actualDamage, fighter.element, true);
-        }
-        // Apply knockback away from detonation
-        const angle = Math.atan2(dy, dx);
-        opponent.body.vx += Math.cos(angle) * 9.0;
-        opponent.body.vy += Math.sin(angle) * 9.0;
-
-        if (result.died) {
-          gameLoop._endGame(fighter);
-          return;
-        }
+    if (dist < 130) {
+      const dmg = Math.round(fighter.data.damage * 2.5);
+      const res = opponent.takeDamage(dmg);
+      fighter.stats.damageDealt.skill += res.actualDamage;
+      if (gameLoop.damageNumbers) {
+        gameLoop.damageNumbers.spawn(destX, destY - 30, res.actualDamage, fighter.element, true);
       }
     }
 
-    // Activate passive: Thundering Poise
-    fighter.passiveTimer = fighter.data.passive.duration;
-
+    // Trigger Electro Infusion
+    fighter.passiveTimer = 5000; // 5 seconds in ms
     gameLoop._screenShake();
 
-    // Full skill CD reset
+    // Start full cooldown
     fighter.skillCDTimer = fighter.data.skillE.cooldown;
+  },
+
+  /**
+   * Internal: Remote detonation via Charged Attack.
+   */
+  _detonateRemote(fighter, opponent, gameLoop) {
+    const x = fighter.stilettoX;
+    const y = fighter.stilettoY;
+
+    // VFX: Thunderclap Slashes at mark location
+    if (fighter.vfx && typeof fighter.vfx.triggerThunderclapSlashes === 'function') {
+      fighter.vfx.triggerThunderclapSlashes(x, y);
+    }
+
+    gameLoop._playSFX('/audio/keqing/keqing-hit_infused.wav', 1.0);
+
+    // Damage check at mark
+    const dx = opponent.body.x - x;
+    const dy = opponent.body.y - y;
+    if (Math.sqrt(dx * dx + dy * dy) < 140) {
+      const dmg = Math.round(fighter.data.damage * 3.0);
+      const res = opponent.takeDamage(dmg);
+      fighter.stats.damageDealt.skill += res.actualDamage;
+      if (gameLoop.damageNumbers) {
+        gameLoop.damageNumbers.spawn(x, y - 30, res.actualDamage, fighter.element, true);
+      }
+    }
+
+    this._cleanupMark(fighter);
+    gameLoop._screenShake();
+
+    // Full skill CD
+    fighter.skillCDTimer = fighter.data.skillE.cooldown;
+  },
+
+  _cleanupMark(fighter) {
+    fighter.stilettoThrown = false;
+    fighter.stilettoTimer = 0;
+    if (fighter.stilettoVisual && fighter.stilettoVisual.parent) {
+      fighter.stilettoVisual.parent.removeChild(fighter.stilettoVisual);
+      fighter.stilettoVisual.destroy();
+    }
+    fighter.stilettoVisual = null;
   },
 
   // ── Elemental Burst: Starward Sword ─────────────────────────
@@ -266,8 +304,14 @@ export const KeqingBehavior = {
   // ── Per-Hit Logic ─────────────────────────────────────────────
 
   onMeleeHit(fighter, opponent, gameLoop, result) {
-    // Add significant knockback for Charged Attack (index 5)
+    // Charged Attack (index 5)
     if (fighter.comboIndex === 5) {
+      // Remote detonation if stiletto is active
+      if (fighter.stilettoThrown) {
+        this._detonateRemote(fighter, opponent, gameLoop);
+      }
+
+      // Add significant knockback for CA
       const angle = Math.atan2(opponent.body.y - fighter.body.y, opponent.body.x - fighter.body.x);
       opponent.body.vx += Math.cos(angle) * 7.5;
       opponent.body.vy += Math.sin(angle) * 7.5;
