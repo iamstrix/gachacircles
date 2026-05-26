@@ -13,6 +13,20 @@
   </head>
   <body>
     <div id="main-layout">
+      <!-- Dedicated Replay Sidebar Panel -->
+      <div id="replay-panel">
+        <div class="dev-title" style="color: #4fc3f7;">📹 REPLAY SYSTEM</div>
+        <div class="dev-subtitle">Match Recording & Loading</div>
+        <div class="dev-divider" style="margin: 15px 0 10px 0;"></div>
+        <div id="dev-replay-section">
+          <div id="dev-replay-file-actions" class="dev-button-group" style="gap: 10px;"></div>
+          <div id="dev-replay-playback-container">
+            <div class="greplay-placeholder">No active playback. Complete a battle or import a replay to watch.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Developer Controls Sidebar Panel -->
       <div id="dev-panel">
         <div class="dev-title">🛠️ DEV CONTROLS</div>
         <div class="dev-subtitle">Battle Simulation Panel</div>
@@ -20,6 +34,16 @@
         <div class="dev-button-group">
           <button id="dev-btn-restart" class="dev-btn dev-btn--restart">RESTART</button>
           <button id="dev-btn-rematch" class="dev-btn dev-btn--rematch" disabled>REMATCH</button>
+        </div>
+      </div>
+
+      <!-- Telemetry Feed Sidebar Panel -->
+      <div id="telemetry-panel">
+        <div class="dev-title" style="color: #ffd54f;">📊 REPLAY TELEMETRY</div>
+        <div class="dev-subtitle">Real-Time Process Analyzer</div>
+        <div class="dev-divider" style="margin: 15px 0 10px 0;"></div>
+        <div id="telemetry-content">
+          <div class="telemetry-empty">Awaiting Replay Playback...</div>
         </div>
       </div>
       

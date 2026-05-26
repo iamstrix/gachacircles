@@ -111,6 +111,7 @@ export class ParticleSystem {
    * @param {object} [cfg] – overrides merged with DEFAULT_CONFIG
    */
   emit(x, y, cfg = {}) {
+    if (window.headlessGachaMode) return;
     const c = { ...DEFAULT_CONFIG, ...cfg };
     const halfSpread = c.spreadAngle / 2;
 
@@ -198,6 +199,7 @@ export class ParticleSystem {
    * @param {number} delta – Ticker delta (1 = 60 fps frame)
    */
   update(delta) {
+    if (window.headlessGachaMode) return;
     // 1. Process continuous emitters
     for (let i = this._continuousEmitters.length - 1; i >= 0; i--) {
       const e = this._continuousEmitters[i];

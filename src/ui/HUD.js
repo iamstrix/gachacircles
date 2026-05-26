@@ -648,6 +648,142 @@ export class HUD {
     }
   }
 
+  /**
+   * Inject and initialize the dynamic Replay Control Deck UI inside the dev controls panel
+   */
+  showReplayDeck(gameLoop) {
+    this.hideReplayDeck();
+
+    const deck = document.createElement('div');
+    deck.id = 'gacha-replay-deck';
+    deck.className = 'gacha-replay-deck-dev';
+    deck.innerHTML = `
+      <div class="greplay-timeline-row">
+        <input type="range" min="0" max="${gameLoop.replayFrames.length - 1}" value="0" class="greplay-scrubber" id="greplay-scrubber">
+      </div>
+      
+      <div class="greplay-time-dev" id="greplay-time-display">0.0s / 0.0s</div>
+      
+      <div class="greplay-controls-row-dev">
+        <button class="greplay-btn greplay-btn--play" id="greplay-play-btn" title="Play/Pause">⏸️</button>
+        <button class="greplay-btn greplay-btn--exit" id="greplay-exit-btn">EXIT</button>
+      </div>
+    `;
+
+    const playbackContainer = document.getElementById('dev-replay-playback-container');
+    if (playbackContainer) {
+      playbackContainer.innerHTML = '';
+      playbackContainer.appendChild(deck);
+    } else {
+      const overlay = document.getElementById('hud-overlay') || document.body;
+      overlay.appendChild(deck);
+    }
+
+    // Bind scrubber events
+    const scrubber = deck.querySelector('#greplay-scrubber');
+    scrubber.addEventListener('input', (e) => {
+      const val = parseInt(e.target.value, 10);
+      gameLoop.seekReplay(val);
+    });
+
+    // Bind Play/Pause
+    const playBtn = deck.querySelector('#greplay-play-btn');
+    playBtn.addEventListener('click', () => {
+      gameLoop.replayPaused = !gameLoop.replayPaused;
+      this.setReplayPlaying(!gameLoop.replayPaused);
+    });
+
+    // Bind Exit
+    const exitBtn = deck.querySelector('#greplay-exit-btn');
+    exitBtn.addEventListener('click', () => {
+      gameLoop.exitReplay();
+    });
+
+    this._replayDeck = deck;
+  }
+
+  hideReplayDeck() {
+    if (this._replayDeck) {
+      this._replayDeck.remove();
+      this._replayDeck = null;
+    }
+    const playbackContainer = document.getElementById('dev-replay-playback-container');
+    if (playbackContainer) {
+      playbackContainer.innerHTML = `<div class="greplay-placeholder">No active playback. Complete a battle or import a replay to watch.</div>`;
+    }
+  }
+
+  showWatchReplayButton(gameLoop) {
+    const container = document.getElementById('dev-replay-playback-container');
+    if (!container) return;
+
+    container.innerHTML = `
+      <div class="greplay-watch-action-container">
+        <div class="greplay-placeholder" style="border-bottom: none; margin-bottom: 0; padding-bottom: 0; border-style: none; padding: 6px 0;">Match recorded!</div>
+        <button class="greplay-btn greplay-btn--watch-action animate-pulse" id="greplay-watch-btn">🎥 WATCH REPLAY</button>
+      </div>
+    `;
+
+    const btn = container.querySelector('#greplay-watch-btn');
+    if (btn) {
+      btn.addEventListener('click', () => {
+        gameLoop.startReplay();
+      });
+    }
+  }
+
+  updateReplayScrubber(frameIndex, totalFrames, elapsedTime) {
+    const scrubber = document.getElementById('greplay-scrubber');
+    if (scrubber) {
+      scrubber.max = String(totalFrames - 1);
+      scrubber.value = String(frameIndex);
+    }
+    const timeDisplay = document.getElementById('greplay-time-display');
+    if (timeDisplay) {
+      const totalSeconds = (totalFrames * 0.01667).toFixed(1);
+      timeDisplay.textContent = `${elapsedTime.toFixed(1)}s / ${totalSeconds}s`;
+    }
+  }
+
+  setReplayPlaying(playing) {
+    const playBtn = document.getElementById('greplay-play-btn');
+    if (playBtn) {
+      playBtn.textContent = playing ? '⏸️' : '▶️';
+    }
+  }
+
+  updateSkillCDProgress(fighter, progress) {
+    const fg = this[`_btn_${fighter}_E_fg`];
+    const txt = this[`_btn_${fighter}_E_text`];
+    if (!fg || !txt) return;
+
+    if (progress >= 1.0) {
+      fg.style.strokeDashoffset = '0';
+      txt.textContent = '';
+    } else {
+      const frac = 1.0 - progress;
+      fg.style.strokeDashoffset = String(81.68 * frac);
+      const remaining = frac * (fighter === 'cryo' ? 10.0 : 12.0);
+      txt.textContent = remaining > 0 ? remaining.toFixed(1) : '';
+    }
+  }
+
+  updateBurstCDProgress(fighter, progress) {
+    const fg = this[`_btn_${fighter}_Q_fg`];
+    const txt = this[`_btn_${fighter}_Q_text`];
+    if (!fg || !txt) return;
+
+    if (progress >= 1.0) {
+      fg.style.strokeDashoffset = '0';
+      txt.textContent = '';
+    } else {
+      const frac = 1.0 - progress;
+      fg.style.strokeDashoffset = String(81.68 * frac);
+      const remaining = frac * (fighter === 'cryo' ? 20.0 : 20.0);
+      txt.textContent = remaining > 0 ? remaining.toFixed(1) : '';
+    }
+  }
+
   /** Remove the HUD from the DOM. */
   destroy() {
     this.root.remove();

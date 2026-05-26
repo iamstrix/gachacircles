@@ -688,12 +688,30 @@ body {
   height: var(--game-height);
 }
 
-#dev-panel {
+#replay-panel {
   position: absolute;
-  right: calc(100% + 80px);
+  right: calc(100% + 60px + 230px + 16px);
   top: 50%;
   transform: translateY(-50%);
-  width: 220px;
+  width: 250px;
+  background: #0d0d16;
+  border: 3px solid #000;
+  box-shadow: 8px 8px 0px rgba(0, 0, 0, 0.15);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  font-family: var(--font-main);
+  color: #ffffff;
+  user-select: none;
+}
+
+#dev-panel {
+  position: absolute;
+  right: calc(100% + 60px);
+  top: 50%;
+  transform: translateY(-50%);
+  width: 230px;
   background: #0d0d16;
   border: 3px solid #000;
   box-shadow: 8px 8px 0px rgba(0, 0, 0, 0.15);
@@ -821,3 +839,319 @@ body {
   pointer-events: none;
   transition: opacity 0.5s ease;
 }
+
+/* ========================================
+   Replay System Deck Styles (Developer Sidebar)
+   ======================================== */
+
+.gacha-replay-deck-dev {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  margin-top: 10px;
+  animation: replay-fade-in 0.3s ease-out forwards;
+}
+
+@keyframes replay-fade-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.greplay-placeholder {
+  font-size: 10px;
+  font-weight: 600;
+  color: #555577;
+  text-align: center;
+  margin-top: 15px;
+  line-height: 1.4;
+  border: 2px dashed #222;
+  padding: 12px 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.greplay-timeline-row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+}
+
+.greplay-scrubber {
+  width: 100%;
+  height: 8px;
+  background: #1a1a2e;
+  border: 2px solid #000;
+  outline: none;
+  cursor: pointer;
+  -webkit-appearance: none;
+}
+
+.greplay-scrubber::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  background: #ffd54f;
+  border: 2px solid #000;
+  box-shadow: 2px 2px 0px rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+  transition: transform 0.1s ease;
+}
+
+.greplay-scrubber::-webkit-slider-thumb:hover {
+  transform: scale(1.15);
+}
+
+.greplay-time-dev {
+  font-size: 15px;
+  font-weight: 900;
+  color: #4fc3f7;
+  text-align: center;
+  letter-spacing: 1px;
+  font-variant-numeric: tabular-nums;
+  background: #161626;
+  border: 2px solid #000;
+  padding: 6px;
+  text-transform: uppercase;
+}
+
+.greplay-controls-row-dev {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+
+.greplay-controls-row-dev .greplay-btn {
+  flex: 1;
+  text-align: center;
+}
+
+.greplay-btn {
+  background: #ffffff;
+  border: 2px solid #000;
+  color: #000000;
+  font-family: var(--font-main);
+  font-weight: 900;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 11px;
+  text-transform: uppercase;
+  box-shadow: 3px 3px 0px #000;
+  transition: all 0.08s ease;
+  user-select: none;
+}
+
+.greplay-btn:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0px #000;
+}
+
+.greplay-btn:active {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0px #000;
+}
+
+.greplay-btn--play {
+  font-size: 13px;
+  padding: 6px 12px;
+}
+
+.greplay-btn--exit {
+  background: #e63946;
+  color: #ffffff;
+}
+
+.greplay-btn--exit:hover {
+  background: #f0525f;
+}
+
+.greplay-speeds-dev {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 4px;
+  width: 100%;
+}
+
+.greplay-speed-btn {
+  background: #1a1a2e;
+  border: 1.5px solid #000;
+  color: #8888aa;
+  font-family: inherit;
+  font-size: 9px;
+  font-weight: 900;
+  padding: 5px 0;
+  text-align: center;
+  cursor: pointer;
+  box-shadow: 1.5px 1.5px 0px #000;
+  transition: all 0.08s ease;
+}
+
+.greplay-speed-btn:hover {
+  color: #ffffff;
+  transform: translate(-0.5px, -0.5px);
+  box-shadow: 2px 2px 0px #000;
+}
+
+.greplay-speed-btn.active {
+  background: #ffd54f;
+  color: #000000;
+  box-shadow: none;
+  transform: none;
+}
+
+
+/* ── Sidebar Watch Replay Button ───────── */
+
+.greplay-watch-action-container {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  width: 100%;
+}
+
+.greplay-btn--watch-action {
+  background: #ffd54f !important;
+  color: #000000 !important;
+  font-size: 13px !important;
+  padding: 10px 14px !important;
+  font-weight: 950 !important;
+  border: 3px solid #000 !important;
+  box-shadow: 4px 4px 0px #000 !important;
+  margin-top: 5px;
+  cursor: pointer;
+  text-align: center;
+  text-transform: uppercase;
+  width: 100%;
+  transition: all 0.08s ease;
+  user-select: none;
+}
+
+.greplay-btn--watch-action:hover {
+  transform: translate(-2px, -2px) !important;
+  box-shadow: 6px 6px 0px #000 !important;
+  background: #ffe082 !important;
+}
+
+.greplay-btn--watch-action:active {
+  transform: translate(2px, 2px) !important;
+  box-shadow: 2px 2px 0px #000 !important;
+}
+
+.animate-pulse {
+  animation: watch-pulse 1.2s infinite alternate;
+}
+
+@keyframes watch-pulse {
+  from {
+    transform: scale(1.0);
+    box-shadow: 3px 3px 0px #000;
+  }
+  to {
+    transform: scale(1.04);
+    box-shadow: 5px 5px 0px #000;
+  }
+}
+
+/* ── Telemetry Sidebar Panel ──────────────────────── */
+#telemetry-panel {
+  position: absolute;
+  left: calc(100% + 60px);
+  top: 50%;
+  transform: translateY(-50%);
+  width: 280px;
+  background: #0d0d16;
+  border: 3px solid #000;
+  box-shadow: 8px 8px 0px rgba(0, 0, 0, 0.15);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  font-family: var(--font-main);
+  color: #ffffff;
+  user-select: none;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.telemetry-empty {
+  font-size: 11px;
+  font-weight: 700;
+  color: #555577;
+  text-align: center;
+  margin-top: 30px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.telemetry-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.telemetry-header {
+  font-size: 10px;
+  font-weight: 900;
+  color: #8888aa;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  border-bottom: 2px solid #222;
+  padding-bottom: 4px;
+  margin-bottom: 6px;
+}
+
+.telemetry-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.telemetry-label {
+  color: #8888aa;
+  font-weight: 700;
+}
+
+.telemetry-value {
+  color: #ffffff;
+  font-weight: 800;
+}
+
+.telemetry-bar-bg {
+  width: 100%;
+  height: 8px;
+  background: #1b1b24;
+  border: 1.5px solid #000;
+  overflow: hidden;
+  margin-top: 4px;
+  position: relative;
+}
+
+.telemetry-bar-fill {
+  height: 100%;
+  transition: width 0.08s ease;
+}
+
+.telemetry-feed {
+  background: #07070a;
+  border: 2px solid #000;
+  padding: 10px;
+  display: flex;
+  flex-direction: column-reverse; /* Latest logs at bottom, pushes up */
+  gap: 6px;
+  height: 110px;
+  overflow-y: hidden;
+  font-family: monospace;
+  font-size: 9px;
+  line-height: 1.2;
+}
+
+.telemetry-feed-item {
+  color: #00ff66;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+

@@ -882,6 +882,14 @@ export class PyroVFX {
 
   // ── Lifecycle helpers ────────────────────────────────────
 
+  clear() {
+    this._ambient.clear();
+    this._burst.clear();
+    this._skill.clear();
+    this._skillActive = false;
+    this._ambientHandle = null;
+  }
+
   get skillActive() {
     return this._skillActive;
   }

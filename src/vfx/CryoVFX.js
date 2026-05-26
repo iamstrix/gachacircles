@@ -534,6 +534,14 @@ export class CryoVFX {
 
   // ── Lifecycle helpers ────────────────────────────────────
 
+  clear() {
+    this._ambient.clear();
+    this._burst.clear();
+    this._skill.clear();
+    this._skillActive = false;
+    this._ambientHandle = null;
+  }
+
   /** Whether the cyclone skill is still running. */
   get skillActive() {
     return this._skillActive;

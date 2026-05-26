@@ -89,6 +89,14 @@ async function init() {
   fighter1 = new Fighter(ayakaData, GAME_WIDTH * 0.25, GAME_HEIGHT * 0.5, vel1);
   fighter2 = new Fighter(yoimiyaData, GAME_WIDTH * 0.75, GAME_HEIGHT * 0.5, vel2);
 
+  // Apply instant cast if enabled in dev panel
+  if (localStorage.getItem('dev-instant-cast') === 'true') {
+    fighter1.skillCDTimer = 0;
+    fighter1.burstCDTimer = 0;
+    fighter2.skillCDTimer = 0;
+    fighter2.burstCDTimer = 0;
+  }
+
   // Assign VFX to fighters
   fighter1.vfx = cryoVFX;
   fighter2.vfx = pyroVFX;
@@ -269,19 +277,22 @@ function showWinScreen(winner) {
   const timeStr = elapsedTime.toFixed(1) + 's';
   const averageDPS = elapsedTime > 0 ? Math.round(totalDmg / elapsedTime) : 0;
 
-  // Calculate difficulty outcome depending on winner's remaining HP (out of 250 max HP)
+  // Calculate difficulty outcome depending on winner's remaining HP (out of 500 max HP)
   const remainingHP = winner.hp;
+  const maxHP = winner.maxHp || 500;
+  const hpPct = (remainingHP / maxHP) * 100;
+  
   let diffLabel = '';
   let diffColor = '#2e7d32'; // Saturated green
   let diffClass = '';
 
-  if (remainingHP > 175) {
+  if (remainingHP > 150) {
     diffLabel = 'LOW DIFF';
     diffColor = '#2e7d32';
-  } else if (remainingHP > 50) {
+  } else if (hpPct > 20) {
     diffLabel = 'MID DIFF';
     diffColor = '#ff9800'; // Orange
-  } else if (remainingHP >= 20) {
+  } else if (hpPct > 8) {
     diffLabel = 'HIGH DIFF';
     diffColor = '#d32f2f'; // Red
   } else {
@@ -400,6 +411,31 @@ function showWinScreen(winner) {
   const hudInstance = gameLoop ? gameLoop.hud : null;
   if (hudInstance) {
     hudInstance.updateScore(cryoFinal, pyroFinal);
+  }
+
+  // ── Auto-Rematch Logic ─────────────────────
+  if (localStorage.getItem('dev-auto-rematch') === 'true') {
+    const autoRematchMsg = document.createElement('div');
+    autoRematchMsg.style.marginTop = '20px';
+    autoRematchMsg.style.fontSize = '14px';
+    autoRematchMsg.style.fontWeight = '800';
+    autoRematchMsg.style.color = '#ffd54f';
+    autoRematchMsg.style.textAlign = 'center';
+    autoRematchMsg.style.textTransform = 'uppercase';
+    autoRematchMsg.style.letterSpacing = '1px';
+    autoRematchMsg.textContent = 'Auto-rematch in 5s...';
+    statsContainer.appendChild(autoRematchMsg);
+
+    let timeLeft = 5;
+    const interval = setInterval(() => {
+      timeLeft--;
+      if (timeLeft > 0) {
+        autoRematchMsg.textContent = `Auto-rematch in ${timeLeft}s...`;
+      } else {
+        clearInterval(interval);
+        location.reload();
+      }
+    }, 1000);
   }
 }
 

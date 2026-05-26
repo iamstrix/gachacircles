@@ -224,6 +224,38 @@ export class Fighter {
   update(delta, elapsed, opponent) {
     if (!this.alive) return;
 
+    if (window.headlessGachaMode) {
+      // Cooldown ticks
+      if (this.skillCDTimer > 0) {
+        this.skillCDTimer -= delta * 0.016;
+        if (this.skillCDTimer < 0) this.skillCDTimer = 0;
+      }
+
+      if (this.burstCDTimer > 0) {
+        this.burstCDTimer -= delta * 0.016;
+        if (this.burstCDTimer < 0) this.burstCDTimer = 0;
+      }
+
+      // Yoimiya infusion duration tick
+      if (this.id === 'yoimiya' && this.isInfused) {
+        this.infusionActiveTimer -= delta * 16.67;
+        if (this.infusionActiveTimer <= 0) {
+          this.isInfused = false;
+          this.infusionActiveTimer = 0;
+        }
+      }
+
+      // Passive timers tick
+      if (this.passiveTimer > 0) {
+        this.passiveTimer -= delta * 16.67;
+        if (this.passiveTimer <= 0) {
+          this.passiveTimer = 0;
+          this.passiveStacks = 0; // Stacks expire
+        }
+      }
+      return;
+    }
+
     // Sync container position with physics body
     this.container.x = this.body.x;
     this.container.y = this.body.y;
@@ -483,12 +515,12 @@ export class Fighter {
     this.hp -= actualDamage;
 
     // Update HP text
-    if (this.hpText) {
+    if (this.hpText && !window.headlessGachaMode) {
       this.hpText.text = Math.round(this.hp).toString();
     }
 
     // Visual hit feedback — brief red flash
-    if (this.circleGraphics) {
+    if (this.circleGraphics && !window.headlessGachaMode) {
       this.circleGraphics.tint = 0xff4444;
       setTimeout(() => {
         if (this.circleGraphics) this.circleGraphics.tint = 0xffffff;
@@ -497,7 +529,7 @@ export class Fighter {
 
     if (this.hp <= 0) {
       this.hp = 0;
-      if (this.hpText) {
+      if (this.hpText && !window.headlessGachaMode) {
         this.hpText.text = '0';
       }
       this.alive = false;
@@ -553,6 +585,7 @@ export class Fighter {
    * Play the ultimate burst video animation inside the circle
    */
   playUltAnimation() {
+    if (window.headlessGachaMode) return;
     if (!this.ultVideoSprite || !this.ultVideo) return;
 
     // Reset dimensions to ensure it scales and centers perfectly inside the circle, regardless of raw video metadata dimensions

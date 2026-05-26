@@ -43,6 +43,26 @@ export class DevUI {
       }
     }, bo3Visible);
 
+    const autoRematch = localStorage.getItem('dev-auto-rematch') === 'true';
+    this.addToggle(group, 'Auto-Rematch (5s)', (val) => {
+      localStorage.setItem('dev-auto-rematch', val);
+    }, autoRematch);
+
+    const instantCast = localStorage.getItem('dev-instant-cast') === 'true';
+    this.addToggle(group, 'Instant Cast (Start)', (val) => {
+      localStorage.setItem('dev-instant-cast', val);
+      if (val) {
+        if (this.gameLoop.fighter1) {
+          this.gameLoop.fighter1.skillCDTimer = 0;
+          this.gameLoop.fighter1.burstCDTimer = 0;
+        }
+        if (this.gameLoop.fighter2) {
+          this.gameLoop.fighter2.skillCDTimer = 0;
+          this.gameLoop.fighter2.burstCDTimer = 0;
+        }
+      }
+    }, instantCast);
+
     // Initial apply
     if (this.gameLoop.hud) {
       this.gameLoop.hud.setScoreVisibility(bo3Visible);
@@ -92,6 +112,73 @@ export class DevUI {
       localStorage.removeItem('match-score-pyro');
       location.reload();
     });
+
+    // ── Export & Import Replay buttons ─────────────
+    const replayFileActions = document.getElementById('dev-replay-file-actions') || group;
+
+    this.addButton(replayFileActions, 'Export Match Replay', () => {
+      const frames = this.gameLoop.replayFrames;
+      if (!frames || frames.length === 0) {
+        alert('No replay frames recorded yet! Complete a match first.');
+        return;
+      }
+      const sfx = this.gameLoop.replaySFXEvents;
+      const data = {
+        version: '1.0.0',
+        winner: this.gameLoop.winner ? this.gameLoop.winner.id : null,
+        duration: this.gameLoop.elapsedTime,
+        frames: frames,
+        sfx: sfx
+      };
+      const jsonStr = JSON.stringify(data);
+      const blob = new Blob([jsonStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `match-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.gachareplay`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }, '#0d6efd'); // Blue for export
+
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = '.gachareplay,.json';
+    fileInput.style.display = 'none';
+    replayFileActions.appendChild(fileInput);
+
+    fileInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        try {
+          const data = JSON.parse(evt.target.result);
+          if (!data.frames || !Array.isArray(data.frames)) {
+            throw new Error('Invalid replay format: missing frames array.');
+          }
+          this.gameLoop.replayFrames = data.frames;
+          this.gameLoop.replaySFXEvents = data.sfx || [];
+          this.gameLoop.winner = data.winner ? { id: data.winner } : null;
+          
+          this.gameLoop.startReplay();
+          console.log(`🎮 Replay imported successfully! ${data.frames.length} frames.`);
+        } catch (err) {
+          alert(`Failed to load replay: ${err.message}`);
+        }
+      };
+      reader.readAsText(file);
+    });
+
+    this.addButton(replayFileActions, 'Import Replay File', () => {
+      fileInput.click();
+    }, '#198754'); // Green for import
+
+    this.addButton(replayFileActions, '🔍 Instant Sim Extreme-Diff', () => {
+      this.gameLoop.runHeadlessSimulation(1000);
+    }, '#ff9800'); // Gold for simulation search
   }
 
   addToggle(parent, label, callback, initialValue = false) {

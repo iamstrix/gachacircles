@@ -1,11 +1,159 @@
-/**
- * gameLoop.js — Main game loop and battle logic
- * Orchestrates physics, combat, VFX, and UI updates.
- */
-
-import { Graphics, Sprite, Assets, Container, Text, TextStyle } from 'pixi.js';
+import { Container as OriginalContainer, Graphics as OriginalGraphics, Sprite as OriginalSprite, Assets, Text, TextStyle } from 'pixi.js';
 import { updatePosition, bounceOffWalls, checkCircleCollision, resolveCollision } from './physics.js';
-import { playSFX, preloadSFX, playSynthBounce, playSynthClash, playSynthDeflect, playRandomParry } from './utils/audio.js';
+import { 
+  playSFX as originalPlaySFX, 
+  preloadSFX, 
+  playSynthBounce as originalPlaySynthBounce, 
+  playSynthClash as originalPlaySynthClash, 
+  playSynthDeflect as originalPlaySynthDeflect, 
+  playRandomParry as originalPlayRandomParry 
+} from './utils/audio.js';
+
+let currentLoopInstanceForAudio = null;
+
+function createMockVisual() {
+  const mock = {
+    x: 0,
+    y: 0,
+    vx: 0,
+    vy: 0,
+    rotation: 0,
+    alpha: 1,
+    visible: true,
+    tint: 0xffffff,
+    width: 0,
+    height: 0,
+    parent: { removeChild: () => {} },
+    scale: { set: () => {}, x: 1, y: 1 },
+    anchor: { set: () => {}, x: 0.5, y: 0.5 },
+    clear: () => mock,
+    circle: () => mock,
+    rect: () => mock,
+    moveTo: () => mock,
+    lineTo: () => mock,
+    bezierCurveTo: () => mock,
+    quadraticCurveTo: () => mock,
+    arc: () => mock,
+    closePath: () => mock,
+    fill: () => mock,
+    stroke: () => mock,
+    destroy: () => {}
+  };
+  return mock;
+}
+
+function Container() {
+  if (currentLoopInstanceForAudio && currentLoopInstanceForAudio.headlessMode) {
+    const mock = createMockVisual();
+    mock.children = [];
+    mock.addChild = (child) => {
+      if (child) {
+        mock.children.push(child);
+        child.parent = mock;
+      }
+      return child;
+    };
+    mock.addChildAt = (child, index) => {
+      if (child) {
+        mock.children.splice(index, 0, child);
+        child.parent = mock;
+      }
+      return child;
+    };
+    mock.removeChild = (child) => {
+      if (child) {
+        const idx = mock.children.indexOf(child);
+        if (idx !== -1) mock.children.splice(idx, 1);
+        child.parent = null;
+      }
+      return child;
+    };
+    mock.removeChildren = () => {
+      const old = mock.children;
+      mock.children = [];
+      old.forEach(child => {
+        if (child) child.parent = null;
+      });
+      return old;
+    };
+    return mock;
+  }
+  return new OriginalContainer();
+}
+
+function Graphics() {
+  if (currentLoopInstanceForAudio && currentLoopInstanceForAudio.headlessMode) {
+    return createMockVisual();
+  }
+  return new OriginalGraphics();
+}
+
+function Sprite(texture) {
+  if (currentLoopInstanceForAudio && currentLoopInstanceForAudio.headlessMode) {
+    return createMockVisual();
+  }
+  return new OriginalSprite(texture);
+}
+
+function playSFX(path, volume) {
+  if (currentLoopInstanceForAudio && currentLoopInstanceForAudio.headlessMode) {
+    if (typeof window !== 'undefined' && typeof window.audioInterceptor === 'function') {
+      window.audioInterceptor(path, volume);
+    }
+    return;
+  }
+  originalPlaySFX(path, volume);
+}
+
+function playSynthBounce() {
+  if (currentLoopInstanceForAudio && currentLoopInstanceForAudio.headlessMode) {
+    if (typeof window !== 'undefined' && typeof window.audioInterceptor === 'function') {
+      window.audioInterceptor('/audio/circle-bounce.wav', 0.126);
+    }
+    return;
+  }
+  originalPlaySynthBounce();
+}
+
+function playSynthClash() {
+  if (currentLoopInstanceForAudio && currentLoopInstanceForAudio.headlessMode) {
+    if (typeof window !== 'undefined' && typeof window.audioInterceptor === 'function') {
+      window.audioInterceptor('/audio/circle-bounce.wav', 0.266);
+    }
+    return;
+  }
+  originalPlaySynthClash();
+}
+
+function playSynthDeflect() {
+  if (currentLoopInstanceForAudio && currentLoopInstanceForAudio.headlessMode) {
+    if (typeof window !== 'undefined' && typeof window.audioInterceptor === 'function') {
+      window.audioInterceptor('/audio/circle-bounce.wav', 0.196);
+    }
+    return;
+  }
+  originalPlaySynthDeflect();
+}
+
+function playRandomParry(volume) {
+  if (currentLoopInstanceForAudio && currentLoopInstanceForAudio.headlessMode) {
+    if (typeof window !== 'undefined' && typeof window.audioInterceptor === 'function') {
+      // Pick parry_1.wav for footprint
+      window.audioInterceptor('/audio/ayaka/ayaka-parry_1.wav', volume);
+    }
+    return;
+  }
+  originalPlayRandomParry(volume);
+}
+
+const performance = {
+  now: () => {
+    if (currentLoopInstanceForAudio && currentLoopInstanceForAudio.headlessMode) {
+      return currentLoopInstanceForAudio.virtualTime;
+    }
+    return window.performance.now();
+  }
+};
 
 export class GameLoop {
   /**
@@ -16,6 +164,11 @@ export class GameLoop {
    * @param {Object} damageNumbers - DamageNumbers instance
    */
   constructor(fighter1, fighter2, bounds, hud, damageNumbers, stage) {
+    currentLoopInstanceForAudio = this;
+    this.headlessMode = false;
+    this.virtualTime = 0;
+    this.recordReplayEnabled = true;
+
     this.fighter1 = fighter1;
     this.fighter2 = fighter2;
     this.bounds = bounds;
@@ -44,10 +197,11 @@ export class GameLoop {
     this.scheduledArrows = []; // Scheduled timed arrow combo queue
     this.scheduledMelee = []; // Scheduled timed melee hits (Ayaka)
 
-    // Initial delay: start attacking 1 second after game start
+    // Initial delay: start attacking 2 seconds after game start (Grace Period)
     const startTime = performance.now();
-    this.fighter1.lastAttackTime = startTime - 1500;
-    this.fighter2.lastAttackTime = startTime - 1500;
+    // Setting these far back so they are ready to attack immediately after the 2s grace period ends
+    this.fighter1.lastAttackTime = startTime - 5000;
+    this.fighter2.lastAttackTime = startTime - 5000;
 
     // Preload normal attack sound files for both characters
     for (let i = 1; i <= 5; i++) {
@@ -90,6 +244,92 @@ export class GameLoop {
     this.watermarkVx = 1.2;
     this.watermarkVy = 0.9;
     this.stage.addChild(this.watermark);
+
+    // ── Replay System State Initialization ─────────
+    this.replayFrames = [];
+    this.replaySFXEvents = [];
+    this.replayMode = false;
+    this.replayPlayhead = 0;
+    this.replaySpeed = 1.0;
+    this.replayPaused = false;
+    this.replayTime = 0;
+    this.replayEffectsCache = new Map();
+    
+    // Dedicated PIXI containers for replay visuals to ensure instant redraws/scrubs
+    this.replayProjectilesContainer = new Container();
+    this.replayEffectsContainer = new Container();
+    this.stage.addChild(this.replayProjectilesContainer);
+    this.stage.addChild(this.replayEffectsContainer);
+
+    // Audio logger hook
+    window.audioInterceptor = (path, volume) => {
+      if (this.replayMode || !this.recordReplayEnabled) return;
+      this.replaySFXEvents.push({
+        time: this.elapsedTime,
+        path: path,
+        volume: volume
+      });
+    };
+
+    // Damage Number logger hook
+    if (this.damageNumbers) {
+      const originalSpawn = this.damageNumbers.spawn.bind(this.damageNumbers);
+      this.damageNumbers.spawn = (x, y, text, type, isCrit) => {
+        originalSpawn(x, y, text, type, isCrit);
+        if (!this.replayMode && this.recordReplayEnabled) {
+          this.replaySFXEvents.push({
+            type: 'damage_number',
+            time: this.elapsedTime,
+            x: x,
+            y: y,
+            text: text,
+            element: type,
+            isCrit: isCrit
+          });
+        }
+      };
+    }
+
+    // VFX trigger logger hook
+    const logVFX = (element, method, args) => {
+      if (this.replayMode || !this.recordReplayEnabled) return;
+      this.replaySFXEvents.push({
+        type: 'vfx',
+        time: this.elapsedTime,
+        element: element,
+        method: method,
+        args: args
+      });
+    };
+
+    [this.fighter1, this.fighter2].forEach(fighter => {
+      const vfx = fighter.vfx;
+      if (!vfx) return;
+
+      const methodsToWrap = [
+        'triggerCollision',
+        'triggerBlazingCollision',
+        'triggerFinisherImpact',
+        'triggerFinisherLaunch',
+        'triggerMeltReaction',
+        'triggerSkill',
+        'triggerInfusion',
+        'triggerCastAura',
+        'triggerBlazeDetonation',
+        'triggerUltimateHitGust',
+        'triggerRocketImpact'
+      ];
+
+      methodsToWrap.forEach(method => {
+        if (typeof vfx[method] === 'function') {
+          const original = vfx[method].bind(vfx);
+          vfx[method] = (...args) => {
+            original(...args);
+            logVFX(fighter.element, method, args);
+          };
+        }
+      });
+    });
   }
 
   _setupPauseVisuals() {
@@ -143,6 +383,10 @@ export class GameLoop {
    * @param {number} delta - Frame delta (1.0 = target frame rate)
    */
   update(delta) {
+    if (this.replayMode) {
+      this.updateReplay(delta);
+      return;
+    }
     // Even if paused, we want the pause visuals to animate
     if (this.paused) {
       // Pulsing columns (changing darkness slightly)
@@ -215,8 +459,7 @@ export class GameLoop {
         if (arrow.isKindlingSpark && arrow.target && arrow.target.alive) {
           const targetAngle = Math.atan2(arrow.target.body.y - arrow.y, arrow.target.body.x - arrow.x);
           let diff = targetAngle - arrow.angle;
-          while (diff < -Math.PI) diff += Math.PI * 2;
-          while (diff > Math.PI) diff -= Math.PI * 2;
+          diff = Math.atan2(Math.sin(diff), Math.cos(diff));
           
           // Curve smoothly towards opponent center
           arrow.angle += Math.sign(diff) * Math.min(Math.abs(diff), 0.085 * delta);
@@ -391,12 +634,14 @@ export class GameLoop {
             drawSparkle(circleGfx1, 0xffab40);
             drawSparkle(circleGfx2, 0xffab40);
 
-            if (arrow.owner.vfx && arrow.owner.vfx.container) {
-              arrow.owner.vfx.container.addChildAt(circleGfx1, 0);
-              arrow.owner.vfx.container.addChildAt(circleGfx2, 0);
-            } else {
-              this.stage.addChild(circleGfx1);
-              this.stage.addChild(circleGfx2);
+            if (!this.headlessMode) {
+              if (arrow.owner.vfx && arrow.owner.vfx.container) {
+                arrow.owner.vfx.container.addChildAt(circleGfx1, 0);
+                arrow.owner.vfx.container.addChildAt(circleGfx2, 0);
+              } else {
+                this.stage.addChild(circleGfx1);
+                this.stage.addChild(circleGfx2);
+              }
             }
 
             this.activeEffects.push({
@@ -566,34 +811,36 @@ export class GameLoop {
           return false;
         }
 
-        // Orbiting logic: two medium-sized orange sparkles circling her dynamically and rotating on their own axes
-        effect.angleOffset += delta * 0.045; // Speed of orbit
-        const radius = 45; // Orbit distance around target circle
-        
-        effect.circle1.x = effect.target.body.x + Math.cos(effect.angleOffset) * radius;
-        effect.circle1.y = effect.target.body.y + Math.sin(effect.angleOffset) * radius;
-        effect.circle1.rotation = effect.angleOffset * 2.0; // Self-spinning sparkle
-        
-        effect.circle2.x = effect.target.body.x + Math.cos(effect.angleOffset + Math.PI) * radius;
-        effect.circle2.y = effect.target.body.y + Math.sin(effect.angleOffset + Math.PI) * radius;
-        effect.circle2.rotation = -effect.angleOffset * 2.0; // Self-spinning opposite direction
+        if (!this.headlessMode) {
+          // Orbiting logic: two medium-sized orange sparkles circling her dynamically and rotating on their own axes
+          effect.angleOffset += delta * 0.045; // Speed of orbit
+          const radius = 45; // Orbit distance around target circle
+          
+          effect.circle1.x = effect.target.body.x + Math.cos(effect.angleOffset) * radius;
+          effect.circle1.y = effect.target.body.y + Math.sin(effect.angleOffset) * radius;
+          effect.circle1.rotation = effect.angleOffset * 2.0; // Self-spinning sparkle
+          
+          effect.circle2.x = effect.target.body.x + Math.cos(effect.angleOffset + Math.PI) * radius;
+          effect.circle2.y = effect.target.body.y + Math.sin(effect.angleOffset + Math.PI) * radius;
+          effect.circle2.rotation = -effect.angleOffset * 2.0; // Self-spinning opposite direction
 
-        // Pre-detonation warning flickering phase: flash white 0.8 seconds before the interval explosion
-        let sparkleColor = 0xffab40; // Light orange
-        if (effect.explosionCD <= 0.8) {
-          const flashRate = 75; // high-frequency flickering speed in ms
-          const isWhite = Math.floor(performance.now() / flashRate) % 2 === 0;
-          sparkleColor = isWhite ? 0xffffff : 0xffab40;
-        }
-        drawSparkle(effect.circle1, sparkleColor);
-        drawSparkle(effect.circle2, sparkleColor);
+          // Pre-detonation warning flickering phase: flash white 0.8 seconds before the interval explosion
+          let sparkleColor = 0xffab40; // Light orange
+          if (effect.explosionCD <= 0.8) {
+            const flashRate = 75; // high-frequency flickering speed in ms
+            const isWhite = Math.floor(performance.now() / flashRate) % 2 === 0;
+            sparkleColor = isWhite ? 0xffffff : 0xffab40;
+          }
+          drawSparkle(effect.circle1, sparkleColor);
+          drawSparkle(effect.circle2, sparkleColor);
 
-        // Emit sizzling, burning particle trails from both orbiting circles on every frame!
-        if (effect.owner.vfx && typeof effect.owner.vfx.triggerMarkTrail === 'function') {
-          effect.owner.vfx.triggerMarkTrail(
-            effect.circle1.x, effect.circle1.y,
-            effect.circle2.x, effect.circle2.y
-          );
+          // Emit sizzling, burning particle trails from both orbiting circles on every frame!
+          if (effect.owner.vfx && typeof effect.owner.vfx.triggerMarkTrail === 'function') {
+            effect.owner.vfx.triggerMarkTrail(
+              effect.circle1.x, effect.circle1.y,
+              effect.circle2.x, effect.circle2.y
+            );
+          }
         }
 
         // Explosion tick logic: detonates every 2 seconds
@@ -714,52 +961,54 @@ export class GameLoop {
         const dy = effect.target.body.y - effect.owner.body.y;
         effect.angle = Math.atan2(dy, dx);
 
-        const progress = 1 - (effect.timer / 1.3); // Divisor reduced to 1.3s to match shorter windup
-        const ringRadius = 250 * (1 - progress) + 40; // Starts at 250, closes to 40
+        if (!this.headlessMode) {
+          const progress = 1 - (effect.timer / 1.3); // Divisor reduced to 1.3s to match shorter windup
+          const ringRadius = 250 * (1 - progress) + 40; // Starts at 250, closes to 40
 
-        // Sync and spin Cryo symbol sprite
-        if (effect.symbolSprite) {
-          effect.symbolSprite.x = effect.owner.body.x;
-          effect.symbolSprite.y = effect.owner.body.y;
-          const size = 300 * (1 - progress) + 80; // Shrink as ring contracts
-          effect.symbolSprite.width = size;
-          effect.symbolSprite.height = size;
-          effect.symbolSprite.alpha = 0.2 + progress * 0.45; // Get solid as blast nears
-          effect.symbolSprite.rotation = -progress * 1.5; // Spin slowly counter-clockwise
-        }
-
-        if (effect.owner.vfx) {
-          const range = 800;
-          // Draw laser
-          effect.owner.vfx.drawSoumetsuTelegraph(
-            effect.telegraph,
-            effect.owner.body.x,
-            effect.owner.body.y,
-            effect.owner.body.x + Math.cos(effect.angle) * range,
-            effect.owner.body.y + Math.sin(effect.angle) * range,
-            progress
-          );
-          
-          // Draw contracting ring
-          if (effect.ring) {
-            effect.owner.vfx.drawSoumetsuRing(
-              effect.ring,
-              effect.owner.body.x,
-              effect.owner.body.y,
-              ringRadius,
-              progress
-            );
+          // Sync and spin Cryo symbol sprite
+          if (effect.symbolSprite) {
+            effect.symbolSprite.x = effect.owner.body.x;
+            effect.symbolSprite.y = effect.owner.body.y;
+            const size = 300 * (1 - progress) + 80; // Shrink as ring contracts
+            effect.symbolSprite.width = size;
+            effect.symbolSprite.height = size;
+            effect.symbolSprite.alpha = 0.2 + progress * 0.45; // Get solid as blast nears
+            effect.symbolSprite.rotation = -progress * 1.5; // Spin slowly counter-clockwise
           }
 
-          // Vacuum particles: pull from outside the ring toward Ayaka
-          if (Math.random() < 0.8 * delta) {
-            const spawnAngle = Math.random() * Math.PI * 2;
-            const spawnR = ringRadius + 20 + Math.random() * 50;
-            const px = effect.owner.body.x + Math.cos(spawnAngle) * spawnR;
-            const py = effect.owner.body.y + Math.sin(spawnAngle) * spawnR;
+          if (effect.owner.vfx) {
+            const range = 800;
+            // Draw laser
+            effect.owner.vfx.drawSoumetsuTelegraph(
+              effect.telegraph,
+              effect.owner.body.x,
+              effect.owner.body.y,
+              effect.owner.body.x + Math.cos(effect.angle) * range,
+              effect.owner.body.y + Math.sin(effect.angle) * range,
+              progress
+            );
             
-            // Trigger multi-toned particles that are attracted to center
-            effect.owner.vfx.triggerVacuumParticles(px, py, effect.owner.body.x, effect.owner.body.y);
+            // Draw contracting ring
+            if (effect.ring) {
+              effect.owner.vfx.drawSoumetsuRing(
+                effect.ring,
+                effect.owner.body.x,
+                effect.owner.body.y,
+                ringRadius,
+                progress
+              );
+            }
+
+            // Vacuum particles: pull from outside the ring toward Ayaka
+            if (Math.random() < 0.8 * delta) {
+              const spawnAngle = Math.random() * Math.PI * 2;
+              const spawnR = ringRadius + 20 + Math.random() * 50;
+              const px = effect.owner.body.x + Math.cos(spawnAngle) * spawnR;
+              const py = effect.owner.body.y + Math.sin(spawnAngle) * spawnR;
+              
+              // Trigger multi-toned particles that are attracted to center
+              effect.owner.vfx.triggerVacuumParticles(px, py, effect.owner.body.x, effect.owner.body.y);
+            }
           }
         }
         return true;
@@ -779,29 +1028,31 @@ export class GameLoop {
         effect.x += Math.cos(effect.angle) * currentSpeed * delta;
         effect.y += Math.sin(effect.angle) * currentSpeed * delta;
 
-        // Visual spin: independently rotate 90 blade layers
-        effect.visual.x = effect.x;
-        effect.visual.y = effect.y;
-        if (effect.visual.children) {
-          effect.visual.children.forEach(child => {
-            child.rotation += (child.spinSpeed || 0.2) * delta;
-          });
-        }
+        if (!this.headlessMode) {
+          // Visual spin: independently rotate 90 blade layers
+          effect.visual.x = effect.x;
+          effect.visual.y = effect.y;
+          if (effect.visual.children) {
+            effect.visual.children.forEach(child => {
+              child.rotation += (child.spinSpeed || 0.2) * delta;
+            });
+          }
 
-        // Emit constant ice particles for "messy" blizzard feel - spread adjusted for 135 radius
-        if (effect.owner.vfx && Math.random() < 0.6 * delta) {
-          if (typeof effect.owner.vfx.triggerVortexParticles === 'function') {
-            effect.owner.vfx.triggerVortexParticles(
-              effect.x + (Math.random() - 0.5) * 270,
-              effect.y + (Math.random() - 0.5) * 270,
-              effect.x,
-              effect.y
-            );
-          } else {
-            effect.owner.vfx.triggerCollision(
-              effect.x + (Math.random() - 0.5) * 270, // Spread ~2x radius (2 * 135 = 270)
-              effect.y + (Math.random() - 0.5) * 270
-            );
+          // Emit constant ice particles for "messy" blizzard feel - spread adjusted for 135 radius
+          if (effect.owner.vfx && Math.random() < 0.6 * delta) {
+            if (typeof effect.owner.vfx.triggerVortexParticles === 'function') {
+              effect.owner.vfx.triggerVortexParticles(
+                effect.x + (Math.random() - 0.5) * 270,
+                effect.y + (Math.random() - 0.5) * 270,
+                effect.x,
+                effect.y
+              );
+            } else {
+              effect.owner.vfx.triggerCollision(
+                effect.x + (Math.random() - 0.5) * 270, // Spread ~2x radius (2 * 135 = 270)
+                effect.y + (Math.random() - 0.5) * 270
+              );
+            }
           }
         }
 
@@ -865,61 +1116,63 @@ export class GameLoop {
       }
       else if (effect.type === 'hyouka') {
 
-        // Track Ayaka's circle center
-        effect.visual.x = effect.owner.body.x;
-        effect.visual.y = effect.owner.body.y;
+        if (!this.headlessMode) {
+          // Track Ayaka's circle center
+          effect.visual.x = effect.owner.body.x;
+          effect.visual.y = effect.owner.body.y;
 
-        if (effect.symbolSprite) {
-          effect.symbolSprite.x = effect.owner.body.x;
-          effect.symbolSprite.y = effect.owner.body.y;
+          if (effect.symbolSprite) {
+            effect.symbolSprite.x = effect.owner.body.x;
+            effect.symbolSprite.y = effect.owner.body.y;
+          }
+
+          // Dynamic visual effects: grow size and transition from light ice blue to a rising heavy darkness
+          const elapsed = 1.0 - effect.timer; // goes from 0.0 to 1.0 seconds
+          const progress = Math.min(1.0, elapsed / 1.0); // progress ratio from 0 to 1
+
+          const scale = Math.min(1.0, elapsed / 0.15); // Grow scale over first 150ms
+          effect.visual.scale.set(scale);
+
+          if (effect.symbolSprite) {
+            const popProgress = Math.min(1.0, elapsed / 0.35); // pop up over 350ms
+            const targetSize = 360; // match E skill's radius (radius 180px means diameter 360px!)
+            effect.symbolSprite.width = targetSize * popProgress;
+            effect.symbolSprite.height = targetSize * popProgress;
+            effect.symbolSprite.alpha = 0.75 * popProgress;
+            effect.symbolSprite.rotation = elapsed * 0.5; // slow spin
+          }
+
+          // Redraw radius circle in real-time to represent gathering dark frosty energy
+          effect.visual.clear();
+
+          // Linearly interpolate colors:
+          // Outline transitions from bright Cryo blue (0x4fc3f7) to deep navy shadow-blue (0x0d47a1)
+          const rOut = Math.round(79 * (1 - progress) + 13 * progress);
+          const gOut = Math.round(195 * (1 - progress) + 71 * progress);
+          const bOut = Math.round(247 * (1 - progress) + 161 * progress);
+          const outlineColor = (rOut << 16) | (gOut << 8) | bOut;
+
+          // Fill transitions from semi-transparent Cryo blue (0x80deea) to deep ominous frozen abyss blue/black (0x070c1e)
+          const rFill = Math.round(128 * (1 - progress) + 7 * progress);
+          const gFill = Math.round(222 * (1 - progress) + 12 * progress);
+          const bFill = Math.round(234 * (1 - progress) + 30 * progress);
+          const fillColor = (rFill << 16) | (gFill << 8) | bFill;
+
+          const fillAlpha = 0.06 + 0.39 * progress; // gets denser and darker
+          const strokeAlpha = 0.6 + 0.4 * progress; // gets fully opaque
+          const strokeWidth = 2 + 1.5 * progress; // stroke thickens as energy accumulates
+
+          effect.visual.circle(0, 0, 180);
+          effect.visual.fill({ color: fillColor, alpha: fillAlpha });
+          effect.visual.stroke({ color: outlineColor, width: strokeWidth, alpha: strokeAlpha });
+
+          // Draw inner target ring that fades out as energy condenses
+          effect.visual.circle(0, 0, 90);
+          effect.visual.stroke({ color: outlineColor, width: 1, alpha: 0.3 * (1 - progress) });
+
+          // Dynamic pulsing alpha animation overlay
+          effect.visual.alpha = 0.85 + Math.sin(performance.now() * 0.015) * 0.1;
         }
-
-        // Dynamic visual effects: grow size and transition from light ice blue to a rising heavy darkness
-        const elapsed = 1.0 - effect.timer; // goes from 0.0 to 1.0 seconds
-        const progress = Math.min(1.0, elapsed / 1.0); // progress ratio from 0 to 1
-
-        const scale = Math.min(1.0, elapsed / 0.15); // Grow scale over first 150ms
-        effect.visual.scale.set(scale);
-
-        if (effect.symbolSprite) {
-          const popProgress = Math.min(1.0, elapsed / 0.35); // pop up over 350ms
-          const targetSize = 360; // match E skill's radius (radius 180px means diameter 360px!)
-          effect.symbolSprite.width = targetSize * popProgress;
-          effect.symbolSprite.height = targetSize * popProgress;
-          effect.symbolSprite.alpha = 0.75 * popProgress;
-          effect.symbolSprite.rotation = elapsed * 0.5; // slow spin
-        }
-
-        // Redraw radius circle in real-time to represent gathering dark frosty energy
-        effect.visual.clear();
-
-        // Linearly interpolate colors:
-        // Outline transitions from bright Cryo blue (0x4fc3f7) to deep navy shadow-blue (0x0d47a1)
-        const rOut = Math.round(79 * (1 - progress) + 13 * progress);
-        const gOut = Math.round(195 * (1 - progress) + 71 * progress);
-        const bOut = Math.round(247 * (1 - progress) + 161 * progress);
-        const outlineColor = (rOut << 16) | (gOut << 8) | bOut;
-
-        // Fill transitions from semi-transparent Cryo blue (0x80deea) to deep ominous frozen abyss blue/black (0x070c1e)
-        const rFill = Math.round(128 * (1 - progress) + 7 * progress);
-        const gFill = Math.round(222 * (1 - progress) + 12 * progress);
-        const bFill = Math.round(234 * (1 - progress) + 30 * progress);
-        const fillColor = (rFill << 16) | (gFill << 8) | bFill;
-
-        const fillAlpha = 0.06 + 0.39 * progress; // gets denser and darker
-        const strokeAlpha = 0.6 + 0.4 * progress; // gets fully opaque
-        const strokeWidth = 2 + 1.5 * progress; // stroke thickens as energy accumulates
-
-        effect.visual.circle(0, 0, 180);
-        effect.visual.fill({ color: fillColor, alpha: fillAlpha });
-        effect.visual.stroke({ color: outlineColor, width: strokeWidth, alpha: strokeAlpha });
-
-        // Draw inner target ring that fades out as energy condenses
-        effect.visual.circle(0, 0, 90);
-        effect.visual.stroke({ color: outlineColor, width: 1, alpha: 0.3 * (1 - progress) });
-
-        // Dynamic pulsing alpha animation overlay
-        effect.visual.alpha = 0.85 + Math.sin(performance.now() * 0.015) * 0.1;
 
         // If 1 second has passed, execute the blooming ice explosion!
         if (effect.timer <= 0) {
@@ -985,36 +1238,38 @@ export class GameLoop {
     });
 
     // Check for skill and burst activation (auto-activate when ready)
-    this._checkAbilityActivation(this.fighter1, this.fighter2);
-    this._checkAbilityActivation(this.fighter2, this.fighter1);
+    if (this.elapsedTime >= 2.0) {
+      this._checkAbilityActivation(this.fighter1, this.fighter2);
+      this._checkAbilityActivation(this.fighter2, this.fighter1);
 
-    // Auto standard attacks for Yoimiya (ranged Normal Attacks)
-    if (this.fighter2.id === 'yoimiya' && this.fighter2.alive) {
-      let currentAttackSpeed = this.fighter2.data.attackSpeed;
-      if (this.fighter2.isInfused) {
-        currentAttackSpeed *= 2.0; // Double attack speed during infusion!
+      // Auto standard attacks for Yoimiya (ranged Normal Attacks)
+      if (this.fighter2.id === 'yoimiya' && this.fighter2.alive) {
+        let currentAttackSpeed = this.fighter2.data.attackSpeed;
+        if (this.fighter2.isInfused) {
+          currentAttackSpeed *= 2.0; // Double attack speed during infusion!
+        }
+        // 2-second base interval (2000ms) at base speed (2.5), which scales with attack speed: 5000 / speed.
+        // Begin the interval timer only after the last shot has been fired (the 7-arrow combo takes exactly 1400ms from first shot to last shot).
+        const comboDurationMs = 1400;
+        const baseIntervalMs = 2500 / currentAttackSpeed; // Was 5000, halved for faster combo cycles
+        const cooldownMs = comboDurationMs + baseIntervalMs + this.fighter2.attackIntervalOffset;
+        
+        if (currentTime - this.fighter2.lastAttackTime >= cooldownMs) {
+          this.fighter2.registerAttack(currentTime);
+          this._startYoimiyaArrowCombo(this.fighter2, this.fighter1);
+        }
       }
-      // 2-second base interval (2000ms) at base speed (2.5), which scales with attack speed: 5000 / speed.
-      // Begin the interval timer only after the last shot has been fired (the 7-arrow combo takes exactly 1400ms from first shot to last shot).
-      const comboDurationMs = 1400;
-      const baseIntervalMs = 2500 / currentAttackSpeed; // Was 5000, halved for faster combo cycles
-      const cooldownMs = comboDurationMs + baseIntervalMs + this.fighter2.attackIntervalOffset;
-      
-      if (currentTime - this.fighter2.lastAttackTime >= cooldownMs) {
-        this.fighter2.registerAttack(currentTime);
-        this._startYoimiyaArrowCombo(this.fighter2, this.fighter1);
-      }
-    }
 
-    // Auto standard attacks for Ayaka (melee Normal Attacks)
-    if (this.fighter1.id === 'ayaka' && this.fighter1.alive) {
-      const comboDurationMs = 1500; // Ayaka's N1-N5 string takes ~1.5s
-      const delayBetweenCombosMs = 1000; // Restart 1s after last attack finishes
-      const cooldownMs = comboDurationMs + delayBetweenCombosMs + this.fighter1.attackIntervalOffset;
+      // Auto standard attacks for Ayaka (melee Normal Attacks)
+      if (this.fighter1.id === 'ayaka' && this.fighter1.alive) {
+        const comboDurationMs = 1500; // Ayaka's N1-N5 string takes ~1.5s
+        const delayBetweenCombosMs = 1000; // Restart 1s after last attack finishes
+        const cooldownMs = comboDurationMs + delayBetweenCombosMs + this.fighter1.attackIntervalOffset;
 
-      if (currentTime - this.fighter1.lastAttackTime >= cooldownMs) {
-        this.fighter1.registerAttack(currentTime);
-        this._startAyakaMeleeCombo(this.fighter1, this.fighter2);
+        if (currentTime - this.fighter1.lastAttackTime >= cooldownMs) {
+          this.fighter1.registerAttack(currentTime);
+          this._startAyakaMeleeCombo(this.fighter1, this.fighter2);
+        }
       }
     }
 
@@ -1151,12 +1406,17 @@ export class GameLoop {
 
     // Update HUD
     this._updateHUD();
+
+    // Record this frame
+    this._recordReplayFrame();
   }
 
   /**
    * Handle combat when circles collide
    */
   _handleCombat(collision, currentTime) {
+    if (this.elapsedTime < 2.0) return;
+
     // Note: Melee damage is now primarily handled by _performMeleeHit for Ayaka
     // However, N5 lunge deals damage on contact during the dash phase
     const isAyakaLunging = this.fighter1.id === 'ayaka' && 
@@ -1299,21 +1559,23 @@ export class GameLoop {
           this.activeEffects.push(effect);
 
           // Asynchronously load the cryo.png symbol so it doesn't block the loop
-          Assets.load('/cryo.png').then(texture => {
-            if (this.gameOver) return;
-            const sprite = new Sprite(texture);
-            sprite.anchor.set(0.5);
-            sprite.x = fighter.body.x;
-            sprite.y = fighter.body.y;
-            sprite.width = 0;
-            sprite.height = 0;
-            sprite.alpha = 0;
-            sprite.tint = 0x80deea; // Cryo light-cyan glow
-            
-            // Add to the stage at index 1 so it renders beneath the character circles!
-            this.stage.addChildAt(sprite, 1);
-            effect.symbolSprite = sprite;
-          }).catch(err => console.warn('Could not load Cryo symbol:', err));
+          if (!this.headlessMode) {
+            Assets.load('/cryo.png').then(texture => {
+              if (this.gameOver) return;
+              const sprite = new Sprite(texture);
+              sprite.anchor.set(0.5);
+              sprite.x = fighter.body.x;
+              sprite.y = fighter.body.y;
+              sprite.width = 0;
+              sprite.height = 0;
+              sprite.alpha = 0;
+              sprite.tint = 0x80deea; // Cryo light-cyan glow
+              
+              // Add to the stage at index 1 so it renders beneath the character circles!
+              this.stage.addChildAt(sprite, 1);
+              effect.symbolSprite = sprite;
+            }).catch(err => console.warn('Could not load Cryo symbol:', err));
+          }
         }
         if (fighter.id === 'yoimiya') {
           playSFX('/audio/yoimiya/yoimiya-skill.wav');
@@ -1333,6 +1595,13 @@ export class GameLoop {
     if (fighter.burstCDTimer <= 0) {
       const activated = fighter.activateBurst();
       if (activated) {
+        if (!this.replayMode && this.recordReplayEnabled) {
+          this.replaySFXEvents.push({
+            type: 'portrait_ult',
+            time: this.elapsedTime,
+            element: fighter.element
+          });
+        }
         // Play ultimate animation inside character circle portrait if available
         if (typeof fighter.playUltAnimation === 'function') {
           fighter.playUltAnimation();
@@ -1362,21 +1631,23 @@ export class GameLoop {
           this.activeEffects.push(effect);
 
           // Asynchronously load the cryo.png symbol so it doesn't block the loop
-          Assets.load('/cryo.png').then(texture => {
-            if (this.gameOver || !this.activeEffects.includes(effect)) return;
-            const sprite = new Sprite(texture);
-            sprite.anchor.set(0.5);
-            sprite.x = fighter.body.x;
-            sprite.y = fighter.body.y;
-            sprite.width = 300;
-            sprite.height = 300;
-            sprite.alpha = 0.2;
-            sprite.tint = 0x80deea; // Cryo light-cyan glow
-            
-            // Add to the stage at index 1 so it renders beneath the character circles!
-            this.stage.addChildAt(sprite, 1);
-            effect.symbolSprite = sprite;
-          }).catch(err => console.warn('Could not load Cryo symbol for ultimate:', err));
+          if (!this.headlessMode) {
+            Assets.load('/cryo.png').then(texture => {
+              if (this.gameOver || !this.activeEffects.includes(effect)) return;
+              const sprite = new Sprite(texture);
+              sprite.anchor.set(0.5);
+              sprite.x = fighter.body.x;
+              sprite.y = fighter.body.y;
+              sprite.width = 300;
+              sprite.height = 300;
+              sprite.alpha = 0.2;
+              sprite.tint = 0x80deea; // Cryo light-cyan glow
+              
+              // Add to the stage at index 1 so it renders beneath the character circles!
+              this.stage.addChildAt(sprite, 1);
+              effect.symbolSprite = sprite;
+            }).catch(err => console.warn('Could not load Cryo symbol for ultimate:', err));
+          }
 
           fighter.isInvincible = true; // Invincible during burst cast windup!
 
@@ -1681,6 +1952,7 @@ export class GameLoop {
    * Update HUD elements
    */
   _updateHUD() {
+    if (this.headlessMode) return;
     if (!this.hud) return;
 
     this.hud.updateHP(this.fighter1.element, this.fighter1.hp, this.fighter1.maxHp);
@@ -1706,6 +1978,13 @@ export class GameLoop {
    * Trigger screen shake effect
    */
   _screenShake() {
+    if (!this.replayMode && this.recordReplayEnabled) {
+      this.replaySFXEvents.push({
+        type: 'screen_shake',
+        time: this.elapsedTime
+      });
+    }
+    if (this.headlessMode) return;
     const container = document.getElementById('game-container');
     if (container) {
       container.classList.remove('screen-shake');
@@ -1723,6 +2002,12 @@ export class GameLoop {
     this.gameOver = true;
     this.winner = winner;
 
+    if (this.headlessMode) return;
+
+    if (this.hud && typeof this.hud.showWatchReplayButton === 'function') {
+      this.hud.showWatchReplayButton(this);
+    }
+
     if (this.onGameOver) {
       this.onGameOver(winner);
     }
@@ -1733,6 +2018,7 @@ export class GameLoop {
    * outward to the sides and fade away, representing an anime-style sword cut!
    */
   _spawnSlicedArrowShards(x, y, angle, isBlazing = false, parentVortex = null) {
+    if (this.headlessMode) return;
     if (!this.stage) return;
 
     // ── Shard 1: The Silver Metal Tip (Front Half) ────────────────────
@@ -1865,6 +2151,1356 @@ export class GameLoop {
 
     // Play a firework whistle launcher SFX!
     playSFX('/audio/yoimiya/yoimiya-na_5.mp3', 1.0); // Crisp whistle launcher
+  }
+
+  // ── Replay System Class Methods ─────────────────
+
+  _recordReplayFrame() {
+    if (this.replayMode || !this.recordReplayEnabled) return;
+
+    const frame = {
+      elapsedTime: this.elapsedTime,
+      fighter1: {
+        x: this.fighter1.body.x,
+        y: this.fighter1.body.y,
+        vx: this.fighter1.body.vx,
+        vy: this.fighter1.body.vy,
+        hp: this.fighter1.hp,
+        maxHp: this.fighter1.maxHp,
+        isInvincible: this.fighter1.isInvincible,
+        isInfused: this.fighter1.isInfused,
+        passiveTimer: this.fighter1.passiveTimer,
+        passiveStacks: this.fighter1.passiveStacks,
+        infusionActiveTimer: this.fighter1.infusionActiveTimer,
+        comboIndex: this.fighter1.comboIndex,
+        swingProgress: this.fighter1.swingProgress,
+        weaponAngle: this.fighter1.weaponAngle,
+        weaponSpriteX: this.fighter1.weaponSprite ? this.fighter1.weaponSprite.x : 0,
+        weaponSpriteY: this.fighter1.weaponSprite ? this.fighter1.weaponSprite.y : 0,
+        weaponSpriteRotation: this.fighter1.weaponSprite ? this.fighter1.weaponSprite.rotation : 0,
+        weaponSpriteTint: this.fighter1.weaponSprite ? this.fighter1.weaponSprite.tint : 0xffffff,
+        glowScale: this.fighter1.circleGlow ? this.fighter1.circleGlow.scale.x : 1,
+        glowAlpha: this.fighter1.circleGlow ? this.fighter1.circleGlow.alpha : 0.4,
+        circleGraphicsTint: this.fighter1.circleGraphics ? this.fighter1.circleGraphics.tint : 0xffffff,
+        skillCDProgress: this.fighter1.getSkillCooldownProgress(),
+        burstCDProgress: this.fighter1.getBurstCooldownProgress(),
+      },
+      fighter2: {
+        x: this.fighter2.body.x,
+        y: this.fighter2.body.y,
+        vx: this.fighter2.body.vx,
+        vy: this.fighter2.body.vy,
+        hp: this.fighter2.hp,
+        maxHp: this.fighter2.maxHp,
+        isInvincible: this.fighter2.isInvincible,
+        isInfused: this.fighter2.isInfused,
+        passiveTimer: this.fighter2.passiveTimer,
+        passiveStacks: this.fighter2.passiveStacks,
+        infusionActiveTimer: this.fighter2.infusionActiveTimer,
+        comboIndex: this.fighter2.comboIndex,
+        swingProgress: this.fighter2.swingProgress,
+        weaponAngle: this.fighter2.weaponAngle,
+        weaponSpriteX: this.fighter2.weaponSprite ? this.fighter2.weaponSprite.x : 0,
+        weaponSpriteY: this.fighter2.weaponSprite ? this.fighter2.weaponSprite.y : 0,
+        weaponSpriteRotation: this.fighter2.weaponSprite ? this.fighter2.weaponSprite.rotation : 0,
+        weaponSpriteTint: this.fighter2.weaponSprite ? this.fighter2.weaponSprite.tint : 0xffffff,
+        glowScale: this.fighter2.circleGlow ? this.fighter2.circleGlow.scale.x : 1,
+        glowAlpha: this.fighter2.circleGlow ? this.fighter2.circleGlow.alpha : 0.4,
+        circleGraphicsTint: this.fighter2.circleGraphics ? this.fighter2.circleGraphics.tint : 0xffffff,
+        skillCDProgress: this.fighter2.getSkillCooldownProgress(),
+        burstCDProgress: this.fighter2.getBurstCooldownProgress(),
+      },
+      projectiles: this.projectiles.map(arrow => ({
+        x: arrow.x,
+        y: arrow.y,
+        angle: arrow.angle,
+        isBlazing: !!arrow.isBlazing,
+        isKindlingSpark: !!arrow.isKindlingSpark,
+        isFireworkRocket: !!arrow.isFireworkRocket,
+        isFinalShot: !!arrow.isFinalShot
+      })),
+      activeEffects: this.activeEffects.map(effect => {
+        const data = {
+          type: effect.type,
+          timer: effect.timer,
+          x: effect.x,
+          y: effect.y,
+          radius: effect.radius,
+          angleOffset: effect.angleOffset,
+          angle: effect.angle,
+          explosionCD: effect.explosionCD
+        };
+        if (effect.type === 'hyouka' || effect.type === 'soumetsu_cast' || effect.type === 'ryuukin_cast') {
+          data.x = effect.owner.body.x;
+          data.y = effect.owner.body.y;
+        } else if (effect.type === 'aurous_blaze_mark' && effect.target) {
+          data.x = effect.target.body.x;
+          data.y = effect.target.body.y;
+        }
+        return data;
+      })
+    };
+
+    this.replayFrames.push(frame);
+  }
+
+  updateReplay(delta) {
+    if (this.replayPaused) return;
+
+    const prevTime = this.replayTime;
+    // Advance replayTime by real elapsed seconds (60fps target frametime of ~0.01667s)
+    this.replayTime += delta * 0.01667 * this.replaySpeed;
+
+    // Check if replay has finished
+    const lastFrame = this.replayFrames[this.replayFrames.length - 1];
+    if (this.replayTime >= lastFrame.elapsedTime) {
+      this.replayTime = lastFrame.elapsedTime;
+      this.replayPlayhead = this.replayFrames.length - 1;
+      this.replayPaused = true;
+      if (this.hud && typeof this.hud.setReplayPlaying === 'function') {
+        this.hud.setReplayPlaying(false);
+      }
+    } else {
+      // Find the closest frame index matching this.replayTime
+      let idx = Math.floor(this.replayPlayhead);
+      if (this.replayTime < this.replayFrames[idx].elapsedTime) {
+        idx = 0; // Reset search from start if seeked backwards
+      }
+      while (idx < this.replayFrames.length - 1 && this.replayFrames[idx + 1].elapsedTime <= this.replayTime) {
+        idx++;
+      }
+      this.replayPlayhead = idx;
+    }
+
+    const frame = this.replayFrames[this.replayPlayhead];
+    if (!frame) return;
+
+    this.renderReplayFrame(frame);
+
+    // Call ambient particle emitters during replay to keep steam & sparks floating dynamically
+    if (this.fighter1.alive && this.fighter1.vfx) {
+      this.fighter1.vfx.updateAmbient(this.fighter1.body.x, this.fighter1.body.y, delta);
+    }
+    if (this.fighter2.alive && this.fighter2.vfx) {
+      this.fighter2.vfx.updateAmbient(this.fighter2.body.x, this.fighter2.body.y, delta);
+    }
+
+    // Audio / Damage Number / VFX triggers sync
+    const curTime = frame.elapsedTime;
+    if (this.replaySpeed > 0 && curTime > prevTime) {
+      this.replaySFXEvents.forEach(evt => {
+        if (evt.time > prevTime && evt.time <= curTime) {
+          let logMsg = "";
+          if (evt.type === 'damage_number') {
+            if (this.damageNumbers) {
+              this.damageNumbers.spawn(evt.x, evt.y, evt.text, evt.element, evt.isCrit);
+            }
+            logMsg = `[DMG] Dealt ${evt.text} ${evt.element.toUpperCase()}${evt.isCrit ? ' CRIT' : ''}`;
+          } else if (evt.type === 'screen_shake') {
+            this._screenShake();
+            logMsg = `[SYSTEM] Screen Shake Impact`;
+          } else if (evt.type === 'portrait_ult') {
+            const fighter = evt.element === 'cryo' ? this.fighter1 : this.fighter2;
+            if (fighter && typeof fighter.playUltAnimation === 'function') {
+              fighter.playUltAnimation();
+            }
+            logMsg = `[ULT] Portrait cinematic start`;
+          } else if (evt.type === 'vfx') {
+            const fighter = evt.element === 'cryo' ? this.fighter1 : this.fighter2;
+            if (fighter && fighter.vfx && typeof fighter.vfx[evt.method] === 'function') {
+              fighter.vfx[evt.method](...evt.args);
+            }
+            logMsg = `[VFX] ${evt.element.toUpperCase()} ${evt.method.replace('trigger', '')}`;
+          } else if (evt.path) {
+            playSFX(evt.path, evt.volume || 0.6);
+            logMsg = `[AUDIO] Play ${evt.path.split('/').pop()}`;
+          }
+          if (logMsg) {
+            this.telemetryLogs.push(logMsg);
+            if (this.telemetryLogs.length > 7) {
+              this.telemetryLogs.shift();
+            }
+          }
+        }
+      });
+    }
+    
+    this._updateTelemetry(frame);
+  }
+
+  clearEffectsCache() {
+    if (this.replayEffectsCache) {
+      const vortex = this.replayEffectsCache.get('soumetsu_vortex');
+      if (vortex) {
+        vortex.destroy({ children: true });
+      }
+      this.replayEffectsCache.clear();
+    } else {
+      this.replayEffectsCache = new Map();
+    }
+  }
+
+  seekReplay(frameIndex) {
+    if (this.fighter1 && this.fighter1.vfx && typeof this.fighter1.vfx.clear === 'function') {
+      this.fighter1.vfx.clear();
+    }
+    if (this.fighter2 && this.fighter2.vfx && typeof this.fighter2.vfx.clear === 'function') {
+      this.fighter2.vfx.clear();
+    }
+    this.clearEffectsCache();
+    if (this.replayEffectsContainer) {
+      this.replayEffectsContainer.removeChildren().forEach(c => c.destroy());
+    }
+    this.replayPlayhead = Math.max(0, Math.min(this.replayFrames.length - 1, frameIndex));
+    const frame = this.replayFrames[this.replayPlayhead];
+    if (frame) {
+      this.replayTime = frame.elapsedTime; // Sync replay clock!
+      this.renderReplayFrame(frame);
+    }
+  }
+
+  _updateTelemetry(frame) {
+    const container = document.getElementById('telemetry-content');
+    if (!container) return;
+
+    const f1HPPercent = (frame.fighter1.hp / frame.fighter1.maxHp) * 100;
+    const f2HPPercent = (frame.fighter2.hp / frame.fighter2.maxHp) * 100;
+
+    const logsHtml = (this.telemetryLogs && this.telemetryLogs.length > 0)
+      ? this.telemetryLogs.map(log => `<div class="telemetry-feed-item">${log}</div>`).join('')
+      : '<div style="color:#555577; text-align:center; padding-top:40px; font-size: 10px;">No events recorded...</div>';
+
+    container.innerHTML = `
+      <div class="telemetry-section">
+        <div class="telemetry-header">🌐 OVERVIEW</div>
+        <div class="telemetry-row">
+          <span class="telemetry-label">Status:</span>
+          <span class="telemetry-value" style="color: ${this.replayPaused ? '#ff5252' : '#00ff66'};">${this.replayPaused ? 'PAUSED' : 'PLAYING'}</span>
+        </div>
+        <div class="telemetry-row">
+          <span class="telemetry-label">Time:</span>
+          <span class="telemetry-value">${frame.elapsedTime.toFixed(2)}s</span>
+        </div>
+        <div class="telemetry-row">
+          <span class="telemetry-label">Playhead:</span>
+          <span class="telemetry-value" style="font-variant-numeric: tabular-nums;">${this.replayPlayhead + 1} / ${this.replayFrames.length}</span>
+        </div>
+        <div class="telemetry-row">
+          <span class="telemetry-label">Speed:</span>
+          <span class="telemetry-value" style="color: #ffd54f;">${this.replaySpeed}x</span>
+        </div>
+      </div>
+
+      <div class="telemetry-section">
+        <div class="telemetry-header" style="color: #80deea;">❄️ AYAKA (CRYO)</div>
+        <div class="telemetry-row">
+          <span class="telemetry-label">HP:</span>
+          <span class="telemetry-value">${Math.round(frame.fighter1.hp)} / ${frame.fighter1.maxHp}</span>
+        </div>
+        <div class="telemetry-bar-bg">
+          <div class="telemetry-bar-fill" style="width: ${f1HPPercent}%; background: #00bcd4;"></div>
+        </div>
+        <div class="telemetry-row" style="margin-top: 4px;">
+          <span class="telemetry-label">Velocity:</span>
+          <span class="telemetry-value" style="font-size: 10px;">vx:${frame.fighter1.vx.toFixed(1)} vy:${frame.fighter1.vy.toFixed(1)}</span>
+        </div>
+        <div class="telemetry-row">
+          <span class="telemetry-label">CD (E / Q):</span>
+          <span class="telemetry-value" style="font-size: 10px;">E:${(frame.fighter1.skillCDProgress * 100).toFixed(0)}% | Q:${(frame.fighter1.burstCDProgress * 100).toFixed(0)}%</span>
+        </div>
+        <div class="telemetry-row">
+          <span class="telemetry-label">State:</span>
+          <span class="telemetry-value" style="color: #80deea; font-size: 10px; text-transform: uppercase;">${frame.fighter1.passiveTimer > 0 ? '❄️ CRYOMELED' : 'NORMAL'}</span>
+        </div>
+      </div>
+
+      <div class="telemetry-section">
+        <div class="telemetry-header" style="color: #ff8a65;">🔥 YOIMIYA (PYRO)</div>
+        <div class="telemetry-row">
+          <span class="telemetry-label">HP:</span>
+          <span class="telemetry-value">${Math.round(frame.fighter2.hp)} / ${frame.fighter2.maxHp}</span>
+        </div>
+        <div class="telemetry-bar-bg">
+          <div class="telemetry-bar-fill" style="width: ${f2HPPercent}%; background: #ff5722;"></div>
+        </div>
+        <div class="telemetry-row" style="margin-top: 4px;">
+          <span class="telemetry-label">Velocity:</span>
+          <span class="telemetry-value" style="font-size: 10px;">vx:${frame.fighter2.vx.toFixed(1)} vy:${frame.fighter2.vy.toFixed(1)}</span>
+        </div>
+        <div class="telemetry-row">
+          <span class="telemetry-label">CD (E / Q):</span>
+          <span class="telemetry-value" style="font-size: 10px;">E:${(frame.fighter2.skillCDProgress * 100).toFixed(0)}% | Q:${(frame.fighter2.burstCDProgress * 100).toFixed(0)}%</span>
+        </div>
+        <div class="telemetry-row">
+          <span class="telemetry-label">State:</span>
+          <span class="telemetry-value" style="color: #ff8a65; font-size: 10px; text-transform: uppercase;">${frame.fighter2.isInfused ? '🔥 INFUSED' : 'NORMAL'} (${frame.fighter2.passiveStacks} St)</span>
+        </div>
+      </div>
+
+      <div class="telemetry-section">
+        <div class="telemetry-header">☄️ ENTITIES</div>
+        <div class="telemetry-row">
+          <span class="telemetry-label">Projectiles:</span>
+          <span class="telemetry-value">${frame.projectiles.length} active</span>
+        </div>
+        <div class="telemetry-row">
+          <span class="telemetry-label">Burst Effects:</span>
+          <span class="telemetry-value">${frame.activeEffects.length} active</span>
+        </div>
+      </div>
+
+      <div class="telemetry-section" style="margin-bottom: 0;">
+        <div class="telemetry-header">📡 PROCESS FEED</div>
+        <div class="telemetry-feed">
+          ${logsHtml}
+        </div>
+      </div>
+    `;
+  }
+
+  renderReplayFrame(frame) {
+    this.elapsedTime = frame.elapsedTime;
+
+    // 1. Fighter 1
+    const f1 = this.fighter1;
+    const s1 = frame.fighter1;
+    f1.body.x = s1.x;
+    f1.body.y = s1.y;
+    f1.body.vx = s1.vx;
+    f1.body.vy = s1.vy;
+    f1.hp = s1.hp;
+    f1.maxHp = s1.maxHp;
+    f1.isInvincible = s1.isInvincible;
+    f1.isInfused = s1.isInfused;
+    f1.passiveTimer = s1.passiveTimer;
+    f1.passiveStacks = s1.passiveStacks;
+    f1.infusionActiveTimer = s1.infusionActiveTimer;
+    f1.comboIndex = s1.comboIndex;
+    f1.swingProgress = s1.swingProgress;
+    f1.weaponAngle = s1.weaponAngle;
+    f1.alive = s1.hp > 0;
+
+    // Ayaka Cryo sword infusion snow trail particles during replay
+    if (f1.vfx && (s1.passiveTimer > 0 || s1.isInfused) && typeof f1.vfx.triggerSwordInfusionParticles === 'function') {
+      f1.vfx.triggerSwordInfusionParticles(f1.body.x + s1.weaponSpriteX, f1.body.y + s1.weaponSpriteY);
+    }
+
+    f1.container.x = s1.x;
+    f1.container.y = s1.y;
+
+    if (f1.hpText) {
+      f1.hpText.text = Math.round(f1.hp).toString();
+    }
+    if (f1.circleGraphics) {
+      f1.circleGraphics.tint = s1.circleGraphicsTint;
+    }
+    if (f1.circleGlow) {
+      f1.circleGlow.scale.set(s1.glowScale);
+      f1.circleGlow.alpha = s1.glowAlpha;
+    }
+    if (f1.weaponSprite) {
+      f1.weaponSprite.x = s1.weaponSpriteX;
+      f1.weaponSprite.y = s1.weaponSpriteY;
+      f1.weaponSprite.rotation = s1.weaponSpriteRotation;
+      f1.weaponSprite.tint = s1.weaponSpriteTint;
+    }
+
+    // 2. Fighter 2
+    const f2 = this.fighter2;
+    const s2 = frame.fighter2;
+    f2.body.x = s2.x;
+    f2.body.y = s2.y;
+    f2.body.vx = s2.vx;
+    f2.body.vy = s2.vy;
+    f2.hp = s2.hp;
+    f2.maxHp = s2.maxHp;
+    f2.isInvincible = s2.isInvincible;
+    f2.isInfused = s2.isInfused;
+    f2.passiveTimer = s2.passiveTimer;
+    f2.passiveStacks = s2.passiveStacks;
+    f2.infusionActiveTimer = s2.infusionActiveTimer;
+    f2.comboIndex = s2.comboIndex;
+    f2.swingProgress = s2.swingProgress;
+    f2.weaponAngle = s2.weaponAngle;
+    f2.alive = s2.hp > 0;
+
+    f2.container.x = s2.x;
+    f2.container.y = s2.y;
+
+    if (f2.hpText) {
+      f2.hpText.text = Math.round(f2.hp).toString();
+    }
+    if (f2.circleGraphics) {
+      f2.circleGraphics.tint = s2.circleGraphicsTint;
+    }
+    if (f2.circleGlow) {
+      f2.circleGlow.scale.set(s2.glowScale);
+      f2.circleGlow.alpha = s2.glowAlpha;
+    }
+    if (f2.weaponSprite) {
+      f2.weaponSprite.x = s2.weaponSpriteX;
+      f2.weaponSprite.y = s2.weaponSpriteY;
+      f2.weaponSprite.rotation = s2.weaponSpriteRotation;
+      f2.weaponSprite.tint = s2.weaponSpriteTint;
+    }
+
+    // Yoimiya E particles (infusion particles)
+    [f1, f2].forEach(f => {
+      if (f.id === 'yoimiya' && f.infusionParticles) {
+        f.infusionParticles.forEach((p, idx) => {
+          p.visible = f.isInfused;
+          if (f.isInfused) {
+            const orbitAngle = this.elapsedTime * 5 + (idx * Math.PI * 2) / 3;
+            const orbitDist = f.data.circleRadius + 20;
+            p.x = Math.cos(orbitAngle) * orbitDist;
+            p.y = Math.sin(orbitAngle) * orbitDist;
+          }
+        });
+      }
+    });
+
+    // Yoimiya's E infusion sparkler trail particles during replay
+    if (f2.id === 'yoimiya' && f2.isInfused && f2.vfx && f2.infusionParticles) {
+      f2.infusionParticles.forEach((p, i) => {
+        if (Math.random() < 0.3) {
+          const worldX = f2.body.x + p.x;
+          const worldY = f2.body.y + p.y;
+          if (typeof f2.vfx.triggerCollision === 'function') {
+            f2.vfx.triggerCollision(worldX, worldY);
+          }
+        }
+      });
+    }
+
+    // 3. Clear and Draw Replay Projectiles
+    this.replayProjectilesContainer.removeChildren().forEach(c => c.destroy());
+
+    frame.projectiles.forEach(p => {
+      const g = new Graphics();
+      if (p.isFireworkRocket) {
+        g.rect(-12, -4, 24, 8);
+        g.fill({ color: 0xffab40 });
+        g.rect(-6, -4, 12, 8);
+        g.fill({ color: 0xd84315 });
+        g.moveTo(12, -4);
+        g.lineTo(19, 0);
+        g.lineTo(12, 4);
+        g.closePath();
+        g.fill({ color: 0xffeb3b });
+        g.stroke({ color: 0xff3d00, width: 2 });
+        g.moveTo(-12, -2);
+        g.lineTo(-22, 0);
+        g.lineTo(-12, 2);
+        g.closePath();
+        g.fill({ color: 0xffffff });
+      } else if (p.isKindlingSpark) {
+        g.circle(0, 0, 4.5);
+        g.fill({ color: 0xffaa00 });
+        g.stroke({ color: 0xff3d00, width: 1.5 });
+      } else if (p.isBlazing) {
+        g.moveTo(-10, -2);
+        g.lineTo(10, -2);
+        g.lineTo(14, 0);
+        g.lineTo(10, 2);
+        g.lineTo(-10, 2);
+        g.closePath();
+        g.fill({ color: 0xff4500 });
+        g.circle(6, 0, 3);
+        g.fill({ color: 0xffaa00 });
+      } else {
+        g.moveTo(-10, -1.5);
+        g.lineTo(8, -1.5);
+        g.lineTo(12, 0);
+        g.lineTo(8, 1.5);
+        g.lineTo(-10, 1.5);
+        g.closePath();
+        g.fill({ color: 0x90a4ae });
+        g.moveTo(-8, -4);
+        g.lineTo(-4, -1.5);
+        g.lineTo(-10, -1.5);
+        g.closePath();
+        g.fill({ color: 0x8d6e63 });
+        g.moveTo(-8, 4);
+        g.lineTo(-4, 1.5);
+        g.lineTo(-10, 1.5);
+        g.closePath();
+        g.fill({ color: 0x8d6e63 });
+      }
+      g.x = p.x;
+      g.y = p.y;
+      g.rotation = p.angle;
+      this.replayProjectilesContainer.addChild(g);
+
+      // Trigger continuous arrow trails during replay
+      const shooter = this.fighter2; // Yoimiya is the shooter of blazing arrows/rockets
+      if (p.isBlazing && shooter && shooter.vfx) {
+        if (p.isFireworkRocket && typeof shooter.vfx.triggerRocketTrail === 'function') {
+          shooter.vfx.triggerRocketTrail(p.x, p.y, p.angle);
+        } else if (typeof shooter.vfx.triggerArrowTrail === 'function') {
+          shooter.vfx.triggerArrowTrail(p.x, p.y, p.isKindlingSpark);
+        }
+      }
+    });
+
+    // 4. Clear and Draw Replay Active Effects
+    // Destroy simple temporary children from previous frame to avoid leaking, but preserve the cached vortex
+    this.replayEffectsContainer.children.forEach(c => {
+      if (c !== this.replayEffectsCache.get('soumetsu_vortex')) {
+        c.destroy();
+      }
+    });
+    this.replayEffectsContainer.removeChildren();
+
+    frame.activeEffects.forEach(effect => {
+      if (effect.type === 'hyouka') {
+        const g = new Graphics();
+        
+        // Snapshotted timer starts at 1.0 (bloom delay) and counts down to 0
+        const elapsed = 1.0 - effect.timer; // goes from 0.0 to 1.0 seconds
+        const progress = Math.min(1.0, elapsed / 1.0); // progress ratio from 0 to 1
+        
+        const scale = Math.min(1.0, elapsed / 0.15); // Grow scale over first 150ms
+        g.scale.set(scale);
+
+        // Outline color interpolation (bright Cryo blue to deep navy)
+        const rOut = Math.round(79 * (1 - progress) + 13 * progress);
+        const gOut = Math.round(195 * (1 - progress) + 71 * progress);
+        const bOut = Math.round(247 * (1 - progress) + 161 * progress);
+        const outlineColor = (rOut << 16) | (gOut << 8) | bOut;
+
+        // Fill color interpolation (Cryo blue to deep ominious navy)
+        const rFill = Math.round(128 * (1 - progress) + 7 * progress);
+        const gFill = Math.round(222 * (1 - progress) + 12 * progress);
+        const bFill = Math.round(234 * (1 - progress) + 30 * progress);
+        const fillColor = (rFill << 16) | (gFill << 8) | bFill;
+
+        const fillAlpha = 0.06 + 0.39 * progress;
+        const strokeAlpha = 0.6 + 0.4 * progress;
+        const strokeWidth = 2 + 1.5 * progress;
+
+        g.circle(0, 0, 180);
+        g.fill({ color: fillColor, alpha: fillAlpha });
+        g.stroke({ color: outlineColor, width: strokeWidth, alpha: strokeAlpha });
+
+        // Draw inner target ring
+        g.circle(0, 0, 90);
+        g.stroke({ color: outlineColor, width: 1, alpha: 0.3 * (1 - progress) });
+
+        // Dynamic pulsing alpha animation overlay
+        g.alpha = 0.85 + Math.sin(this.elapsedTime * 60 * 0.015) * 0.1;
+        
+        let cx = effect.x;
+        let cy = effect.y;
+        if (typeof cx !== 'number' || isNaN(cx)) cx = f1.body.x;
+        if (typeof cy !== 'number' || isNaN(cy)) cy = f1.body.y;
+        
+        g.x = cx;
+        g.y = cy;
+        this.replayEffectsContainer.addChild(g);
+
+        // Draw rotating Cryo symbol sprite dynamically!
+        const popProgress = Math.min(1.0, elapsed / 0.35); // pop up over 350ms
+        const targetSize = 360;
+        
+        if (this.cryoTexture) {
+          const sprite = new Sprite(this.cryoTexture);
+          sprite.anchor.set(0.5);
+          sprite.x = cx;
+          sprite.y = cy;
+          sprite.width = targetSize * popProgress;
+          sprite.height = targetSize * popProgress;
+          sprite.alpha = 0.75 * popProgress;
+          sprite.rotation = elapsed * 0.5;
+          sprite.tint = 0x80deea;
+          this.replayEffectsContainer.addChild(sprite);
+        } else {
+          Assets.load('/cryo.png').then(texture => {
+            this.cryoTexture = texture;
+          }).catch(() => {});
+        }
+      }
+      else if (effect.type === 'soumetsu_cast') {
+        const progress = 1 - (effect.timer / 1.3);
+        const gTelegraph = new Graphics();
+        const range = 800;
+        const width = 12 + 65 * progress;
+        const alpha = 0.15 + 0.5 * progress;
+        
+        let cx = effect.x;
+        let cy = effect.y;
+        if (typeof cx !== 'number' || isNaN(cx)) cx = f1.body.x;
+        if (typeof cy !== 'number' || isNaN(cy)) cy = f1.body.y;
+        
+        const angle = effect.angle || 0;
+        gTelegraph.moveTo(0, 0);
+        gTelegraph.lineTo(Math.cos(angle) * range, Math.sin(angle) * range);
+        gTelegraph.stroke({ color: 0x80deea, width: width, alpha: alpha });
+        gTelegraph.x = cx;
+        gTelegraph.y = cy;
+        this.replayEffectsContainer.addChild(gTelegraph);
+
+        const gRing = new Graphics();
+        const ringRadius = 250 * (1 - progress) + 40;
+        gRing.circle(0, 0, ringRadius);
+        gRing.stroke({ color: 0x00e5ff, width: 3, alpha: 0.5 + progress * 0.4 });
+        gRing.x = cx;
+        gRing.y = cy;
+        this.replayEffectsContainer.addChild(gRing);
+
+        // Draw rotating Cryo symbol inside ultimate telegraph!
+        if (this.cryoTexture) {
+          const sprite = new Sprite(this.cryoTexture);
+          sprite.anchor.set(0.5);
+          sprite.x = cx;
+          sprite.y = cy;
+          const size = 300 * (1 - progress) + 80;
+          sprite.width = size;
+          sprite.height = size;
+          sprite.alpha = 0.2 + progress * 0.45;
+          sprite.rotation = -progress * 1.5;
+          sprite.tint = 0x80deea;
+          this.replayEffectsContainer.addChild(sprite);
+        } else {
+          Assets.load('/cryo.png').then(texture => {
+            this.cryoTexture = texture;
+          }).catch(() => {});
+        }
+
+        // Emit vacuum particles towards Ayaka
+        const shooter = this.fighter1; // Ayaka
+        if (shooter && shooter.vfx && typeof shooter.vfx.triggerVacuumParticles === 'function') {
+          const delta = 1.0;
+          if (Math.random() < 0.8 * delta) {
+            const spawnAngle = Math.random() * Math.PI * 2;
+            const spawnR = ringRadius + 20 + Math.random() * 50;
+            const px = cx + Math.cos(spawnAngle) * spawnR;
+            const py = cy + Math.sin(spawnAngle) * spawnR;
+            shooter.vfx.triggerVacuumParticles(px, py, cx, cy);
+          }
+        }
+      }
+      else if (effect.type === 'ryuukin_cast') {
+        const g = new Graphics();
+        const progress = Math.min(1.0, Math.max(0.0, 1 - (effect.timer / 1.0)));
+        const ringRadius = 160 * (1 - progress) + 30;
+        
+        let cx = effect.x;
+        let cy = effect.y;
+        if (typeof cx !== 'number' || isNaN(cx)) cx = f2.body.x;
+        if (typeof cy !== 'number' || isNaN(cy)) cy = f2.body.y;
+        
+        // Exact live coloring: orange to white, dark orange fill white flickering
+        const startR = 0xff, startG = 0x6d, startB = 0x00;
+        const endR = 0xff, endG = 0xff, endB = 0xff;
+        const currentR = Math.round(startR + (endR - startR) * progress);
+        const currentG = Math.round(startG + (endG - startG) * progress);
+        const currentB = Math.round(startB + (endB - startB) * progress);
+        const currentColor = (currentR << 16) | (currentG << 8) | currentB;
+
+        const fillStartR = 0x9e, fillStartG = 0x2a, fillStartB = 0x00;
+        const fillEndR = 0xff, fillEndG = 0xff, fillEndB = 0xff;
+        const fillR = Math.round(fillStartR + (fillEndR - fillStartR) * progress);
+        const fillG = Math.round(fillStartG + (fillEndG - fillStartG) * progress);
+        const fillB = Math.round(fillStartB + (fillEndB - fillStartB) * progress);
+        const fillCol = (fillR << 16) | (fillG << 8) | fillB;
+
+        let fillAlpha = 0.35 + 0.55 * progress;
+        let finalCol = fillCol;
+
+        // Flicker white in last 40% of the cast
+        if (progress > 0.6) {
+          const timeScale = this.elapsedTime * 1000 * 0.08;
+          const isFlickerWhite = Math.sin(timeScale) > 0.1 || Math.random() < 0.3;
+          if (isFlickerWhite) {
+            finalCol = 0xffffff;
+            fillAlpha = Math.min(1.0, fillAlpha + 0.15);
+          }
+        }
+
+        g.circle(0, 0, ringRadius);
+        g.fill({ color: finalCol, alpha: fillAlpha });
+        g.stroke({ color: currentColor, width: 3.5, alpha: 0.35 + 0.65 * progress });
+        g.x = cx;
+        g.y = cy;
+        this.replayEffectsContainer.addChild(g);
+
+        // Emit windup sparks towards Yoimiya center
+        const shooter = this.fighter2; // Yoimiya
+        if (shooter && shooter.vfx && typeof shooter.vfx.triggerWindupSparks === 'function') {
+          shooter.vfx.triggerWindupSparks(cx, cy);
+        }
+      }
+      else if (effect.type === 'aurous_blaze_mark') {
+        const rad = 45;
+        const angleOffset = effect.angleOffset || 0;
+        
+        let cx = effect.x;
+        let cy = effect.y;
+        if (typeof cx !== 'number' || isNaN(cx)) cx = f1.body.x;
+        if (typeof cy !== 'number' || isNaN(cy)) cy = f1.body.y;
+
+        // Warning flicker color logic 0.8s before interval pops
+        let sparkleColor = 0xffab40;
+        if (effect.explosionCD <= 0.8) {
+          const flashRate = 75;
+          const isWhite = Math.floor((this.elapsedTime * 1000) / flashRate) % 2 === 0;
+          sparkleColor = isWhite ? 0xffffff : 0xffab40;
+        }
+
+        const c1 = new Graphics();
+        drawSparkle(c1, sparkleColor);
+        c1.x = cx + Math.cos(angleOffset) * rad;
+        c1.y = cy + Math.sin(angleOffset) * rad;
+        c1.rotation = angleOffset * 2.0;
+
+        const c2 = new Graphics();
+        drawSparkle(c2, sparkleColor);
+        c2.x = cx + Math.cos(angleOffset + Math.PI) * rad;
+        c2.y = cy + Math.sin(angleOffset + Math.PI) * rad;
+        c2.rotation = -angleOffset * 2.0;
+
+        this.replayEffectsContainer.addChild(c1);
+        this.replayEffectsContainer.addChild(c2);
+
+        // Emit mark trail particles on both orbiters
+        const shooter = this.fighter2; // Yoimiya
+        if (shooter && shooter.vfx && typeof shooter.vfx.triggerMarkTrail === 'function') {
+          shooter.vfx.triggerMarkTrail(c1.x, c1.y, c2.x, c2.y);
+        }
+      }
+      else if (effect.type === 'soumetsu_vortex') {
+        // High-fidelity performance-optimized cached vortex implementation
+        let vortex = this.replayEffectsCache.get('soumetsu_vortex');
+        if (!vortex) {
+          vortex = new Container();
+          
+          const drawBlade = (r, t, len, color, alpha, speed) => {
+            const g = new Graphics();
+            const half = len / 2;
+            g.moveTo(Math.cos(-half) * r, Math.sin(-half) * r);
+            g.bezierCurveTo(
+              Math.cos(-half/2) * (r + t), Math.sin(-half/2) * (r + t),
+              Math.cos(half/2) * (r + t), Math.sin(half/2) * (r + t),
+              Math.cos(half) * r, Math.sin(half) * r
+            );
+            g.bezierCurveTo(
+              Math.cos(half/2) * (r - t), Math.sin(half/2) * (r - t),
+              Math.cos(-half/2) * (r - t), Math.sin(-half/2) * (r - t),
+              Math.cos(-half) * r, Math.sin(-half) * r
+            );
+            g.fill({ color, alpha });
+            g.spinSpeed = speed;
+            return g;
+          };
+
+          const cryoColors = [0x5ed4fc, 0xb4e1fa, 0xffffff, 0x9df0ff, 0x1a6dd4, 0x0c3366];
+          for (let k = 0; k < 90; k++) {
+            const r = 34 + Math.random() * 101;      // Max radius ~135px
+            const t = 1.5 + Math.random() * 9;      // Balanced thickness
+            const len = 0.2 + Math.random() * 2.5; // Varying arc length
+            const speed = (0.1 + Math.random() * 0.3) * (Math.random() > 0.5 ? 1 : -1); 
+            const color = cryoColors[Math.floor(Math.random() * cryoColors.length)];
+            const alpha = 0.12 + Math.random() * 0.4;
+            
+            const blade = drawBlade(r, t, len, color, alpha, speed);
+            blade.rotation = Math.random() * Math.PI * 2;
+            vortex.addChild(blade);
+          }
+          this.replayEffectsCache.set('soumetsu_vortex', vortex);
+        }
+
+        // Spin each blade dynamically
+        if (vortex.children) {
+          vortex.children.forEach(child => {
+            child.rotation += (child.spinSpeed || 0.2) * delta;
+          });
+        }
+
+        let vx = effect.x;
+        let vy = effect.y;
+        if (typeof vx !== 'number' || isNaN(vx)) vx = f1.body.x;
+        if (typeof vy !== 'number' || isNaN(vy)) vy = f1.body.y;
+        vortex.x = vx;
+        vortex.y = vy;
+        this.replayEffectsContainer.addChild(vortex);
+
+        // Emit constant ice particles for "messy" blizzard feel during replay
+        const shooter = this.fighter1; // Ayaka
+        if (shooter && shooter.vfx && Math.random() < 0.6) {
+          if (typeof shooter.vfx.triggerVortexParticles === 'function') {
+            shooter.vfx.triggerVortexParticles(
+              vx + (Math.random() - 0.5) * 270,
+              vy + (Math.random() - 0.5) * 270,
+              vx,
+              vy
+            );
+          }
+        }
+      }
+    });
+
+    // 5. Update HUD stats & HP
+    if (this.hud) {
+      this.hud.updateHP('cryo', f1.hp, f1.maxHp);
+      this.hud.updateHP('pyro', f2.hp, f2.maxHp);
+
+      // Reconstruct and update cooldown timers from snapshot progress values during replay
+      f1.skillCDTimer = f1.data.skillE.cooldown * (1 - (s1.skillCDProgress ?? 1));
+      if (s1.skillCDProgress === 1) f1.skillCDTimer = 0;
+      f1.burstCDTimer = f1.data.burstQ.cooldown * (1 - (s1.burstCDProgress ?? 1));
+      if (s1.burstCDProgress === 1) f1.burstCDTimer = 0;
+
+      f2.skillCDTimer = f2.data.skillE.cooldown * (1 - (s2.skillCDProgress ?? 1));
+      if (s2.skillCDProgress === 1) f2.skillCDTimer = 0;
+      f2.burstCDTimer = f2.data.burstQ.cooldown * (1 - (s2.burstCDProgress ?? 1));
+      if (s2.burstCDProgress === 1) f2.burstCDTimer = 0;
+
+      this.hud.updateAbilityCD('cryo', 'E', f1.skillCDTimer, f1.data.skillE.cooldown);
+      this.hud.updateAbilityCD('cryo', 'Q', f1.burstCDTimer, f1.data.burstQ.cooldown);
+      this.hud.updateAbilityCD('pyro', 'E', f2.skillCDTimer, f2.data.skillE.cooldown);
+      this.hud.updateAbilityCD('pyro', 'Q', f2.burstCDTimer, f2.data.burstQ.cooldown);
+
+      const ySpeed = f2.data.attackSpeed * (f2.isInfused ? 2.0 : 1.0);
+      this.hud.updateStats('cryo', f1.getCurrentDamage(), f1.data.attackSpeed);
+      this.hud.updateStats('pyro', f2.getCurrentDamage(), ySpeed);
+
+      this.hud.updatePassiveState('cryo', f1.passiveTimer, 0);
+      this.hud.updatePassiveState('pyro', f2.passiveTimer, f2.passiveStacks);
+
+      if (typeof this.hud.updateReplayScrubber === 'function') {
+        this.hud.updateReplayScrubber(Math.floor(this.replayPlayhead), this.replayFrames.length, this.elapsedTime);
+      }
+    }
+  }
+  startReplay() {
+    if (this.replayFrames.length === 0) {
+      console.warn("Replay: No recorded frames available.");
+      return;
+    }
+
+    this.replayMode = true;
+    this.telemetryLogs = [];
+    this.replayPlayhead = 0;
+    this.replayTime = 0; // Initialize replay clock!
+    this.replayPaused = false;
+    this.replaySpeed = 1.0;
+
+    if (this.fighter1 && this.fighter1.vfx && typeof this.fighter1.vfx.clear === 'function') {
+      this.fighter1.vfx.clear();
+    }
+    if (this.fighter2 && this.fighter2.vfx && typeof this.fighter2.vfx.clear === 'function') {
+      this.fighter2.vfx.clear();
+    }
+    this.clearEffectsCache();
+    if (this.replayEffectsContainer) {
+      this.replayEffectsContainer.removeChildren().forEach(c => c.destroy());
+    }
+
+    // Remove victory styling hooks from HUD so health bars don't disappear during replay
+    const hudElement = document.getElementById('gacha-hud');
+    if (hudElement) {
+      hudElement.classList.remove('hud-active-win', 'hud-winner-cryo', 'hud-winner-pyro');
+    }
+
+    // Reset loop pausing and gameover triggers
+    this.paused = false;
+    this.gameOver = false;
+
+    if (this.pauseContainer) {
+      this.pauseContainer.visible = false;
+    }
+
+    // Hide standard victory screen
+    const winScreen = document.getElementById('win-screen');
+    if (winScreen) {
+      winScreen.style.opacity = '0';
+      winScreen.style.pointerEvents = 'none';
+      setTimeout(() => {
+        if (winScreen.style.opacity === '0') {
+          winScreen.style.display = 'none';
+        }
+      }, 300);
+    }
+
+    // Hide active live elements from PixiJS stage
+    this.projectiles.forEach(p => {
+      if (p.visual && p.visual.parent) p.visual.parent.removeChild(p.visual);
+      p.visual.destroy();
+    });
+    this.projectiles = [];
+
+    this.activeEffects.forEach(e => {
+      if (e.visual && e.visual.parent) e.visual.parent.removeChild(e.visual);
+      if (e.telegraph && e.telegraph.parent) e.telegraph.parent.removeChild(e.telegraph);
+      if (e.ring && e.ring.parent) e.ring.parent.removeChild(e.ring);
+      if (e.symbolSprite && e.symbolSprite.parent) e.symbolSprite.parent.removeChild(e.symbolSprite);
+      if (e.circle1 && e.circle1.parent) e.circle1.parent.removeChild(e.circle1);
+      if (e.circle2 && e.circle2.parent) e.circle2.parent.removeChild(e.circle2);
+    });
+    this.activeEffects = [];
+
+    // Trigger HUD Deck injection
+    if (this.hud && typeof this.hud.showReplayDeck === 'function') {
+      this.hud.showReplayDeck(this);
+    }
+  }
+
+  exitReplay() {
+    this.replayMode = false;
+
+    if (this.fighter1 && this.fighter1.vfx && typeof this.fighter1.vfx.clear === 'function') {
+      this.fighter1.vfx.clear();
+    }
+    if (this.fighter2 && this.fighter2.vfx && typeof this.fighter2.vfx.clear === 'function') {
+      this.fighter2.vfx.clear();
+    }
+
+    // Clean containers
+    this.replayProjectilesContainer.removeChildren().forEach(c => c.destroy());
+    this.replayEffectsContainer.removeChildren().forEach(c => c.destroy());
+
+    if (this.hud && typeof this.hud.hideReplayDeck === 'function') {
+      this.hud.hideReplayDeck();
+    }
+
+    if (this.winner) {
+      if (this.hud && typeof this.hud.showWatchReplayButton === 'function') {
+        this.hud.showWatchReplayButton(this);
+      }
+      // Restore victory styling hooks on HUD so loser's elements are correctly faded on win overlay
+      const hudElement = document.getElementById('gacha-hud');
+      if (hudElement) {
+        hudElement.classList.add('hud-active-win');
+        hudElement.classList.add(this.winner.element === 'cryo' ? 'hud-winner-cryo' : 'hud-winner-pyro');
+      }
+      // Restore standard win overlay
+      const winScreen = document.getElementById('win-screen');
+      if (winScreen) {
+        winScreen.style.display = 'flex';
+        winScreen.style.pointerEvents = 'auto';
+        void winScreen.offsetHeight;
+        winScreen.style.opacity = '1';
+      }
+      this.gameOver = true;
+    } else {
+      location.reload();
+    }
+  }
+
+  resetFighters(vel1, vel2) {
+    const f1 = this.fighter1;
+    const f2 = this.fighter2;
+
+    const instantCast = localStorage.getItem('dev-instant-cast') === 'true';
+
+    f1.hp = f1.maxHp;
+    f1.alive = true;
+    f1.lastAttackTime = 0;
+    f1.attackIntervalOffset = 0;
+    f1.skillCDTimer = instantCast ? 0 : f1.data.skillE.cooldown;
+    f1.burstCDTimer = instantCast ? 0 : f1.data.burstQ.cooldown;
+    f1.isInfused = false;
+    f1.infusionActiveTimer = 0;
+    f1.passiveStacks = 0;
+    f1.passiveTimer = 0;
+    f1.comboIndex = 0;
+    f1.swingProgress = 1.0;
+    f1.swingDuration = 0;
+    f1.hasHitThisSwing = false;
+    f1.hasThrustedThisSwing = false;
+    f1.isInvincible = false;
+    f1.slowMultiplier = 1.0;
+    f1.stats = {
+      damageDealt: { normal: 0, enhancedNormal: 0, skill: 0, burst: 0 },
+      casts: { skill: 0, burst: 0 }
+    };
+    f1.body.x = 600 * 0.25;
+    f1.body.y = 670 * 0.5;
+    f1.body.vx = vel1.vx;
+    f1.body.vy = vel1.vy;
+    f1.weaponAngle = Math.random() * Math.PI * 2;
+
+    f2.hp = f2.maxHp;
+    f2.alive = true;
+    f2.lastAttackTime = 0;
+    f2.attackIntervalOffset = 0;
+    f2.skillCDTimer = instantCast ? 0 : f2.data.skillE.cooldown;
+    f2.burstCDTimer = instantCast ? 0 : f2.data.burstQ.cooldown;
+    f2.isInfused = false;
+    f2.infusionActiveTimer = 0;
+    f2.passiveStacks = 0;
+    f2.passiveTimer = 0;
+    f2.comboIndex = 0;
+    f2.swingProgress = 1.0;
+    f2.swingDuration = 0;
+    f2.hasHitThisSwing = false;
+    f2.hasThrustedThisSwing = false;
+    f2.isInvincible = false;
+    f2.slowMultiplier = 1.0;
+    f2.stats = {
+      damageDealt: { normal: 0, enhancedNormal: 0, skill: 0, burst: 0 },
+      casts: { skill: 0, burst: 0 }
+    };
+    f2.body.x = 600 * 0.75;
+    f2.body.y = 670 * 0.5;
+    f2.body.vx = vel2.vx;
+    f2.body.vy = vel2.vy;
+    f2.weaponAngle = Math.random() * Math.PI * 2;
+  }
+
+  async runHeadlessSimulation(maxRuns = 500) {
+    console.log("🔍 Starting extreme-diff headless battle search...");
+    
+    // Telemetry log registration of button click
+    this.simTelemetryLogs = [
+      '[SYSTEM] Instant Sim button click registered.',
+      '[SYSTEM] Initializing simulation overlay...'
+    ];
+    this._updateSimTelemetry();
+    await new Promise(resolve => setTimeout(resolve, 50)); // Paint DOM immediately!
+
+    // Create progress overlay dynamically in DOM
+    const overlayId = 'sim-progress-overlay';
+    let overlay = document.getElementById(overlayId);
+    if (!overlay) {
+      overlay = document.createElement('div');
+      overlay.id = overlayId;
+      overlay.style.position = 'fixed';
+      overlay.style.top = '50%';
+      overlay.style.left = '50%';
+      overlay.style.transform = 'translate(-50%, -50%)';
+      overlay.style.background = '#0d0d16';
+      overlay.style.border = '4px solid #000';
+      overlay.style.boxShadow = '10px 10px 0px #000';
+      overlay.style.padding = '30px';
+      overlay.style.zIndex = '9999';
+      overlay.style.color = 'white';
+      overlay.style.fontFamily = "'Outfit', sans-serif";
+      overlay.style.textAlign = 'center';
+      overlay.style.width = '320px';
+      overlay.style.userSelect = 'none';
+
+      overlay.innerHTML = `
+        <div style="font-size: 18px; font-weight: 900; color: #ff9800; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 8px;">🔍 SIMULATING BATTLES</div>
+        <div style="font-size: 10px; font-weight: 700; color: #8888aa; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 24px;">CRUNCHING PHYSICS SEEDS FOR CLUTCH FINISH</div>
+        <div id="sim-progress-text" style="font-size: 16px; font-weight: 900; font-variant-numeric: tabular-nums; background: #161626; border: 2.5px solid #000; padding: 12px; margin-bottom: 18px; text-transform: uppercase; letter-spacing: 0.5px;">RUN 0 / ${maxRuns}</div>
+        <div style="width: 100%; height: 16px; background: #1b1b24; border: 2.5px solid #000; overflow: hidden; position: relative;">
+          <div id="sim-progress-bar" style="width: 0%; height: 100%; background: #ffd54f; transition: width 0.08s ease;"></div>
+        </div>
+        <div style="font-size: 9px; font-weight: 600; color: #555577; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 15px;">Zero Frame Render Lag • CPU Safe</div>
+      `;
+      document.body.appendChild(overlay);
+    }
+
+    const progressText = document.getElementById('sim-progress-text');
+    const progressBar = document.getElementById('sim-progress-bar');
+
+    this.simTelemetryLogs.push('[SYSTEM] Saving active gameplay state...');
+    this._updateSimTelemetry();
+    await new Promise(resolve => setTimeout(resolve, 20));
+
+    // Save current state
+    const savedElapsedTime = this.elapsedTime;
+    const savedGameOver = this.gameOver;
+    const savedWinner = this.winner;
+    const savedReplayMode = this.replayMode;
+    const savedPaused = this.paused;
+    const savedProjectiles = [...this.projectiles];
+    const savedActiveEffects = [...this.activeEffects];
+    const savedReplayFrames = [...this.replayFrames];
+    const savedReplaySFXEvents = [...this.replaySFXEvents];
+    const savedScheduledArrows = [...this.scheduledArrows];
+    const savedScheduledMelee = [...this.scheduledMelee];
+    const savedCollisionCooldown = this.collisionCooldown;
+    const savedSoundCooldown = this.soundCooldown;
+    const savedDamageNumbers = this.damageNumbers;
+
+    // Save actual live position/velocity of fighters
+    const f1Start = {
+      hp: this.fighter1.hp,
+      vx: this.fighter1.body.vx,
+      vy: this.fighter1.body.vy,
+      x: this.fighter1.body.x,
+      y: this.fighter1.body.y
+    };
+    const f2Start = {
+      hp: this.fighter2.hp,
+      vx: this.fighter2.body.vx,
+      vy: this.fighter2.body.vy,
+      x: this.fighter2.body.x,
+      y: this.fighter2.body.y
+    };
+
+    // Temporarily mock stage and damageNumbers for headless mode
+    const realStage = this.stage;
+    this.stage = {
+      addChild: () => {},
+      addChildAt: () => {},
+      removeChild: () => {},
+      removeChildren: () => []
+    };
+    this.damageNumbers = { spawn: () => {} };
+
+    this.headlessMode = true;
+    window.headlessGachaMode = true;
+    this.replayMode = false;
+    this.paused = false;
+
+    // Disable recording during search to save massive memory & CPU allocation!
+    this.recordReplayEnabled = false;
+
+    // Seeded PRNG setup for 100% deterministic runs
+    const originalRandom = Math.random;
+    function mulberry32(a) {
+      return function() {
+        let t = a += 0x6D2B79F5;
+        t = Math.imul(t ^ (t >>> 15), t | 1);
+        t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+      }
+    }
+
+    let foundExtreme = false;
+    let foundWinner = null;
+    let foundElapsedTime = 0;
+    let foundSeed = 0;
+    
+    // Fallback tracking (closest match in case no true extreme diff is found)
+    let bestFallbackHP = Infinity;
+    let bestFallbackWinner = null;
+    let bestFallbackElapsedTime = 0;
+    let bestFallbackSeed = 0;
+
+    // Character configuration for starting speed/stats
+    const ayakaSpeed = this.fighter1.data.speed;
+    const yoimiyaSpeed = this.fighter2.data.speed;
+
+    for (let run = 0; run < maxRuns; run++) {
+      // Telemetry log run commence
+      this.simTelemetryLogs.push(`[RUN ${run + 1}] Commencing ticks...`);
+      this._updateSimTelemetry();
+      
+      // Smooth progress bar update
+      if (progressText) progressText.textContent = `RUNNING ${run + 1} / ${maxRuns}`;
+      if (progressBar) progressBar.style.width = `${((run + 1) / maxRuns) * 100}%`;
+      await new Promise(resolve => setTimeout(resolve, 0));
+
+      // Create a deterministic seed for this run
+      const runSeed = Math.floor(originalRandom() * 99999999);
+      Math.random = mulberry32(runSeed);
+
+      // Generate velocities using the deterministic Math.random
+      const angle1 = Math.random() * Math.PI * 2;
+      const angle2 = Math.random() * Math.PI * 2;
+      const vel1 = { vx: Math.cos(angle1) * ayakaSpeed, vy: Math.sin(angle1) * ayakaSpeed };
+      const vel2 = { vx: Math.cos(angle2) * yoimiyaSpeed, vy: Math.sin(angle2) * yoimiyaSpeed };
+
+      // Reset Loop & Fighter Combat variables
+      this.elapsedTime = 0;
+      this.virtualTime = 0;
+      this.gameOver = false;
+      this.winner = null;
+      this.projectiles = [];
+      this.activeEffects = [];
+      this.replayFrames = [];
+      this.replaySFXEvents = [];
+      this.scheduledArrows = [];
+      this.scheduledMelee = [];
+      this.collisionCooldown = 0;
+      this.soundCooldown = 0;
+      this.shards = [];
+
+      this.resetFighters(vel1, vel2);
+
+      // Fast-forward loop simulation
+      let ticks = 0;
+      while (!this.gameOver && ticks < 4000) {
+        ticks++;
+        this.virtualTime += 16.67;
+        this.update(1); // Call update tick
+        if (ticks % 250 === 0) {
+          await new Promise(resolve => setTimeout(resolve, 0));
+        }
+      }
+
+      // Check if the outcome fits "extreme-diff" (winner has very low health, e.g. <= 8% HP)
+      let outcomeText = "";
+      if (this.gameOver && this.winner) {
+        const winnerHP = this.winner.hp;
+        const maxHP = this.winner.maxHp || 500;
+        const hpPct = (winnerHP / maxHP) * 100;
+        
+        outcomeText = `Winner: ${this.winner.id.toUpperCase()} (${hpPct.toFixed(1)}% HP)`;
+        console.log(`[Headless Run ${run + 1}] Winner: ${this.winner.id}, HP: ${Math.round(winnerHP)}/${maxHP} (${hpPct.toFixed(1)}%), Ticks: ${ticks}`);
+        
+        // Track the absolute lowest winning HP for the fallback mechanism
+        if (winnerHP > 0 && winnerHP < bestFallbackHP) {
+          bestFallbackHP = winnerHP;
+          bestFallbackWinner = this.winner;
+          bestFallbackElapsedTime = this.elapsedTime;
+          bestFallbackSeed = runSeed;
+        }
+
+        if (winnerHP > 0 && hpPct <= 8.0) {
+          console.log(`✨ Success on run ${run + 1}! Winner ${this.winner.id} survived with ${Math.round(winnerHP)} HP!`);
+          this.simTelemetryLogs.push(`[RUN ${run + 1}] Outcome: SUCCESS (Winner survives with ${Math.round(winnerHP)} HP)`);
+          this._updateSimTelemetry();
+          foundExtreme = true;
+          foundWinner = this.winner;
+          foundElapsedTime = this.elapsedTime;
+          foundSeed = runSeed;
+          break;
+        }
+      } else {
+        outcomeText = `TIMEOUT / DRAW`;
+        console.log(`[Headless Run ${run + 1}] Draw or Timeout! Ticks: ${ticks}`);
+      }
+
+      this.simTelemetryLogs.push(`[RUN ${run + 1}] Outcome: ${outcomeText}`);
+      if (this.simTelemetryLogs.length > 20) {
+        this.simTelemetryLogs.splice(0, this.simTelemetryLogs.length - 20);
+      }
+      this._updateSimTelemetry();
+      await new Promise(resolve => setTimeout(resolve, 0));
+    }
+
+    // Final update to progress overlay before cleanup
+    if (progressText) progressText.textContent = `COMPLETED ${maxRuns} / ${maxRuns}`;
+    if (progressBar) progressBar.style.width = '100%';
+
+    // Restore real Math.random
+    Math.random = originalRandom;
+
+    const winnerSeed = foundExtreme ? foundSeed : bestFallbackSeed;
+    const finalWinner = foundExtreme ? foundWinner : bestFallbackWinner;
+
+    if (finalWinner !== null) {
+      // RUN THE RECORDING PASS deterministically using the selected winning seed!
+      console.log(`🎥 Re-running the chosen match (Seed: ${winnerSeed}) to record replay frames...`);
+      
+      // Override Math.random for identical playback recording
+      Math.random = mulberry32(winnerSeed);
+
+      // Generate same velocities
+      const angle1 = Math.random() * Math.PI * 2;
+      const angle2 = Math.random() * Math.PI * 2;
+      const vel1 = { vx: Math.cos(angle1) * ayakaSpeed, vy: Math.sin(angle1) * ayakaSpeed };
+      const vel2 = { vx: Math.cos(angle2) * yoimiyaSpeed, vy: Math.sin(angle2) * yoimiyaSpeed };
+
+      // Enable recording
+      this.recordReplayEnabled = true;
+
+      // Reset states
+      this.elapsedTime = 0;
+      this.virtualTime = 0;
+      this.gameOver = false;
+      this.winner = null;
+      this.projectiles = [];
+      this.activeEffects = [];
+      this.replayFrames = [];
+      this.replaySFXEvents = [];
+      this.scheduledArrows = [];
+      this.scheduledMelee = [];
+      this.collisionCooldown = 0;
+      this.soundCooldown = 0;
+
+      this.resetFighters(vel1, vel2);
+
+      // Run loop with recording
+      let ticks = 0;
+      while (!this.gameOver && ticks < 4000) {
+        ticks++;
+        this.virtualTime += 16.67;
+        this.update(1);
+        if (ticks % 250 === 0) {
+          await new Promise(resolve => setTimeout(resolve, 0));
+        }
+      }
+
+      // Restore real random again
+      Math.random = originalRandom;
+
+      // Restore real stage & objects
+      this.stage = realStage;
+      this.damageNumbers = savedDamageNumbers;
+      this.headlessMode = false;
+      window.headlessGachaMode = false;
+      this.replayMode = savedReplayMode;
+      this.paused = savedPaused;
+
+      // Destroy the progress overlay cleanly
+      const overlayEl = document.getElementById(overlayId);
+      if (overlayEl) overlayEl.remove();
+
+      // Automatically start playing the replay!
+      this.startReplay();
+      
+      const winnerName = this.winner.id === 'ayaka' ? 'Ayaka' : 'Yoimiya';
+      const maxHP = this.winner.maxHp || 500;
+      const hpPct = (this.winner.hp / maxHP) * 100;
+      const titleStr = foundExtreme ? "🔥 TRUE EXTREME-DIFF MATCH FOUND!" : "⚔️ CLUTCH BATTLE SEED LOCATED!";
+      
+      alert(`${titleStr}\nWinner: ${winnerName}\nRemaining HP: ${Math.round(this.winner.hp)} / ${maxHP} (${hpPct.toFixed(1)}%)\nDuration: ${this.elapsedTime.toFixed(1)}s\n\nStarting playback now!`);
+    } else {
+      // Restore real stage & objects
+      this.stage = realStage;
+      this.damageNumbers = savedDamageNumbers;
+      this.headlessMode = false;
+      window.headlessGachaMode = false;
+      this.replayMode = savedReplayMode;
+      this.paused = savedPaused;
+      this.recordReplayEnabled = true;
+
+      // Destroy the progress overlay cleanly
+      const overlayEl = document.getElementById(overlayId);
+      if (overlayEl) overlayEl.remove();
+
+      // Restore previous state if not found (impossible since there's always a winner)
+      this.elapsedTime = savedElapsedTime;
+      this.gameOver = savedGameOver;
+      this.winner = savedWinner;
+      this.projectiles = savedProjectiles;
+      this.activeEffects = savedActiveEffects;
+      this.replayFrames = savedReplayFrames;
+      this.replaySFXEvents = savedReplaySFXEvents;
+      this.scheduledArrows = savedScheduledArrows;
+      this.scheduledMelee = savedScheduledMelee;
+      this.collisionCooldown = savedCollisionCooldown;
+      this.soundCooldown = savedSoundCooldown;
+
+      // Restore fighter positions
+      this.fighter1.hp = f1Start.hp;
+      this.fighter1.body.vx = f1Start.vx;
+      this.fighter1.body.vy = f1Start.vy;
+      this.fighter1.body.x = f1Start.x;
+      this.fighter1.body.y = f1Start.y;
+
+      this.fighter2.hp = f2Start.hp;
+      this.fighter2.body.vx = f2Start.vx;
+      this.fighter2.body.vy = f2Start.vy;
+      this.fighter2.body.x = f2Start.x;
+      this.fighter2.body.y = f2Start.y;
+
+      alert(`❌ No matches finished in ${maxRuns} runs. Check parameters!`);
+    }
+  }
+
+  _updateSimTelemetry() {
+    const container = document.getElementById('telemetry-content');
+    if (!container) return;
+
+    const logsHtml = (this.simTelemetryLogs && this.simTelemetryLogs.length > 0)
+      ? this.simTelemetryLogs.map(log => `<div class="telemetry-feed-item" style="color: #ffd54f;">${log}</div>`).join('')
+      : '<div style="color:#555577; text-align:center; padding-top:40px; font-size: 10px;">Idle...</div>';
+
+    container.innerHTML = `
+      <div class="telemetry-section" style="margin-bottom: 0;">
+        <div class="telemetry-header">📡 SIMULATOR TELEMETRY</div>
+        <div class="telemetry-feed" style="height: 380px; font-size: 10px;">
+          ${logsHtml}
+        </div>
+      </div>
+    `;
   }
 }
 

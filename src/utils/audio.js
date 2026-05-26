@@ -53,6 +53,9 @@ export function preloadSFX(path) {
  */
 export function playSFX(path, volume = 0.6) {
   try {
+    if (typeof window !== 'undefined' && typeof window.audioInterceptor === 'function') {
+      window.audioInterceptor(path, volume);
+    }
     let audioNode;
     if (sfxCache[path]) {
       audioNode = sfxCache[path].cloneNode();
