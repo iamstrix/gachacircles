@@ -282,7 +282,7 @@ function injectStyles() {
       display: flex;
       align-items: center;
       gap: 20px;
-      background: #e2fde6;
+      background: #fffbf0;
       padding: 6px 16px;
       border: 2px solid #000;
       box-shadow: 2px 2px 0px rgba(0,0,0,0.15);
