@@ -65,6 +65,22 @@ export const KeqingBehavior = {
       visual.rotation = angle;
       gameLoop.stage.addChild(visual);
 
+      // Pre-allocate the Mark visual for later
+      const mark = new Graphics();
+      mark.moveTo(0, -12);
+      mark.lineTo(5, -2);
+      mark.lineTo(2, -2);
+      mark.lineTo(8, 10);
+      mark.lineTo(2, 0);
+      mark.lineTo(5, 0);
+      mark.lineTo(-2, -12);
+      mark.closePath();
+      mark.fill({ color: 0xc77dff });
+      mark.stroke({ color: 0xffffff, width: 2 });
+      mark.visible = false; // Hidden until impact
+      gameLoop.stage.addChildAt(mark, 1);
+      fighter.stilettoVisual = mark;
+
       gameLoop.projectiles.push({
         isStiletto: true,
         x: startX,
@@ -96,22 +112,10 @@ export const KeqingBehavior = {
     fighter.stilettoThrown = true;
     fighter.stilettoTimer = 5.0; // Mark lasts 5 seconds
 
-    if (!gameLoop.headlessMode) {
-      const mark = new gameLoop.constructor.Graphics(); // Use loop's Graphics for headless safety
-      mark.moveTo(0, -12);
-      mark.lineTo(5, -2);
-      mark.lineTo(2, -2);
-      mark.lineTo(8, 10);
-      mark.lineTo(2, 0);
-      mark.lineTo(5, 0);
-      mark.lineTo(-2, -12);
-      mark.closePath();
-      mark.fill({ color: 0xc77dff });
-      mark.stroke({ color: 0xffffff, width: 2 });
-      mark.x = x;
-      mark.y = y;
-      gameLoop.stage.addChildAt(mark, 1);
-      fighter.stilettoVisual = mark;
+    if (!gameLoop.headlessMode && fighter.stilettoVisual) {
+      fighter.stilettoVisual.x = x;
+      fighter.stilettoVisual.y = y;
+      fighter.stilettoVisual.visible = true;
     }
 
     // Effect to track mark expiration
