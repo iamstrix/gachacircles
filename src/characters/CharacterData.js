@@ -168,7 +168,7 @@ export const CHARACTERS = {
       name: 'Stellar Restoration',
       description: 'Throws a Lightning Stiletto. Re-casting teleports Keqing to it, dealing AoE Electro damage.',
       damageMultiplier: 2.5,
-      cooldown: 8,
+      cooldown: 7.5,
       teleportRadius: 120,  // AoE radius on teleport detonation
       emoji: '⚡',
       icon: '/keqing-skill_icon.png'
@@ -181,7 +181,7 @@ export const CHARACTERS = {
       explosionMultiplier: 3.39, // Hit 10
       slashCount: 8,
       aoeRadius: 150,
-      cooldown: 20,
+      cooldown: 12,
       emoji: '🗡️',
       icon: '/keqing-ultimate_icon.png'
     },

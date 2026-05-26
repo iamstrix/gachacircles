@@ -329,6 +329,10 @@ export class GameLoop {
         'triggerStarwardSword',
         'triggerStarwardExplosion',
         'triggerSlashArc',
+        'triggerOverloadReaction',
+        'triggerStilettoLaunchFlash',
+        'triggerStilettoAmbientSpark',
+        'triggerTeleportArrivalSlash',
       ];
 
       methodsToWrap.forEach(method => {
@@ -595,27 +599,46 @@ export class GameLoop {
         const dy = arrow.y - arrow.target.body.y;
         const dist = Math.sqrt(dx * dx + dy * dy);
         
-        // ── 2. Active Parry Check (Melee Swing deflection - blocks physical arrows, and blocks blazing arrows if Cryo Imbued!) ──
+        // ── 2. Active Parry Check (Melee Swing deflection - blocks physical arrows, and blocks blazing arrows if Imbued!) ──
         if (!arrow.isFireworkRocket && dist < arrow.target.body.radius + 15) {
+          const isKeqing = (arrow.target.id === 'keqing');
+          const isElectroImbued = (isKeqing && arrow.target.passiveTimer > 0);
           const isCryoImbued = (arrow.target.id === 'ayaka' && arrow.target.passiveTimer > 0);
-          const canParryBlazing = arrow.isBlazing && isCryoImbued;
+          const canParryBlazing = arrow.isBlazing && (isCryoImbued || isElectroImbued);
 
-          if (arrow.target.id === 'ayaka' && arrow.target.swingProgress < 0.9 && (!arrow.isBlazing || canParryBlazing)) {
+          // Parry Check: Melee Swing deflection
+          // Ayaka can parry normal arrows and blazing arrows (if infused)
+          // Keqing can parry normal arrows and blazing arrows (if electro-infused)
+          const isAyakaParry = (arrow.target.id === 'ayaka' && (!arrow.isBlazing || canParryBlazing));
+          const isKeqingParry = (isKeqing && (!arrow.isBlazing || canParryBlazing));
+
+          if ((isAyakaParry || isKeqingParry) && arrow.target.swingProgress < 0.9) {
             // PARRY! Sword deflects arrow
             if (canParryBlazing) {
-              // Trigger spectacular Melt reaction visual clash!
-              if (arrow.target.vfx && typeof arrow.target.vfx.triggerMeltReaction === 'function') {
-                arrow.target.vfx.triggerMeltReaction(arrow.x, arrow.y, arrow.angle);
+              if (isCryoImbued) {
+                // Trigger spectacular Melt reaction visual clash!
+                if (arrow.target.vfx && typeof arrow.target.vfx.triggerMeltReaction === 'function') {
+                  arrow.target.vfx.triggerMeltReaction(arrow.x, arrow.y, arrow.angle);
+                }
+                // Spawn a bold floating elemental reaction text popup!
+                if (this.damageNumbers) {
+                  this.damageNumbers.spawn(arrow.x, arrow.y - 25, 'MELT!', 'cryo', true);
+                }
+              } else if (isElectroImbued) {
+                // Trigger spectacular Overload reaction visual clash!
+                if (arrow.target.vfx && typeof arrow.target.vfx.triggerOverloadReaction === 'function') {
+                  arrow.target.vfx.triggerOverloadReaction(arrow.x, arrow.y, arrow.angle);
+                }
+                // Spawn a bold floating elemental reaction text popup!
+                if (this.damageNumbers) {
+                  this.damageNumbers.spawn(arrow.x, arrow.y - 25, 'OVERLOAD!', 'electro', true);
+                }
               }
+
               // Play special infused parry sound on top of standard deflect
               playSFX('/audio/ayaka/ayaka-parry_infused.wav', 0.6);
 
-              // Spawn a bold floating elemental reaction text popup!
-              if (this.damageNumbers) {
-                this.damageNumbers.spawn(arrow.x, arrow.y - 25, 'MELT!', 'cryo', true);
-              }
-
-              // Apply heavy knockback to Ayaka even if she blocks! Blazing arrows are powerful.
+              // Apply heavy knockback even if she blocks! Blazing arrows are powerful.
               const blockKnockback = 6.5;
               arrow.target.body.vx += Math.cos(arrow.angle) * blockKnockback;
               arrow.target.body.vy += Math.sin(arrow.angle) * blockKnockback;
@@ -1293,10 +1316,26 @@ export class GameLoop {
           }
           return false;
         }
-        // Rotate and flicker the mark
+        // Rotate, pulse, flicker, and emit sparks
         if (effect.visual && !this.headlessMode) {
-          effect.visual.rotation += 0.05 * delta;
-          effect.visual.alpha = 0.7 + 0.3 * Math.sin(performance.now() * 0.01);
+          const isWarning = effect.timer <= 1.0;
+          const rotSpeed = isWarning ? 0.15 : 0.05;
+          const pulseSpeed = isWarning ? 0.03 : 0.01;
+          const baseAlpha = isWarning ? 0.35 : 0.7;
+          const ampAlpha = isWarning ? 0.15 : 0.3;
+          
+          effect.visual.rotation += rotSpeed * delta;
+          effect.visual.alpha = baseAlpha + ampAlpha * Math.sin(performance.now() * pulseSpeed);
+          
+          // Pulsing scale
+          const scaleVal = 1.0 + 0.08 * Math.sin(performance.now() * 0.008);
+          effect.visual.scale.set(scaleVal);
+
+          // Ambient upward sparks
+          effect.ambientSparkCount = (effect.ambientSparkCount || 0) + 1;
+          if (effect.ambientSparkCount % 3 === 0 && effect.owner.vfx && typeof effect.owner.vfx.triggerStilettoAmbientSpark === 'function') {
+            effect.owner.vfx.triggerStilettoAmbientSpark(effect.visual.x, effect.visual.y);
+          }
         }
         return true;
       }

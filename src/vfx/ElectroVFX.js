@@ -95,6 +95,76 @@ export class ElectroVFX {
   // ── Collision burst ──────────────────────────────────────
 
   /**
+   * Trigger a spectacular Overload reaction clash!
+   * Combines Electro and Pyro particle bursts in a directed cone.
+   * @param {number} x Collision X
+   * @param {number} y Collision Y
+   * @param {number} angle Impact direction
+   */
+  triggerOverloadReaction(x, y, angle) {
+    const dir = angle || 0;
+    const cone = Math.PI * 0.9; // Broad ~160 degree cone
+
+    // 1. Central Violet-White Flash
+    this._skill.emit(x, y, {
+      count: 15,
+      speedMin: 1.5,
+      speedMax: 5.5,
+      spreadAngle: Math.PI * 2,
+      lifetimeMin: 12,
+      lifetimeMax: 28,
+      sizeMin: 14,
+      sizeMax: 28,
+      startAlpha: 0.9,
+      endAlpha: 0,
+      blendMode: 'add',
+      color: 0xffffff,
+    });
+
+    // 2. Electro Residue (Violets/Purples)
+    const electroColors = [0xe040fb, 0xc77dff, 0x7b2d8b, 0xf48dff];
+    electroColors.forEach(c => {
+      this._burst.emit(x, y, {
+        count: 10,
+        speedMin: 5.0,
+        speedMax: 14.0,
+        spreadAngle: cone,
+        angleCenter: dir,
+        lifetimeMin: 25,
+        lifetimeMax: 50,
+        sizeMin: 2,
+        sizeMax: 5,
+        startAlpha: 1,
+        endAlpha: 0,
+        blendMode: 'add',
+        color: c,
+        shrink: true,
+      });
+    });
+
+    // 3. Pyro Residue (Oranges/Golds) - The "Overload" part
+    const pyroColors = [0xff6d00, 0xffab40, 0xff3d00, 0xffd600];
+    pyroColors.forEach(c => {
+      this._burst.emit(x, y, {
+        count: 8,
+        speedMin: 6.0,
+        speedMax: 16.0,
+        spreadAngle: cone,
+        angleCenter: dir,
+        lifetimeMin: 20,
+        lifetimeMax: 45,
+        sizeMin: 2,
+        sizeMax: 4,
+        startAlpha: 0.8,
+        endAlpha: 0,
+        blendMode: 'add',
+        color: c,
+        shrink: true,
+      });
+    });
+  }
+
+  /**
    * Triggered when Keqing's sword connects.
    * Emits a sharp outward burst of lightning sparks.
    * @param {number} x
@@ -140,19 +210,28 @@ export class ElectroVFX {
   }
 
   /**
-   * Emit a trail of digital electro particles for the flying stiletto.
+   * Emit a trail of digital electro particles and ribbon beam segments for the flying stiletto.
    */
   triggerStilettoTrail(x, y, angle) {
+    this._stilettoTrailCounter = (this._stilettoTrailCounter || 0) + 1;
+    if (this._stilettoTrailCounter % 3 === 0) {
+      // Draw ribbon segment trailing behind
+      const bx = x - Math.cos(angle) * 25;
+      const by = y - Math.sin(angle) * 25;
+      this.triggerBeamSlash(bx, by, angle, 50, 3.5, 0.12);
+    }
+
+    // Spark particle
     this._skill.emit(x, y, {
-      count: 2,
-      speedMin: 0.5,
-      speedMax: 2.0,
-      spreadAngle: 0.4,
-      angleCenter: angle + Math.PI, // emit behind
-      lifetimeMin: 15,
-      lifetimeMax: 25,
+      count: 1,
+      speedMin: 0.2,
+      speedMax: 1.0,
+      spreadAngle: 0.8,
+      angleCenter: angle + Math.PI,
+      lifetimeMin: 12,
+      lifetimeMax: 20,
       sizeMin: 1.0,
-      sizeMax: 2.5,
+      sizeMax: 2.0,
       startAlpha: 0.8,
       endAlpha: 0,
       blendMode: 'add',
@@ -162,29 +241,38 @@ export class ElectroVFX {
   }
 
   /**
-   * Emit a directional streak of lightning representing Keqing's blink.
+   * Emit a solid vector blink trail + departure afterimage + minor sparkles.
    */
   triggerTeleportStreak(x1, y1, x2, y2) {
     const dx = x2 - x1;
     const dy = y2 - y1;
     const dist = Math.sqrt(dx * dx + dy * dy);
     const angle = Math.atan2(dy, dx);
-    const steps = Math.ceil(dist / 15);
+    const mx = x1 + dx / 2;
+    const my = y1 + dy / 2;
 
+    // 1. Single solid teleport vector beam
+    this.triggerBeamSlash(mx, my, angle, dist, 7.0, 0.22);
+
+    // 2. Departure afterimage
+    this.triggerAfterimage(x1, y1, angle);
+
+    // 3. Reduced sparkle scatter along the path
+    const steps = Math.ceil(dist / 30);
     for (let i = 0; i <= steps; i++) {
       const px = x1 + (dx * i) / steps;
       const py = y1 + (dy * i) / steps;
       this._skill.emit(px, py, {
-        count: 3,
-        speedMin: 0.2,
-        speedMax: 1.5,
+        count: 1,
+        speedMin: 0.1,
+        speedMax: 0.8,
         spreadAngle: Math.PI * 2,
         angleCenter: 0,
-        lifetimeMin: 10,
-        lifetimeMax: 25,
-        sizeMin: 1.5,
-        sizeMax: 4.0,
-        startAlpha: 1.0,
+        lifetimeMin: 12,
+        lifetimeMax: 24,
+        sizeMin: 1.2,
+        sizeMax: 2.8,
+        startAlpha: 0.9,
         endAlpha: 0,
         blendMode: 'add',
         gradient: ELECTRO_TELEPORT_GRADIENT,
@@ -194,12 +282,159 @@ export class ElectroVFX {
   }
 
   /**
-   * Emit multiple rapid criss-crossing lightning cuts for the CA detonation.
+   * Detonation slashes: 4 criss-crossing beams + expanding shockwave flash + 2 tendrils + sparks.
    */
   triggerThunderclapSlashes(x, y) {
-    for (let i = 0; i < 4; i++) {
-      const angle = (i / 4) * Math.PI * 2 + Math.random() * 0.5;
-      this.triggerSlashArc(x, y, angle);
+    // 1. Criss-crossing beam slashes
+    const angles = [0.4, 1.57, 2.74, 3.93];
+    angles.forEach(ang => {
+      this.triggerBeamSlash(x, y, ang, 250, 7.5, 0.18);
+    });
+
+    // 2. Expanding shockwave flash ring
+    let flash = this._beams.find(f => f.isFlash && !f.active);
+    if (!flash) {
+      const g = new Graphics();
+      this._vfxGraphicsContainer.addChild(g);
+      flash = { gfx: g, active: false, isFlash: true };
+      this._beams.push(flash);
+    }
+    flash.active = true;
+    flash.timer = 0.25; // 250ms
+    flash.maxTimer = 0.25;
+    flash.x = x;
+    flash.y = y;
+    flash.minRadius = 40;
+    flash.maxRadius = 120;
+    flash.strokeWidth = 3.0;
+
+    // 3. Lightning tendrils
+    for (let i = 0; i < 2; i++) {
+      const tendrilAngle = Math.random() * Math.PI * 2;
+      const tx = x + Math.cos(tendrilAngle) * 110;
+      const ty = y + Math.sin(tendrilAngle) * 110;
+      this.triggerLightningTendril(x, y, tx, ty);
+    }
+
+    // 4. Detonation burst particles
+    this._skill.emit(x, y, {
+      count: 20,
+      speedMin: 1.5,
+      speedMax: 5.5,
+      spreadAngle: Math.PI * 2,
+      angleCenter: 0,
+      lifetimeMin: 15,
+      lifetimeMax: 35,
+      sizeMin: 1.5,
+      sizeMax: 3.8,
+      startAlpha: 1.0,
+      endAlpha: 0,
+      blendMode: 'add',
+      gradient: ELECTRO_GRADIENT,
+      shrink: true,
+    });
+
+    this._skill.update(0);
+  }
+
+  /**
+   * Concentric expanding shockwave + particle burst at throw origin.
+   */
+  triggerStilettoLaunchFlash(x, y) {
+    // 1. Particle burst
+    this._skill.emit(x, y, {
+      count: 20,
+      speedMin: 1.5,
+      speedMax: 4.5,
+      spreadAngle: Math.PI * 2,
+      angleCenter: 0,
+      lifetimeMin: 15,
+      lifetimeMax: 30,
+      sizeMin: 1.0,
+      sizeMax: 2.5,
+      startAlpha: 1.0,
+      endAlpha: 0,
+      blendMode: 'add',
+      gradient: ELECTRO_TELEPORT_GRADIENT,
+      shrink: true,
+    });
+
+    // 2. Small expanding shockwave flash ring
+    let flash = this._beams.find(f => f.isFlash && !f.active);
+    if (!flash) {
+      const g = new Graphics();
+      this._vfxGraphicsContainer.addChild(g);
+      flash = { gfx: g, active: false, isFlash: true };
+      this._beams.push(flash);
+    }
+    flash.active = true;
+    flash.timer = 0.20; // 200ms
+    flash.maxTimer = 0.20;
+    flash.x = x;
+    flash.y = y;
+    flash.minRadius = 15;
+    flash.maxRadius = 65;
+    flash.strokeWidth = 2.5;
+    
+    this._skill.update(0);
+  }
+
+  /**
+   * Gentle upward rising sparks from Keqing's active stiletto mark.
+   */
+  triggerStilettoAmbientSpark(x, y) {
+    this._skill.emit(x, y, {
+      count: 1,
+      speedMin: 0.4,
+      speedMax: 1.2,
+      spreadAngle: 0.6,
+      angleCenter: -Math.PI / 2, // upward
+      lifetimeMin: 25,
+      lifetimeMax: 45,
+      sizeMin: 0.8,
+      sizeMax: 1.8,
+      startAlpha: 0.7,
+      endAlpha: 0,
+      blendMode: 'add',
+      gradient: ELECTRO_GRADIENT,
+      shrink: true,
+    });
+  }
+
+  /**
+   * Radial teleport arrival slash: V-shaped crescent beams, particle burst, lightning tendrils.
+   */
+  triggerTeleportArrivalSlash(x, y, angle) {
+    // 1. V-shaped arrival crescent beam slashes (±30 degrees offset)
+    const angleOffset = Math.PI / 6;
+    this.triggerBeamSlash(x, y, angle - angleOffset, 200, 7.5, 0.18);
+    this.triggerBeamSlash(x, y, angle + angleOffset, 200, 7.5, 0.18);
+
+    // 2. Burst of 25 particles outward
+    this._skill.emit(x, y, {
+      count: 25,
+      speedMin: 2.0,
+      speedMax: 7.0,
+      spreadAngle: Math.PI * 2,
+      angleCenter: 0,
+      lifetimeMin: 20,
+      lifetimeMax: 45,
+      sizeMin: 1.2,
+      sizeMax: 3.5,
+      startAlpha: 1.0,
+      endAlpha: 0,
+      blendMode: 'add',
+      gradient: ELECTRO_TELEPORT_GRADIENT,
+      shrink: true,
+    });
+
+    // 3. 1-2 lightning tendrils radiating outward
+    const tendrilCount = 1 + Math.floor(Math.random() * 2);
+    for (let i = 0; i < tendrilCount; i++) {
+      const tendrilAngle = angle + Math.PI + (Math.random() - 0.5) * Math.PI; // back-ish or random side
+      const tx = x + Math.cos(tendrilAngle) * 90;
+      const ty = y + Math.sin(tendrilAngle) * 90;
+      this.triggerLightningTendril(x, y, tx, ty);
     }
   }
 
@@ -473,8 +708,9 @@ export class ElectroVFX {
    * @param {number} angle Slash direction
    * @param {number} length Custom line length
    * @param {number} width Custom line width
+   * @param {number} [timer=0.16] Custom lifespan in seconds
    */
-  triggerBeamSlash(cx, cy, angle, length = 750, width = 12) {
+  triggerBeamSlash(cx, cy, angle, length = 750, width = 12, timer = 0.16) {
     let beam = this._beams.find(b => !b.active);
     if (!beam) {
       const g = new Graphics();
@@ -485,8 +721,8 @@ export class ElectroVFX {
 
     beam.active = true;
     beam.isFlash = false;
-    beam.timer = 0.16; // 160ms lifespan
-    beam.maxTimer = 0.16;
+    beam.timer = timer;
+    beam.maxTimer = timer;
     beam.cx = cx;
     beam.cy = cy;
     beam.angle = angle;
@@ -642,12 +878,15 @@ export class ElectroVFX {
           // Expanding shockwave flash ring
           const prog = 1 - progress; // 0.0 up to 1.0
           const alpha = prog * (1 - prog) * 4; // smooth ease-in-out-like fade
-          const radius = 40 + prog * 240;
+          const minR = beam.minRadius !== undefined ? beam.minRadius : 40;
+          const maxR = beam.maxRadius !== undefined ? beam.maxRadius : 280;
+          const radius = minR + prog * (maxR - minR);
+          const strokeW = beam.strokeWidth !== undefined ? beam.strokeWidth : 4;
           
           beam.gfx.blendMode = 'add';
           beam.gfx.circle(beam.x, beam.y, radius);
           beam.gfx.fill({ color: 0xffffff, alpha: alpha * 0.45 });
-          beam.gfx.stroke({ color: 0xc77dff, width: 4 * alpha, alpha: alpha });
+          beam.gfx.stroke({ color: 0xc77dff, width: strokeW * alpha, alpha: alpha });
         } else {
           // Straight line beam slash
           const alpha = progress;
