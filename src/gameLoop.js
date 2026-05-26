@@ -1410,12 +1410,22 @@ export class GameLoop {
         // Update ring
         if (effect.ring && !this.headlessMode) {
           const prog = Math.min(1.0, Math.max(0.0, 1 - (effect.timer / 2.1)));
-          const ringRadius = 150 * (1 - prog) + 30;
+          const maxRadius = effect.owner.data.burstQ.aoeRadius || 150;
+          const ringRadius = maxRadius * (1 - prog) + 30;
           const alpha = 0.3 + 0.7 * prog;
+
           effect.ring.clear();
+
+          // 1. Persistent dark purple encompassing area for contrast
+          effect.ring.circle(0, 0, maxRadius);
+          effect.ring.fill({ color: 0x1a0a2e, alpha: 0.4 });
+          effect.ring.stroke({ color: 0x7b2d8b, width: 2, alpha: 0.3 });
+
+          // 2. Contracting energy ring (original logic)
           effect.ring.circle(0, 0, ringRadius);
           effect.ring.fill({ color: 0xc77dff, alpha: alpha * 0.25 });
           effect.ring.stroke({ color: 0xe040fb, width: 3, alpha });
+          
           effect.ring.x = effect.owner.body.x;
           effect.ring.y = effect.owner.body.y;
         }
