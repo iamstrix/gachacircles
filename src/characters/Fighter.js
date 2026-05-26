@@ -83,7 +83,8 @@ export class Fighter {
 
     // Weapon orbit state
     this.weaponAngle = Math.random() * Math.PI * 2;
-    this.weaponOrbitRadius = this.id === 'yoimiya' ? characterData.circleRadius : (characterData.circleRadius + 20);
+    this.weaponOrbitRadius = this.id === 'yoimiya' ? characterData.circleRadius : 
+                             (this.id === 'keqing' ? characterData.circleRadius + 7 : characterData.circleRadius + 20);
     this.weaponOrbitSpeed = 2.5; // radians per second
 
     // PixiJS display objects (initialized in createVisuals)
@@ -300,7 +301,7 @@ export class Fighter {
         // Animation Logic per N-step
         switch(this.comboIndex) {
           case 0: // N1: Swift horizontal outward slash
-            offRot = (p - 0.5) * Math.PI * 0.9;
+            offRot = (p - 0.5) * Math.PI * 0.9 * Math.sin(p * Math.PI);
             orbitDist += Math.sin(p * Math.PI) * 20;
             if (p > 0.05 && !this.hasThrustedThisSwing && opponent) {
               this.hasThrustedThisSwing = true;
@@ -310,7 +311,7 @@ export class Fighter {
             }
             break;
           case 1: // N2: Quick return inward slash
-            offRot = -(p - 0.5) * Math.PI * 0.9;
+            offRot = -(p - 0.5) * Math.PI * 0.9 * Math.sin(p * Math.PI);
             orbitDist += Math.sin(p * Math.PI) * 20;
             if (p > 0.05 && !this.hasThrustedThisSwing && opponent) {
               this.hasThrustedThisSwing = true;
@@ -320,7 +321,7 @@ export class Fighter {
             }
             break;
           case 2: // N3: Spinning forward slash
-            offRot = p * Math.PI * 2;
+            offRot = p * Math.PI * 2 * (1 - p); // Return to 0
             orbitDist += Math.sin(p * Math.PI) * 15;
             if (p > 0.05 && !this.hasThrustedThisSwing && opponent) {
               this.hasThrustedThisSwing = true;
@@ -336,8 +337,8 @@ export class Fighter {
               orbitDist += Math.sin(p2 * Math.PI) * 35;
             } else {
               const p2 = (p - 0.5) * 2; // 0 to 1
-              offRot = (p2 - 0.5) * Math.PI;
-              orbitDist += 20;
+              offRot = (p2 - 0.5) * Math.PI * Math.sin(p2 * Math.PI);
+              orbitDist += Math.sin(p2 * Math.PI) * 20;
             }
             if (p > 0.05 && !this.hasThrustedThisSwing && opponent) {
               this.hasThrustedThisSwing = true;
@@ -352,8 +353,9 @@ export class Fighter {
               offRot = Math.PI; 
             } else {
               // Reappear and strike instantly
+              const p2 = (p - 0.6) / 0.4; // 0 to 1
               offRot = 0;
-              orbitDist += 40; // huge reach
+              orbitDist += Math.sin(p2 * Math.PI) * 40; // huge reach but returns
             }
             if (p > 0.55 && !this.hasThrustedThisSwing && opponent) {
               this.hasThrustedThisSwing = true;
@@ -365,7 +367,7 @@ export class Fighter {
           case 5: // CA: Charged Attack
             // Fast double slash back and forth
             offRot = Math.sin(p * Math.PI * 5) * Math.PI * 0.6;
-            orbitDist += 25;
+            orbitDist += Math.sin(p * Math.PI) * 25;
             break;
         }
       } else {
