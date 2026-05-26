@@ -18,13 +18,13 @@ export class ElectroVFX {
    * @param {object} [opts]
    * @param {number} [opts.poolSize=600]
    */
-  constructor({ poolSize = 600 } = {}) {
+  constructor({ poolSize = 1000 } = {}) {
     this.container = new Container();
 
     // Sub-systems layered for visual depth
-    this._ambient  = new ParticleSystem({ poolSize: 120 });
-    this._burst    = new ParticleSystem({ poolSize: 200 });
-    this._skill    = new ParticleSystem({ poolSize: 300 });
+    this._ambient  = new ParticleSystem({ poolSize: 200 });
+    this._burst    = new ParticleSystem({ poolSize: 1000 });
+    this._skill    = new ParticleSystem({ poolSize: 600 });
 
     this.container.addChild(this._ambient.container);
     this.container.addChild(this._burst.container);
@@ -373,23 +373,44 @@ export class ElectroVFX {
    * @param {number} angle  direction of slash
    */
   triggerSlashArc(x, y, angle) {
-    const spread = Math.PI * 0.35;
+    const spread = Math.PI * 0.45;
+    
+    // Primary sharp lightning streaks
     this._burst.emit(x, y, {
-      count: 10,
-      speedMin: 2.5,
-      speedMax: 7.0,
+      count: 25,
+      speedMin: 4.0,
+      speedMax: 12.0,
       spreadAngle: spread,
       angleCenter: angle,
-      lifetimeMin: 14,
-      lifetimeMax: 28,
-      sizeMin: 1.2,
-      sizeMax: 3.5,
+      lifetimeMin: 15,
+      lifetimeMax: 35,
+      sizeMin: 2.0,
+      sizeMax: 5.5,
       startAlpha: 1.0,
       endAlpha: 0,
       blendMode: 'add',
       gradient: ELECTRO_TELEPORT_GRADIENT,
       shrink: true,
     });
+
+    // Secondary wide additive glow for "impact" feel
+    this._burst.emit(x, y, {
+      count: 12,
+      speedMin: 1.0,
+      speedMax: 3.5,
+      spreadAngle: Math.PI * 2,
+      angleCenter: 0,
+      lifetimeMin: 20,
+      lifetimeMax: 45,
+      sizeMin: 4.0,
+      sizeMax: 8.5,
+      startAlpha: 0.7,
+      endAlpha: 0,
+      blendMode: 'add',
+      gradient: ELECTRO_GRADIENT,
+      shrink: true,
+    });
+
     this._burst.update(0);
   }
 
