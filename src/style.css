@@ -41,7 +41,7 @@ html, body {
   width: 100%;
   height: 100%;
   overflow: hidden;
-  background: #fffbf0;
+  background: #a8f5b4;
   font-family: var(--font-main);
   color: #000000;
 }
@@ -50,7 +50,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #fffbf0;
+  background: #a8f5b4;
 }
 
 /* ========================================
@@ -63,7 +63,7 @@ body {
   height: var(--game-height);
   border-radius: 0px;
   overflow: visible; /* Changed from hidden to show volume placard below */
-  background: #fffbf0;
+  background: #a8f5b4;
   box-shadow: 8px 8px 0px rgba(0, 0, 0, 0.15);
 }
 

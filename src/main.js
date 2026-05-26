@@ -39,7 +39,7 @@ async function init() {
   await app.init({
     width: GAME_WIDTH,
     height: GAME_HEIGHT,
-    backgroundColor: 0xfffbf0,
+    backgroundColor: 0xa8f5b4,
     antialias: true,
     resolution: window.devicePixelRatio || 1,
     autoDensity: true,
@@ -189,9 +189,9 @@ async function init() {
 function createArenaBackground() {
   const bg = new Graphics();
 
-  // Arena floor — clean cream white
+  // Arena floor — clean light mint/pastel green
   bg.rect(ARENA.x, ARENA.y, ARENA.width, ARENA.height);
-  bg.fill({ color: 0xfffbf0 });
+  bg.fill({ color: 0xe2fde6 });
 
   // Arena border — crisp solid black
   bg.rect(ARENA.x, ARENA.y, ARENA.width, ARENA.height);
