@@ -1414,12 +1414,29 @@ export class GameLoop {
           const ringRadius = maxRadius * (1 - prog) + 30;
           const alpha = 0.3 + 0.7 * prog;
 
+          // ── Flash Logic: Strobe the background area when slashes hit
+          // We'll check if the slashIndex changed in the last tick
+          const isSlashJustFired = effect.slashIndex !== effect._prevSlashIndex;
+          effect._prevSlashIndex = effect.slashIndex;
+          
+          if (isSlashJustFired) {
+            effect._flashTimer = 0.15; // 150ms flash duration
+          }
+          if (effect._flashTimer > 0) {
+            effect._flashTimer -= delta * 0.016;
+          }
+
           effect.ring.clear();
 
           // 1. Persistent dark purple encompassing area for contrast
+          // Boost alpha during flash
+          const baseAreaAlpha = 0.4;
+          const flashAlphaBoost = effect._flashTimer > 0 ? (effect._flashTimer / 0.15) * 0.4 : 0;
+          const areaColor = effect._flashTimer > 0 ? 0x4a148c : 0x1a0a2e; // Brighter purple during flash
+
           effect.ring.circle(0, 0, maxRadius);
-          effect.ring.fill({ color: 0x1a0a2e, alpha: 0.4 });
-          effect.ring.stroke({ color: 0x7b2d8b, width: 2, alpha: 0.3 });
+          effect.ring.fill({ color: areaColor, alpha: baseAreaAlpha + flashAlphaBoost });
+          effect.ring.stroke({ color: 0x7b2d8b, width: 2, alpha: 0.3 + flashAlphaBoost });
 
           // 2. Contracting energy ring (original logic)
           effect.ring.circle(0, 0, ringRadius);

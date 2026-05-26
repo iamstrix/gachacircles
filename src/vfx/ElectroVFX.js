@@ -373,37 +373,55 @@ export class ElectroVFX {
    * @param {number} angle  direction of slash
    */
   triggerSlashArc(x, y, angle) {
-    const spread = Math.PI * 0.45;
+    const spread = Math.PI * 0.5;
     
-    // Primary sharp lightning streaks
+    // 1. High-Contrast White-Hot Core (The "Edge")
     this._burst.emit(x, y, {
-      count: 25,
+      count: 45,
+      speedMin: 5.0,
+      speedMax: 18.0,
+      spreadAngle: spread,
+      angleCenter: angle,
+      lifetimeMin: 10,
+      lifetimeMax: 30,
+      sizeMin: 1.0,
+      sizeMax: 3.5,
+      startAlpha: 1.0,
+      endAlpha: 0,
+      blendMode: 'add',
+      color: 0xffffff, // Pure white for contrast
+      shrink: true,
+    });
+
+    // 2. Violet Lightning Streaks
+    this._burst.emit(x, y, {
+      count: 30,
       speedMin: 4.0,
       speedMax: 12.0,
       spreadAngle: spread,
       angleCenter: angle,
-      lifetimeMin: 15,
-      lifetimeMax: 35,
-      sizeMin: 2.0,
-      sizeMax: 5.5,
-      startAlpha: 1.0,
+      lifetimeMin: 20,
+      lifetimeMax: 45,
+      sizeMin: 2.5,
+      sizeMax: 6.5,
+      startAlpha: 0.9,
       endAlpha: 0,
       blendMode: 'add',
       gradient: ELECTRO_TELEPORT_GRADIENT,
       shrink: true,
     });
 
-    // Secondary wide additive glow for "impact" feel
+    // 3. MASSIVE Energy Blooms (The "Impact")
     this._burst.emit(x, y, {
       count: 12,
       speedMin: 1.0,
-      speedMax: 3.5,
+      speedMax: 3.0,
       spreadAngle: Math.PI * 2,
       angleCenter: 0,
-      lifetimeMin: 20,
-      lifetimeMax: 45,
-      sizeMin: 4.0,
-      sizeMax: 8.5,
+      lifetimeMin: 25,
+      lifetimeMax: 60,
+      sizeMin: 25.0,
+      sizeMax: 80.0, // Huge 80px energy explosions
       startAlpha: 0.7,
       endAlpha: 0,
       blendMode: 'add',
