@@ -456,6 +456,9 @@ export class GameLoop {
     if (this.scheduledMelee) {
       this.scheduledMelee = this.scheduledMelee.filter(hit => {
         if (now >= hit.time) {
+          if (typeof hit.condition === 'function' && !hit.condition()) {
+            return false; // remove from queue without executing
+          }
           this._performMeleeHit(hit.owner, hit.target, hit.index, hit.duration, hit.sound);
           return false;
         }

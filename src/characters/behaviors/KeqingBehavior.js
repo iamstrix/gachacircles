@@ -211,19 +211,44 @@ export const KeqingBehavior = {
   // ── Attack Combo ─────────────────────────────────────────────
 
   /**
-   * Schedule Keqing's N1-N5 electro sword combo.
+   * Schedule Keqing's N1-N5 electro sword combo, plus CA if close enough.
    * Similar timing to Ayaka but with Electro audio.
    */
   startAttackCombo(fighter, opponent, gameLoop) {
     const targetTime = performance.now();
 
     const steps = [
-      { delay: 0,    index: 0, dur: 230, sound: '/audio/keqing/keqing-na_1.wav' },
-      { delay: 280,  index: 1, dur: 230, sound: '/audio/keqing/keqing-na_2.wav' },
-      { delay: 560,  index: 2, dur: 300, sound: '/audio/keqing/keqing-na_3.wav' },
-      { delay: 880,  index: 3, dur: 300, sound: '/audio/keqing/keqing-na_4.wav' },
-      { delay: 1200, index: 4, dur: 480, sound: '/audio/keqing/keqing-na_5.wav' },
+      { delay: 0,    index: 0, dur: 200, sound: '/audio/keqing/keqing-na_1.wav' },
+      { delay: 200,  index: 1, dur: 200, sound: '/audio/keqing/keqing-na_2.wav' },
+      { delay: 400,  index: 2, dur: 250, sound: '/audio/keqing/keqing-na_3.wav' },
+      { delay: 650,  index: 3, dur: 350, sound: '/audio/keqing/keqing-na_4.wav' },
+      { delay: 1000, index: 4, dur: 400, sound: '/audio/keqing/keqing-na_5.wav' },
     ];
+
+    // Add CA (Charged Attack) at the end, conditionally executed if the enemy is in range
+    steps.push({
+      delay: 1400,
+      index: 5,
+      dur: 300,
+      sound: '/audio/keqing/keqing-skill2.wav', // High energy CA sound
+      condition: () => {
+        const dx = opponent.body.x - fighter.body.x;
+        const dy = opponent.body.y - fighter.body.y;
+        return Math.sqrt(dx * dx + dy * dy) < (fighter.body.radius + opponent.body.radius + 90);
+      }
+    });
+    // Keqing's CA hits twice rapidly
+    steps.push({
+      delay: 1500,
+      index: 5,
+      dur: 0,
+      sound: null,
+      condition: () => {
+        const dx = opponent.body.x - fighter.body.x;
+        const dy = opponent.body.y - fighter.body.y;
+        return Math.sqrt(dx * dx + dy * dy) < (fighter.body.radius + opponent.body.radius + 90);
+      }
+    });
 
     steps.forEach(step => {
       gameLoop.scheduledMelee.push({
@@ -233,6 +258,7 @@ export const KeqingBehavior = {
         index: step.index,
         duration: step.dur,
         sound: step.sound,
+        condition: step.condition
       });
     });
   },
@@ -240,6 +266,13 @@ export const KeqingBehavior = {
   // ── Per-Hit Logic ─────────────────────────────────────────────
 
   onMeleeHit(fighter, opponent, gameLoop, result) {
+    // Add significant knockback for Charged Attack (index 5)
+    if (fighter.comboIndex === 5) {
+      const angle = Math.atan2(opponent.body.y - fighter.body.y, opponent.body.x - fighter.body.x);
+      opponent.body.vx += Math.cos(angle) * 7.5;
+      opponent.body.vy += Math.sin(angle) * 7.5;
+    }
+
     if (result.actualDamage > 0) {
       if (fighter.passiveTimer > 0) {
         gameLoop._playSFX('/audio/keqing/keqing-hit_infused.wav', 0.9);
@@ -261,10 +294,10 @@ export const KeqingBehavior = {
   },
 
   isLunging(fighter) {
-    // Keqing N5 also has a dash phase
+    // Keqing N5 has a dash/blink phase
     return fighter.comboIndex === 4 &&
-           fighter.swingProgress > 0.1 &&
-           fighter.swingProgress < 0.6;
+           fighter.swingProgress > 0.55 &&
+           fighter.swingProgress < 0.9;
   },
 
   tickPassive(fighter, delta) {

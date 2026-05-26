@@ -296,50 +296,126 @@ export class Fighter {
       let offX = 0, offY = 0, offRot = 0;
       let orbitDist = this.weaponOrbitRadius;
 
-      // Animation Logic per N-step
-      switch(this.comboIndex) {
-        case 0: // N1: Vertical/Diagonal Slash
-        case 1: // N2: Horizontal Slash
-        case 2: // N3: Heavy Lunge
-        case 3: // N4: Triple Flurry (3 mini-swings)
-          const sweep = (this.comboIndex === 0 ? 1 : (this.comboIndex === 1 ? -1 : 0)) * Math.PI * 0.8;
-          
-          if (this.comboIndex === 3) {
-            // N4 flurry
-            const flurry = Math.sin(p * Math.PI * 3);
-            offRot = flurry * 0.6;
-            orbitDist += flurry * 15;
-          } else if (this.comboIndex === 2) {
-            // N3 lunge
-            orbitDist += (p < 0.3 ? p * 150 : (1 - p) * 60);
-            offRot = Math.sin(p * Math.PI * 2) * 0.2;
-          } else {
-            // N1/N2 sweeps
-            offRot = (p - 0.5) * sweep;
-            orbitDist += Math.sin(p * Math.PI) * 25;
-          }
+      if (this.id === 'keqing') {
+        // Keqing Blink opacity for N5
+        this.container.alpha = (this.comboIndex === 4 && p > 0.1 && p < 0.6) ? 0.0 : 1.0;
 
-          // Apply snappy forward impulse for all early hits (Step-in effect)
-          if (p > 0.05 && !this.hasThrustedThisSwing && opponent) {
-            this.hasThrustedThisSwing = true;
-            const impulse = 3.5; // Large snappy instantaneous impulse
-            this.body.vx += Math.cos(targetAngle) * impulse;
-            this.body.vy += Math.sin(targetAngle) * impulse;
-          }
-          break;
+        // Animation Logic per N-step
+        switch(this.comboIndex) {
+          case 0: // N1: Swift horizontal outward slash
+            offRot = (p - 0.5) * Math.PI * 0.9;
+            orbitDist += Math.sin(p * Math.PI) * 20;
+            if (p > 0.05 && !this.hasThrustedThisSwing && opponent) {
+              this.hasThrustedThisSwing = true;
+              const impulse = 3.0;
+              this.body.vx += Math.cos(targetAngle) * impulse;
+              this.body.vy += Math.sin(targetAngle) * impulse;
+            }
+            break;
+          case 1: // N2: Quick return inward slash
+            offRot = -(p - 0.5) * Math.PI * 0.9;
+            orbitDist += Math.sin(p * Math.PI) * 20;
+            if (p > 0.05 && !this.hasThrustedThisSwing && opponent) {
+              this.hasThrustedThisSwing = true;
+              const impulse = 2.0;
+              this.body.vx += Math.cos(targetAngle) * impulse;
+              this.body.vy += Math.sin(targetAngle) * impulse;
+            }
+            break;
+          case 2: // N3: Spinning forward slash
+            offRot = p * Math.PI * 2;
+            orbitDist += Math.sin(p * Math.PI) * 15;
+            if (p > 0.05 && !this.hasThrustedThisSwing && opponent) {
+              this.hasThrustedThisSwing = true;
+              const impulse = 3.5;
+              this.body.vx += Math.cos(targetAngle) * impulse;
+              this.body.vy += Math.sin(targetAngle) * impulse;
+            }
+            break;
+          case 3: // N4: Double strike (Thrust then Slice)
+            if (p < 0.5) {
+              const p2 = p * 2; // 0 to 1
+              offRot = 0;
+              orbitDist += Math.sin(p2 * Math.PI) * 35;
+            } else {
+              const p2 = (p - 0.5) * 2; // 0 to 1
+              offRot = (p2 - 0.5) * Math.PI;
+              orbitDist += 20;
+            }
+            if (p > 0.05 && !this.hasThrustedThisSwing && opponent) {
+              this.hasThrustedThisSwing = true;
+              const impulse = 2.5;
+              this.body.vx += Math.cos(targetAngle) * impulse;
+              this.body.vy += Math.sin(targetAngle) * impulse;
+            }
+            break;
+          case 4: // N5: Blink Finisher
+            if (p < 0.6) {
+              // Windup/Blinking: weapon stays behind
+              offRot = Math.PI; 
+            } else {
+              // Reappear and strike instantly
+              offRot = 0;
+              orbitDist += 40; // huge reach
+            }
+            if (p > 0.55 && !this.hasThrustedThisSwing && opponent) {
+              this.hasThrustedThisSwing = true;
+              const impulse = 9.5; // Massive dash forward
+              this.body.vx += Math.cos(targetAngle) * impulse;
+              this.body.vy += Math.sin(targetAngle) * impulse;
+            }
+            break;
+          case 5: // CA: Charged Attack
+            // Fast double slash back and forth
+            offRot = Math.sin(p * Math.PI * 5) * Math.PI * 0.6;
+            orbitDist += 25;
+            break;
+        }
+      } else {
+        // Ayaka Animation Logic per N-step
+        switch(this.comboIndex) {
+          case 0: // N1: Vertical/Diagonal Slash
+          case 1: // N2: Horizontal Slash
+          case 2: // N3: Heavy Lunge
+          case 3: // N4: Triple Flurry (3 mini-swings)
+            const sweep = (this.comboIndex === 0 ? 1 : (this.comboIndex === 1 ? -1 : 0)) * Math.PI * 0.8;
 
-        case 4: // N5: Spin & Dash
-          offRot = p * Math.PI * 2;
-          orbitDist -= 10;
-          // Apply forward dash impulse in the first half of N5
-          if (p > 0.1 && p < 0.4 && opponent) {
-            const dashForce = 1.2;
-            this.body.vx += Math.cos(targetAngle) * dashForce;
-            this.body.vy += Math.sin(targetAngle) * dashForce;
-          }
-          break;
+            if (this.comboIndex === 3) {
+              // N4 flurry
+              const flurry = Math.sin(p * Math.PI * 3);
+              offRot = flurry * 0.6;
+              orbitDist += flurry * 15;
+            } else if (this.comboIndex === 2) {
+              // N3 lunge
+              orbitDist += (p < 0.3 ? p * 150 : (1 - p) * 60);
+              offRot = Math.sin(p * Math.PI * 2) * 0.2;
+            } else {
+              // N1/N2 sweeps
+              offRot = (p - 0.5) * sweep;
+              orbitDist += Math.sin(p * Math.PI) * 25;
+            }
+
+            // Apply snappy forward impulse for all early hits (Step-in effect)
+            if (p > 0.05 && !this.hasThrustedThisSwing && opponent) {
+              this.hasThrustedThisSwing = true;
+              const impulse = 3.5; // Large snappy instantaneous impulse
+              this.body.vx += Math.cos(targetAngle) * impulse;
+              this.body.vy += Math.sin(targetAngle) * impulse;
+            }
+            break;
+
+          case 4: // N5: Spin & Dash
+            offRot = p * Math.PI * 2;
+            orbitDist -= 10;
+            // Apply forward dash impulse in the first half of N5
+            if (p > 0.1 && p < 0.4 && opponent) {
+              const dashForce = 1.2;
+              this.body.vx += Math.cos(targetAngle) * dashForce;
+              this.body.vy += Math.sin(targetAngle) * dashForce;
+            }
+            break;
+        }
       }
-
       if (this.weaponSprite) {
         const finalAngle = targetAngle + offRot;
         this.weaponSprite.x = Math.cos(finalAngle) * orbitDist;
