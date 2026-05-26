@@ -1325,16 +1325,19 @@ export class GameLoop {
         if (effect.timer <= 0) {
           // Burst complete — clean up ring
           effect.owner.isInvincible = false;
+          effect.owner.container.alpha = 1.0; // Restore visibility
+
           if (effect.ring) {
             this.stage.removeChild(effect.ring);
             effect.ring.destroy();
           }
-          // Final explosion
+
+          // Hit 10: Final massive explosion
           if (effect.owner.vfx && typeof effect.owner.vfx.triggerStarwardExplosion === 'function') {
             effect.owner.vfx.triggerStarwardExplosion(effect.owner.body.x, effect.owner.body.y);
           }
-          // AoE damage to opponent
-          const expDmg = Math.round(effect.owner.data.damage * (effect.owner.data.burstQ.explosionMultiplier || 3.0));
+
+          const expDmg = Math.round(effect.owner.getCurrentDamage() * (effect.owner.data.burstQ.explosionMultiplier || 3.39));
           const expRadius = effect.owner.data.burstQ.aoeRadius || 150;
           const edx = effect.target.body.x - effect.owner.body.x;
           const edy = effect.target.body.y - effect.owner.body.y;
@@ -1342,7 +1345,7 @@ export class GameLoop {
             const expResult = effect.target.takeDamage(expDmg);
             effect.owner.stats.damageDealt.burst += expResult.actualDamage;
             if (this.damageNumbers) {
-              this.damageNumbers.spawn(effect.target.body.x, effect.target.body.y - 30, expDmg, effect.owner.element, true);
+              this.damageNumbers.spawn(effect.target.body.x, effect.target.body.y - 30, expResult.actualDamage, effect.owner.element, true);
             }
             this._screenShake();
             if (expResult.died) this._endGame(effect.owner);
@@ -1350,45 +1353,59 @@ export class GameLoop {
           return false;
         }
 
-        // Per-slash damage pulses
+        // Per-slash damage pulses (Hits 2-9)
         const totalSlashes = effect.totalSlashes || 8;
-        const slashInterval = 1.0 / totalSlashes;
-        const timeElapsed = (effect.owner.data.burstQ.cooldown ? 1.0 : 1.0) - effect.timer; // time into cast
-        const expectedSlash = Math.floor(timeElapsed / slashInterval);
+        // Total sequence is 2.1s. Slashes happen between 0.4s and 1.7s (approx 1.3s window)
+        const startWindow = 1.7; // timer value (counting down from 2.1)
+        const endWindow = 0.4;   // timer value
+        const windowDuration = startWindow - endWindow;
+        const slashInterval = windowDuration / totalSlashes;
 
-        if (expectedSlash > (effect.slashIndex || 0)) {
-          effect.slashIndex = expectedSlash;
-          // Slash damage
-          const slashDmg = Math.round(effect.owner.data.damage * (effect.owner.data.burstQ.damageMultiplier || 1.5));
-          const sAngle = (effect.slashIndex / totalSlashes) * Math.PI * 2;
-          const dx2 = effect.target.body.x - effect.owner.body.x;
-          const dy2 = effect.target.body.y - effect.owner.body.y;
-          const aoeR = 100;
-          if (Math.sqrt(dx2 * dx2 + dy2 * dy2) < aoeR) {
-            const slashResult = effect.target.takeDamage(slashDmg);
-            effect.owner.stats.damageDealt.burst += slashResult.actualDamage;
-            if (this.damageNumbers) {
-              this.damageNumbers.spawn(effect.target.body.x, effect.target.body.y - 15, slashDmg, effect.owner.element, false);
+        // Current progress into the slash window
+        if (effect.timer <= startWindow && effect.timer > endWindow) {
+          const timeInWindow = startWindow - effect.timer;
+          const expectedSlash = Math.floor(timeInWindow / slashInterval) + 1; // +1 because we start at index 1 (Hit 2)
+
+          if (expectedSlash > (effect.slashIndex || 0) && expectedSlash <= totalSlashes) {
+            effect.slashIndex = expectedSlash;
+
+            // Hits 2-9: Rapid slashes
+            const slashDmg = Math.round(effect.owner.getCurrentDamage() * (effect.owner.data.burstQ.slashMultiplier || 0.41));
+            const sAngle = (effect.slashIndex / totalSlashes) * Math.PI * 2;
+            const dx2 = effect.target.body.x - effect.owner.body.x;
+            const dy2 = effect.target.body.y - effect.owner.body.y;
+            const aoeR = 120;
+
+            if (Math.sqrt(dx2 * dx2 + dy2 * dy2) < aoeR) {
+              const slashResult = effect.target.takeDamage(slashDmg);
+              effect.owner.stats.damageDealt.burst += slashResult.actualDamage;
+              if (this.damageNumbers) {
+                // Use isCrit check dynamically for each hit
+                const beh = effect.owner.behavior;
+                const isCritHit = beh && typeof beh.isCrit === 'function' ? beh.isCrit(effect.owner) : false;
+                this.damageNumbers.spawn(effect.target.body.x, effect.target.body.y - 15, slashResult.actualDamage, effect.owner.element, isCritHit);
+              }
+              if (slashResult.died) {
+                this._endGame(effect.owner);
+                return false;
+              }
             }
-            if (slashResult.died) {
-              this._endGame(effect.owner);
-              return false;
+
+            // VFX slash arc
+            if (effect.owner.vfx && typeof effect.owner.vfx.triggerSlashArc === 'function') {
+              effect.owner.vfx.triggerSlashArc(effect.owner.body.x, effect.owner.body.y, sAngle);
             }
-          }
-          // VFX slash arc
-          if (effect.owner.vfx && typeof effect.owner.vfx.triggerSlashArc === 'function') {
-            effect.owner.vfx.triggerSlashArc(effect.owner.body.x, effect.owner.body.y, sAngle);
           }
         }
 
-        // Windup sparks
+        // Windup sparks (Visual filler)
         if (effect.owner.vfx && typeof effect.owner.vfx.triggerWindupSparks === 'function') {
           effect.owner.vfx.triggerWindupSparks(effect.owner.body.x, effect.owner.body.y);
         }
 
         // Update ring
         if (effect.ring && !this.headlessMode) {
-          const prog = Math.min(1.0, Math.max(0.0, 1 - effect.timer));
+          const prog = Math.min(1.0, Math.max(0.0, 1 - (effect.timer / 2.1)));
           const ringRadius = 150 * (1 - prog) + 30;
           const alpha = 0.3 + 0.7 * prog;
           effect.ring.clear();

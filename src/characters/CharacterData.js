@@ -176,9 +176,10 @@ export const CHARACTERS = {
     burstQ: {
       name: 'Starward Sword',
       description: 'Unleashes a rapid fan of 8 lightning slashes, then detonates a massive Electro explosion.',
-      damageMultiplier: 1.5,  // per slash
+      initialMultiplier: 1.51,  // Hit 1
+      slashMultiplier: 0.41,    // Hits 2-9
+      explosionMultiplier: 3.39, // Hit 10
       slashCount: 8,
-      explosionMultiplier: 3.0,
       aoeRadius: 150,
       cooldown: 20,
       emoji: '🗡️',

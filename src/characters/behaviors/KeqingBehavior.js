@@ -220,8 +220,8 @@ export const KeqingBehavior = {
   // ── Elemental Burst: Starward Sword ─────────────────────────
 
   /**
-   * Begin the Starward Sword burst: 8 rapid lightning slashes fan-out,
-   * then a massive central Electro explosion.
+   * Begin the Starward Sword burst: 10-hit sequence over 2.1 seconds.
+   * Keqing disappears and becomes invincible.
    */
   onBurstActivate(fighter, opponent, gameLoop, Graphics, Sprite, Assets) {
     gameLoop._playSFX('/audio/keqing/keqing-ultimate.wav', 0.9);
@@ -230,18 +230,30 @@ export const KeqingBehavior = {
     const ringGfx = new Graphics();
     gameLoop.stage.addChildAt(ringGfx, 1);
 
+    // Initial Strike (Hit 1) - occurs immediately
+    const initialDmg = Math.round(fighter.data.damage * (fighter.data.burstQ.initialMultiplier || 1.51));
+    const res = opponent.takeDamage(initialDmg);
+    fighter.stats.damageDealt.burst += res.actualDamage;
+    if (gameLoop.damageNumbers) {
+      gameLoop.damageNumbers.spawn(opponent.body.x, opponent.body.y - 30, res.actualDamage, fighter.element, true);
+    }
+
     gameLoop.activeEffects.push({
       type: 'starward_cast',
       owner: fighter,
       target: opponent,
-      timer: 1.0,
+      timer: 2.1, // Accurate 2.1s duration
       ring: ringGfx,
       slashIndex: 0,
-      nextSlashTimer: 0.1,
       totalSlashes: fighter.data.burstQ.slashCount || 8,
     });
 
     fighter.isInvincible = true;
+    fighter.container.alpha = 0; // Keqing disappears
+
+    // A4 Passive: Aristocratic Dignity (+15% CRIT Rate for 8s)
+    // We'll treat this as guaranteed crits for the duration in this simplified engine
+    fighter.burstCritTimer = 8000; 
 
     if (fighter.vfx && typeof fighter.vfx.triggerCastAura === 'function') {
       fighter.vfx.triggerCastAura(fighter.body.x, fighter.body.y);
@@ -338,7 +350,7 @@ export const KeqingBehavior = {
   },
 
   isCrit(fighter) {
-    return fighter.passiveTimer > 0;
+    return fighter.passiveTimer > 0 || (fighter.burstCritTimer && fighter.burstCritTimer > 0);
   },
 
   isLunging(fighter) {
@@ -353,6 +365,12 @@ export const KeqingBehavior = {
       fighter.passiveTimer -= delta * 16.67;
       if (fighter.passiveTimer <= 0) {
         fighter.passiveTimer = 0;
+      }
+    }
+    if (fighter.burstCritTimer > 0) {
+      fighter.burstCritTimer -= delta * 16.67;
+      if (fighter.burstCritTimer <= 0) {
+        fighter.burstCritTimer = 0;
       }
     }
   },
