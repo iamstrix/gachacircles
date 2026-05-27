@@ -216,14 +216,14 @@ function showWinScreen(winner) {
 
   const splashImg = document.createElement('img');
   splashImg.className = 'win-screen__splash-img';
-  // Ayaka is 'cryo', Yoimiya is 'pyro'
-  const splashPath = winner.element === 'cryo' ? '/characters/ayaka-splash.png' : '/characters/yoimiya-splash.png';
+  // Use character-specific splash if defined, otherwise use elemental fallback
+  const splashPath = winner.data.splash || (winner.element === 'cryo' ? '/characters/ayaka-splash.png' : '/characters/yoimiya-splash.png');
   splashImg.src = splashPath;
   splashImg.alt = `${winner.data.name} Splash`;
 
   // Fallback if splash image is not present
   splashImg.onerror = () => {
-    splashImg.src = winner.element === 'cryo' ? '/characters/ayaka_portrait.png' : '/characters/yoimiya_portrait.png';
+    splashImg.src = winner.data.portrait || (winner.element === 'cryo' ? '/characters/ayaka_portrait.png' : '/characters/yoimiya_portrait.png');
     splashImg.style.objectFit = 'contain';
     splashImg.style.padding = '40px';
   };
