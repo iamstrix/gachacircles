@@ -1,6 +1,6 @@
 # Gacha Circles
 
-A 2D combat simulation featuring characters inspired by Genshin Impact. Characters fight as physics-based circles with unique abilities, elemental effects, and sound design.
+A 2D combat simulation featuring gacha characters. Characters fight as physics-based circles with unique abilities, elemental effects, and sound design.
 
 ## Features
 
