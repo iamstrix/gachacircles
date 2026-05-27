@@ -115,6 +115,9 @@ export const AyakaBehavior = {
     }
 
     fighter.isInvincible = true;
+    fighter.isBurstActive = true;
+    fighter.body.vx = 0;
+    fighter.body.vy = 0;
 
     if (fighter.vfx) {
       fighter.vfx.triggerCastAura(fighter.body.x, fighter.body.y);

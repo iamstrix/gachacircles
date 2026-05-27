@@ -961,6 +961,7 @@ export class GameLoop {
         // Phase 1: Casting logic
         if (effect.timer <= 0) {
           effect.owner.isInvincible = false; // Turn off invincibility!
+          effect.owner.isBurstActive = false;
           // Transitions to Phase 2: Unleash Vortex
           this.stage.removeChild(effect.telegraph);
           if (effect.ring) {
