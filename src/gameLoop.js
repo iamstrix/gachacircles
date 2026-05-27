@@ -1261,14 +1261,6 @@ export class GameLoop {
 
           // Check if opponent is within the 180px radius
           if (dist <= effect.radius) {
-            // Strong repel force (fling/launch opponent upward/away!)
-            if (!effect.target.isBurstActive) {
-              const force = 10;
-              const angle = Math.atan2(dy, dx);
-              effect.target.body.vx += Math.cos(angle) * force;
-              effect.target.body.vy += Math.sin(angle) * force;
-            }
-
             const damage = Math.round(effect.owner.data.damage * effect.owner.data.skillE.damageMultiplier);
             const result = effect.target.takeDamage(damage);
 
