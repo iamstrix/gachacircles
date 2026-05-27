@@ -677,10 +677,12 @@ export class GameLoop {
             const result = arrow.target.takeDamage(damage);
             arrow.owner.stats.damageDealt.burst += result.actualDamage;
 
-            // Apply heavy pyrotechnic knockback to Ayaka!
-            const force = 13.5;
-            arrow.target.body.vx += Math.cos(arrow.angle) * force;
-            arrow.target.body.vy += Math.sin(arrow.angle) * force;
+            // Apply heavy pyrotechnic knockback to target!
+            if (!arrow.target.isBurstActive) {
+              const force = 13.5;
+              arrow.target.body.vx += Math.cos(arrow.angle) * force;
+              arrow.target.body.vy += Math.sin(arrow.angle) * force;
+            }
 
             // Trigger massive fireworks explosion visual and a piercing directional jet stream gust behind the enemy!
             if (arrow.owner.vfx) {
@@ -1259,10 +1261,12 @@ export class GameLoop {
           // Check if opponent is within the 180px radius
           if (dist <= effect.radius) {
             // Strong repel force (fling/launch opponent upward/away!)
-            const force = 10;
-            const angle = Math.atan2(dy, dx);
-            effect.target.body.vx += Math.cos(angle) * force;
-            effect.target.body.vy += Math.sin(angle) * force;
+            if (!effect.target.isBurstActive) {
+              const force = 10;
+              const angle = Math.atan2(dy, dx);
+              effect.target.body.vx += Math.cos(angle) * force;
+              effect.target.body.vy += Math.sin(angle) * force;
+            }
 
             const damage = Math.round(effect.owner.data.damage * effect.owner.data.skillE.damageMultiplier);
             const result = effect.target.takeDamage(damage);
@@ -1566,9 +1570,9 @@ export class GameLoop {
     updatePosition(this.fighter1.body, delta * this.fighter1.slowMultiplier);
     updatePosition(this.fighter2.body, delta * this.fighter2.slowMultiplier);
 
-    // 5. Wall bouncing
-    const b1 = bounceOffWalls(this.fighter1.body, this.bounds);
-    const b2 = bounceOffWalls(this.fighter2.body, this.bounds);
+    // 5. Wall bouncing (skip if untouchable in burst)
+    const b1 = !this.fighter1.isBurstActive ? bounceOffWalls(this.fighter1.body, this.bounds) : false;
+    const b2 = !this.fighter2.isBurstActive ? bounceOffWalls(this.fighter2.body, this.bounds) : false;
     if ((b1 || b2) && this.soundCooldown <= 0) {
       playSynthBounce();
       this.soundCooldown = 100; // 100ms throttle
@@ -1577,7 +1581,11 @@ export class GameLoop {
     // 6. Circle-circle collision
     const collision = checkCircleCollision(this.fighter1.body, this.fighter2.body);
     if (collision.colliding) {
-      resolveCollision(this.fighter1.body, this.fighter2.body, collision);
+      // Resolve physics only if neither is currently in an untouchable burst state
+      if (!this.fighter1.isBurstActive && !this.fighter2.isBurstActive) {
+        resolveCollision(this.fighter1.body, this.fighter2.body, collision);
+      }
+      
       if (this.soundCooldown <= 0) {
         playSynthClash();
         this.soundCooldown = 100;
