@@ -851,7 +851,7 @@ body {
 /* Redefined more accurately: hide EVERYTHING on the opposite side */
 .hud-winner-side-left .ghud-hp-wrap.right,
 .hud-winner-side-left .ghud-sidebar.right,
-.hud-winner-side-left .ghud-banner > div:nth-child(3) { /* nth-child(3) is the right name */
+.hud-winner-side-left .ghud-banner > span:nth-child(3) { /* nth-child(3) is the right name */
   opacity: 0 !important;
   pointer-events: none;
   transition: opacity 0.5s ease;
@@ -859,7 +859,7 @@ body {
 
 .hud-winner-side-right .ghud-hp-wrap.left,
 .hud-winner-side-right .ghud-sidebar.left,
-.hud-winner-side-right .ghud-banner > div:nth-child(1) { /* nth-child(1) is the left name */
+.hud-winner-side-right .ghud-banner > span:nth-child(1) { /* nth-child(1) is the left name */
   opacity: 0 !important;
   pointer-events: none;
   transition: opacity 0.5s ease;

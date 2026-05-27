@@ -333,6 +333,11 @@ export class GameLoop {
         'triggerStilettoLaunchFlash',
         'triggerStilettoAmbientSpark',
         'triggerTeleportArrivalSlash',
+        // Ayato / Hydro methods
+        'triggerAfterimage',
+        'triggerSwordInfusionParticles',
+        'triggerWaterCloneExplosion',
+        'triggerShunsuikenSlash',
       ];
 
       methodsToWrap.forEach(method => {
@@ -463,7 +468,7 @@ export class GameLoop {
           if (typeof hit.condition === 'function' && !hit.condition()) {
             return false; // remove from queue without executing
           }
-          this._performMeleeHit(hit.owner, hit.target, hit.index, hit.duration, hit.sound);
+          this._performMeleeHit(hit.owner, hit.target, hit.index, hit.duration, hit.sound, hit.isShunsuiken);
           return false;
         }
         return true;
@@ -797,6 +802,80 @@ export class GameLoop {
     // Update active burst/skill effects
     this.activeEffects = this.activeEffects.filter(effect => {
       effect.timer -= delta * 0.016;
+
+      if (effect.type === 'ayato_water_clone') {
+        const dx = effect.target.body.x - effect.x;
+        const dy = effect.target.body.y - effect.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        
+        // Detonation condition: opponent gets close (within 110px) or timer expires!
+        const shouldDetonate = dist < (effect.target.body.radius + 110) || effect.timer <= 0;
+        
+        if (shouldDetonate) {
+          // Detonation Phase:
+          const skillMult = effect.owner.data.skillE.damageMultiplier || 2.2;
+          const cloneDmg = effect.owner.getCurrentDamage() * skillMult;
+          const result = effect.target.takeDamage(cloneDmg);
+
+          // SFX
+          playSFX('/audio/ayaka/ayaka-skill.mp3', 0.85);
+
+          // VFX Splash Explosion
+          if (effect.owner.vfx && typeof effect.owner.vfx.triggerWaterCloneExplosion === 'function') {
+            effect.owner.vfx.triggerWaterCloneExplosion(effect.x, effect.y);
+          }
+
+          // Damage floating text
+          if (this.damageNumbers) {
+            this.damageNumbers.spawn(effect.x, effect.y - 30, Math.round(cloneDmg), 'hydro', true);
+          }
+          this._screenShake();
+
+          if (result.died) {
+            this._endGame(effect.owner);
+          }
+
+          // Clean up Graphics node safely
+          if (effect.visual && !effect.visual.destroyed) {
+            this.stage.removeChild(effect.visual);
+            effect.visual.destroy();
+          }
+          return false; // Remove effect
+        }
+
+        // Ambient update of static clone visual
+        if (!this.headlessMode && effect.visual && !effect.visual.destroyed) {
+          effect.visual.x = effect.x;
+          effect.visual.y = effect.y;
+
+          const elapsed = 3.0 - effect.timer; // goes 0.0 to 3.0 seconds
+
+          // Redraw static water clone circle
+          effect.visual.clear();
+
+          // Outer circle stroke width pulses gently
+          const strokeWidth = 2.5 + Math.sin(elapsed * 5) * 0.5;
+          const circleColor = 0x00acc1; // Cyan water outline
+          const fillColor = 0x0a232e;   // Translucent dark teal water backplane
+
+          // Draw ground ripple expanding under the clone in real-time
+          const rippleRadius = 20 + (elapsed * 60) % 90; // expands periodically
+          const rippleAlpha = 0.5 * (1 - (rippleRadius - 20) / 90);
+          effect.visual.circle(0, 0, rippleRadius);
+          effect.visual.stroke({ color: 0x80deea, width: 1.5, alpha: rippleAlpha });
+
+          // Draw clone body circle
+          effect.visual.circle(0, 0, 42);
+          effect.visual.fill({ color: fillColor, alpha: 0.4 });
+          effect.visual.stroke({ color: circleColor, width: strokeWidth, alpha: 0.65 });
+
+          // Draw an elegant vector wave emblem inside the clone body
+          effect.visual.moveTo(-12, 4);
+          effect.visual.bezierCurveTo(-6, -8, 6, 8, 12, -4);
+          effect.visual.stroke({ color: 0x80deea, width: 2.0, alpha: 0.65 });
+        }
+        return true; // Keep effect active
+      }
 
       if (effect.type === 'ryuukin_cast') {
         if (effect.timer <= 0) {
@@ -1613,6 +1692,14 @@ export class GameLoop {
     }
 
     // 4. Update physics positions (NOW respecting slowMultiplier set by activeEffects)
+    if (this.fighter1.kyoukaStanceActive) {
+      this.fighter1.body.vx = 0;
+      this.fighter1.body.vy = 0;
+    }
+    if (this.fighter2.kyoukaStanceActive) {
+      this.fighter2.body.vx = 0;
+      this.fighter2.body.vy = 0;
+    }
     updatePosition(this.fighter1.body, delta * this.fighter1.slowMultiplier);
     updatePosition(this.fighter2.body, delta * this.fighter2.slowMultiplier);
 
@@ -1969,23 +2056,31 @@ export class GameLoop {
   /**
    * Perform a single melee hit in a combo
    */
-  _performMeleeHit(fighter, opponent, index, duration, sound) {
+  _performMeleeHit(fighter, opponent, index, duration, sound, isShunsuiken = false) {
     if (!fighter.alive || !opponent.alive) return;
 
     if (sound) {
       playSFX(sound, 0.78);
     }
 
-    // Trigger animation in fighter
-    if (duration > 0) {
+    // Trigger animation in fighter (Skip for Ayato's Hydro slashes)
+    if (duration > 0 && !isShunsuiken) {
       fighter.triggerMeleeSwing(index, duration);
     }
 
-    // Check distance for damage (melee range)
+    // Check distance for damage (melee range, expanded for Ayato Shunsuiken sashes)
     const dx = opponent.body.x - fighter.body.x;
     const dy = opponent.body.y - fighter.body.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
-    const range = fighter.body.radius + opponent.body.radius + 60;
+    
+    const baseRange = (fighter.id === 'ayato' && fighter.kyoukaStanceActive) ? 120 : 60;
+    const range = fighter.body.radius + opponent.body.radius + baseRange;
+
+    // Trigger giant Shunsuiken water crescent VFX on slash start
+    if (fighter.id === 'ayato' && fighter.kyoukaStanceActive && fighter.vfx && typeof fighter.vfx.triggerShunsuikenSlash === 'function') {
+      const angle = Math.atan2(dy, dx);
+      fighter.vfx.triggerShunsuikenSlash(fighter.body.x, fighter.body.y, angle, index);
+    }
 
     if (dist < range) {
       const damage = fighter.getCurrentDamage();
