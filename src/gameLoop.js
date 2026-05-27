@@ -1372,7 +1372,17 @@ export class GameLoop {
           // Burst complete — clean up ring
           effect.owner.isInvincible = false;
           effect.owner.isBurstActive = false;
-          effect.owner.container.alpha = 1.0; // Restore visibility
+          effect.owner.container.alpha = 1.0; // Restore container visibility
+          
+          // Force portrait to be visible immediately after burst sequence
+          if (effect.owner.portraitSprite) {
+            effect.owner.portraitSprite.alpha = 1.0;
+          }
+          if (effect.owner.ultVideoSprite) {
+            effect.owner.ultVideoSprite.alpha = 0;
+            effect.owner.ultVideoSprite.visible = false;
+          }
+          effect.owner.ultVideoFading = false;
 
           if (effect.ring) {
             this.stage.removeChild(effect.ring);
