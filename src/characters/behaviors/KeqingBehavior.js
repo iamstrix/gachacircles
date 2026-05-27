@@ -308,6 +308,7 @@ export const KeqingBehavior = {
     });
 
     fighter.isInvincible = true;
+    fighter.isBurstActive = true;
     fighter.container.alpha = 0; // Keqing disappears
 
     // A4 Passive: Aristocratic Dignity (+15% CRIT Rate for 8s)

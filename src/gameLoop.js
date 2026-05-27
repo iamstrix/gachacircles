@@ -639,9 +639,12 @@ export class GameLoop {
               playSFX('/audio/ayaka/ayaka-parry_infused.wav', 0.6);
 
               // Apply heavy knockback even if she blocks! Blazing arrows are powerful.
-              const blockKnockback = 6.5;
-              arrow.target.body.vx += Math.cos(arrow.angle) * blockKnockback;
-              arrow.target.body.vy += Math.sin(arrow.angle) * blockKnockback;
+              // Keqing is immune to knockback during her Starward Sword burst
+              if (!arrow.target.isBurstActive) {
+                const blockKnockback = 6.5;
+                arrow.target.body.vx += Math.cos(arrow.angle) * blockKnockback;
+                arrow.target.body.vy += Math.sin(arrow.angle) * blockKnockback;
+              }
             } else {
               // Standard physical deflect sparks
               if (arrow.target.vfx) {
@@ -1364,6 +1367,7 @@ export class GameLoop {
         if (effect.timer <= 0) {
           // Burst complete — clean up ring
           effect.owner.isInvincible = false;
+          effect.owner.isBurstActive = false;
           effect.owner.container.alpha = 1.0; // Restore visibility
 
           if (effect.ring) {
