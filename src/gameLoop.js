@@ -218,6 +218,7 @@ export class GameLoop {
     preloadSFX('/audio/yoimiya/yoimiya-ultimate.wav');
     preloadSFX('/audio/keqing/keqing-skill.wav');
     preloadSFX('/audio/keqing/keqing-skill2.wav');
+    preloadSFX('/audio/keqing/keqing-charge.wav');
     preloadSFX('/audio/keqing/keqing-ultimate.wav');
     preloadSFX('/audio/circle-bounce.wav');
     preloadSFX('/audio/winner-splash.wav');
@@ -1463,7 +1464,7 @@ export class GameLoop {
             fighter.vfx.triggerTeleportArrivalSlash(fighter.body.x, fighter.body.y, effect.angle);
           }
 
-          this._playSFX('/audio/keqing/keqing-skill2.wav', 0.9);
+          this._playSFX('/audio/keqing/keqing-skill2.wav', 1.0);
           
           // Trigger Electro Infusion
           fighter.passiveTimer = 5000; // 5 seconds in ms
@@ -1499,6 +1500,10 @@ export class GameLoop {
           }
           effect.owner.ultVideoFading = false;
 
+          if (effect.owner.vfx && typeof effect.owner.vfx.clearPersistentBurstVFX === 'function') {
+            effect.owner.vfx.clearPersistentBurstVFX();
+          }
+
           if (effect.ring) {
             this.stage.removeChild(effect.ring);
             effect.ring.destroy();
@@ -1525,10 +1530,16 @@ export class GameLoop {
           return false;
         }
 
+        // Freeze Keqing's velocity during the 1.19s windup phase
+        if (effect.timer > 1.7) {
+          effect.owner.body.vx = 0;
+          effect.owner.body.vy = 0;
+        }
+
         // Per-slash damage pulses (Hits 2-9)
         const totalSlashes = effect.totalSlashes || 8;
-        // Total sequence is 2.1s. Slashes happen between 0.4s and 1.7s (approx 1.3s window)
-        const startWindow = 1.7; // timer value (counting down from 2.1)
+        // Total sequence is 2.89s (1.19s windup + 1.7s slashes/explosion). Slashes happen between 0.4s and 1.7s remaining time.
+        const startWindow = 1.7; // timer value (counting down from 2.89)
         const endWindow = 0.4;   // timer value
         const windowDuration = startWindow - endWindow;
         const slashInterval = windowDuration / totalSlashes;
@@ -1541,13 +1552,54 @@ export class GameLoop {
           if (expectedSlash > (effect.slashIndex || 0) && expectedSlash <= totalSlashes) {
             effect.slashIndex = expectedSlash;
 
+            // Define Keqing's constellation vertices and lines
+            const maxR = effect.owner.data.burstQ.aoeRadius || 150;
+            const cx = effect.owner.body.x;
+            const cy = effect.owner.body.y;
+            const R = maxR * 0.95;
+            
+            const P = {
+              1: { x: cx, y: cy + R },
+              2: { x: cx - R * 0.65, y: cy - R * 0.65 },
+              3: { x: cx + R * 0.95, y: cy - R * 0.1 },
+              4: { x: cx - R * 0.85, y: cy + R * 0.3 },
+              5: { x: cx + R * 0.75, y: cy - R * 0.75 },
+              6: { x: cx, y: cy }
+            };
+
+            const constellation = [
+              { from: P[1], to: P[2] },
+              { from: P[2], to: P[3] },
+              { from: P[3], to: P[4] },
+              { from: P[4], to: P[5] },
+              { from: P[5], to: P[6] }
+            ];
+
+            // Trigger delayed Initial Strike (Hit 1) on the first slash index (1.19s after ultimate activation)
+            if (expectedSlash === 1 && !effect.initialStrikeFired) {
+              effect.initialStrikeFired = true;
+              if (effect.owner.container) {
+                effect.owner.container.alpha = 0; // Keqing disappears as slashing begins!
+              }
+
+              const initialDmg = Math.round(effect.owner.getCurrentDamage() * (effect.owner.data.burstQ.initialMultiplier || 1.51));
+              const res = effect.target.takeDamage(initialDmg);
+              effect.owner.stats.damageDealt.burst += res.actualDamage;
+              if (this.damageNumbers) {
+                const beh = effect.owner.behavior;
+                const isCritHit = beh && typeof beh.isCrit === 'function' ? beh.isCrit(effect.owner) : false;
+                this.damageNumbers.spawn(effect.target.body.x, effect.target.body.y - 30, res.actualDamage, effect.owner.element, isCritHit);
+              }
+              this._screenShake();
+              if (res.died) {
+                this._endGame(effect.owner);
+                return false;
+              }
+            }
+
             // Hits 2-9: Rapid slashes
             const slashDmg = Math.round(effect.owner.getCurrentDamage() * (effect.owner.data.burstQ.slashMultiplier || 0.41));
             
-            // Preset naturalistic criss-cross angles matching diagonal cuts
-            const angles = [0.52, 2.18, 3.84, 0.87, 2.53, 4.19, 1.22, 2.88];
-            const sAngle = angles[(effect.slashIndex - 1) % angles.length];
-
             const dx2 = effect.target.body.x - effect.owner.body.x;
             const dy2 = effect.target.body.y - effect.owner.body.y;
             const aoeR = 120;
@@ -1567,37 +1619,73 @@ export class GameLoop {
               }
             }
 
-            // VFX premium additions
+            // VFX Drawing: Step-by-step constellation sequence or rapid fading slashes
             if (effect.owner.vfx) {
-              const maxR = effect.owner.data.burstQ.aoeRadius || 150;
-              
-              // 1. Draw static full-screen luminous beam crossing the epicenter
-              if (typeof effect.owner.vfx.triggerBeamSlash === 'function') {
-                effect.owner.vfx.triggerBeamSlash(effect.owner.body.x, effect.owner.body.y, sAngle, 750, 10);
-              }
+              if (expectedSlash >= 1 && expectedSlash <= 5) {
+                // Draw constellation segment one-by-one (it stays!)
+                const line = constellation[expectedSlash - 1];
+                const mx = (line.from.x + line.to.x) / 2;
+                const my = (line.from.y + line.to.y) / 2;
+                const dx = line.to.x - line.from.x;
+                const dy = line.to.y - line.from.y;
+                const sAngle = Math.atan2(dy, dx);
+                const sLength = Math.sqrt(dx * dx + dy * dy);
 
-              // 2. Spawn a ghostly afterimage silhouette orbiting the epicenter
-              const orbitRadius = 40 + Math.random() * (maxR * 0.7); // 40px to 105px orbit
-              const orbitAngle = Math.random() * Math.PI * 2;
-              const ax = effect.owner.body.x + Math.cos(orbitAngle) * orbitRadius;
-              const ay = effect.owner.body.y + Math.sin(orbitAngle) * orbitRadius;
+                // 1. Draw persistent beam slash (noDecay = true)
+                if (typeof effect.owner.vfx.triggerBeamSlash === 'function') {
+                  effect.owner.vfx.triggerBeamSlash(mx, my, sAngle, sLength, 10, 0.16, true);
+                }
 
-              if (typeof effect.owner.vfx.triggerAfterimage === 'function') {
-                effect.owner.vfx.triggerAfterimage(ax, ay, sAngle);
-              }
+                // 2. Spawn persistent lightning tendril (noDecay = true)
+                if (typeof effect.owner.vfx.triggerLightningTendril === 'function') {
+                  effect.owner.vfx.triggerLightningTendril(line.from.x, line.from.y, line.to.x, line.to.y, true);
+                }
 
-              // 3. Connect consecutive strikes with jagged lightning tendrils
-              if (effect.lastAfterimageX !== undefined && typeof effect.owner.vfx.triggerLightningTendril === 'function') {
-                effect.owner.vfx.triggerLightningTendril(effect.lastAfterimageX, effect.lastAfterimageY, ax, ay);
-              }
+                // 3. Spawn a persistent afterimage at the start vertex of this segment
+                if (typeof effect.owner.vfx.triggerAfterimage === 'function') {
+                  effect.owner.vfx.triggerAfterimage(line.from.x, line.from.y, sAngle, true);
+                }
 
-              // Save coordinate for next lightning connect
-              effect.lastAfterimageX = ax;
-              effect.lastAfterimageY = ay;
+                // 4. Trigger localized electro particle sparks/arc at the cut midpoint
+                if (typeof effect.owner.vfx.triggerSlashArc === 'function') {
+                  effect.owner.vfx.triggerSlashArc(mx, my, sAngle);
+                }
+              } else {
+                // expectedSlash is 6, 7, 8: Spawn rapid fading slashes around the circular AoE (they decay!)
+                // Let's spawn 2 fading slashes per index to make it look like a rich flurry!
+                for (let i = 0; i < 2; i++) {
+                  const orbitRadius = Math.random() * (maxR * 0.7); // within 70% of ultimate radius
+                  const orbitAngle = Math.random() * Math.PI * 2;
+                  const ax = effect.owner.body.x + Math.cos(orbitAngle) * orbitRadius;
+                  const ay = effect.owner.body.y + Math.sin(orbitAngle) * orbitRadius;
+                  const sAngle = Math.random() * Math.PI * 2;
+                  const sLength = 110 + Math.random() * 90; // random slash length
 
-              // 4. Retain localized particle sparks at strike location for impact debris
-              if (typeof effect.owner.vfx.triggerSlashArc === 'function') {
-                effect.owner.vfx.triggerSlashArc(ax, ay, sAngle);
+                  const mx = ax + Math.cos(sAngle) * (sLength / 2);
+                  const my = ay + Math.sin(sAngle) * (sLength / 2);
+                  const px2 = ax + Math.cos(sAngle) * sLength;
+                  const py2 = ay + Math.sin(sAngle) * sLength;
+
+                  // 1. Draw fading beam slash (noDecay = false)
+                  if (typeof effect.owner.vfx.triggerBeamSlash === 'function') {
+                    effect.owner.vfx.triggerBeamSlash(mx, my, sAngle, sLength, 8, 0.16, false);
+                  }
+
+                  // 2. Spawn a fading afterimage silhouette (noDecay = false)
+                  if (typeof effect.owner.vfx.triggerAfterimage === 'function') {
+                    effect.owner.vfx.triggerAfterimage(ax, ay, sAngle, false);
+                  }
+
+                  // 3. Connect start and end points with a fading lightning tendril (noDecay = false)
+                  if (typeof effect.owner.vfx.triggerLightningTendril === 'function') {
+                    effect.owner.vfx.triggerLightningTendril(ax, ay, px2, py2, false);
+                  }
+
+                  // 4. Retain localized particle sparks
+                  if (typeof effect.owner.vfx.triggerSlashArc === 'function') {
+                    effect.owner.vfx.triggerSlashArc(mx, my, sAngle);
+                  }
+                }
               }
             }
           }
@@ -1610,7 +1698,7 @@ export class GameLoop {
 
         // Update ring
         if (effect.ring && !this.headlessMode) {
-          const prog = Math.min(1.0, Math.max(0.0, 1 - (effect.timer / 2.1)));
+          const prog = Math.min(1.0, Math.max(0.0, 1 - (effect.timer / 2.89)));
           const maxRadius = effect.owner.data.burstQ.aoeRadius || 150;
           const ringRadius = maxRadius * (1 - prog) + 30;
           const alpha = 0.3 + 0.7 * prog;
@@ -2060,7 +2148,8 @@ export class GameLoop {
     if (!fighter.alive || !opponent.alive) return;
 
     if (sound) {
-      playSFX(sound, 0.78);
+      const volume = sound.includes('/keqing/') ? 1.0 : 0.78;
+      playSFX(sound, volume);
     }
 
     // Trigger animation in fighter (Skip for Ayato's Hydro slashes)

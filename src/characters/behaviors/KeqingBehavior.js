@@ -37,7 +37,7 @@ export const KeqingBehavior = {
   onSkillActivate(fighter, opponent, gameLoop, Graphics, Sprite, Assets) {
     if (!fighter.stilettoThrown) {
       // ── Phase 1: Throw stiletto projectile ───────────────────
-      gameLoop._playSFX('/audio/keqing/keqing-skill.wav', 0.85);
+      gameLoop._playSFX('/audio/keqing/keqing-skill.wav', 1.0);
       fighter.stats.casts.skill++;
 
       const startX = fighter.body.x;
@@ -274,25 +274,17 @@ export const KeqingBehavior = {
    * Keqing disappears and becomes invincible.
    */
   onBurstActivate(fighter, opponent, gameLoop, Graphics, Sprite, Assets) {
-    gameLoop._playSFX('/audio/keqing/keqing-ultimate.wav', 0.9);
+    gameLoop._playSFX('/audio/keqing/keqing-ultimate.wav', 1.0);
     fighter.stats.casts.burst++;
 
     const ringGfx = new Graphics();
     gameLoop.stage.addChildAt(ringGfx, 1);
 
-    // Initial Strike (Hit 1) - occurs immediately
-    const initialDmg = Math.round(fighter.data.damage * (fighter.data.burstQ.initialMultiplier || 1.51));
-    const res = opponent.takeDamage(initialDmg);
-    fighter.stats.damageDealt.burst += res.actualDamage;
-    if (gameLoop.damageNumbers) {
-      gameLoop.damageNumbers.spawn(opponent.body.x, opponent.body.y - 30, res.actualDamage, fighter.element, true);
-    }
-
     gameLoop.activeEffects.push({
       type: 'starward_cast',
       owner: fighter,
       target: opponent,
-      timer: 2.1, // Accurate 2.1s duration
+      timer: 2.89, // Accurate 2.89s duration (1.19s windup + 1.7s slashes/explosion)
       ring: ringGfx,
       slashIndex: 0,
       totalSlashes: fighter.data.burstQ.slashCount || 8,
@@ -300,7 +292,8 @@ export const KeqingBehavior = {
 
     fighter.isInvincible = true;
     fighter.isBurstActive = true;
-    fighter.container.alpha = 0; // Keqing disappears
+    fighter.body.vx = 0;
+    fighter.body.vy = 0;
 
     // A4 Passive: Aristocratic Dignity (+15% CRIT Rate for 8s)
     // We'll treat this as guaranteed crits for the duration in this simplified engine
@@ -335,7 +328,7 @@ export const KeqingBehavior = {
       delay: 1400,
       index: 5,
       dur: 300,
-      sound: '/audio/keqing/keqing-skill2.wav', // High energy CA sound
+      sound: '/audio/keqing/keqing-charge.wav', // High energy CA sound
       condition: () => {
         const dx = opponent.body.x - fighter.body.x;
         const dy = opponent.body.y - fighter.body.y;
@@ -386,10 +379,10 @@ export const KeqingBehavior = {
 
     if (result.actualDamage > 0) {
       if (fighter.passiveTimer > 0) {
-        gameLoop._playSFX('/audio/keqing/keqing-hit_infused.wav', 0.9);
+        gameLoop._playSFX('/audio/keqing/keqing-hit_infused.wav', 0.6);
         return 'enhanced';
       } else {
-        gameLoop._playSFX('/audio/keqing/keqing-hit.wav', 0.85);
+        gameLoop._playSFX('/audio/keqing/keqing-hit.wav', 0.6);
       }
     }
     return 'normal';

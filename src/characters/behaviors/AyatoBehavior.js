@@ -166,11 +166,11 @@ export const AyatoBehavior = {
     if (result.actualDamage > 0) {
       if (fighter.passiveTimer > 0 || fighter.isInfused) {
         // Enhanced Hydro slash sound
-        gameLoop._playSFX('/audio/ayaka/ayaka-hit_infused.wav', 0.9);
+        gameLoop._playSFX('/audio/ayaka/ayaka-hit_infused.wav', 0.6);
         return 'enhanced';
       } else {
         // Standard slash sound
-        gameLoop._playSFX('/audio/ayaka/ayaka-hit.wav', 0.85);
+        gameLoop._playSFX('/audio/ayaka/ayaka-hit.wav', 0.6);
       }
     }
     return 'normal';

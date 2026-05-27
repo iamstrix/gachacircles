@@ -137,12 +137,12 @@ export const AyakaBehavior = {
   onMeleeHit(fighter, opponent, gameLoop, result) {
     if (result.actualDamage > 0) {
       if (fighter.passiveTimer > 0) {
-        gameLoop._playSFX('/audio/ayaka/ayaka-hit_infused.wav', 0.9);
+        gameLoop._playSFX('/audio/ayaka/ayaka-hit_infused.wav', 0.6);
         // Ayaka C1: every infused hit reduces Hyouka CD by 1.0s
         fighter.skillCDTimer = Math.max(0, fighter.skillCDTimer - 1.0);
         return 'enhanced';
       } else {
-        gameLoop._playSFX('/audio/ayaka/ayaka-hit.wav', 0.85);
+        gameLoop._playSFX('/audio/ayaka/ayaka-hit.wav', 0.6);
       }
     }
     return 'normal';

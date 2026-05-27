@@ -752,7 +752,7 @@ export class ElectroVFX {
    * @param {number} width Custom line width
    * @param {number} [timer=0.16] Custom lifespan in seconds
    */
-  triggerBeamSlash(cx, cy, angle, length = 750, width = 12, timer = 0.16) {
+  triggerBeamSlash(cx, cy, angle, length = 750, width = 12, timer = 0.16, noDecay = false) {
     let beam = this._beams.find(b => !b.active);
     if (!beam) {
       const g = new Graphics();
@@ -763,6 +763,7 @@ export class ElectroVFX {
 
     beam.active = true;
     beam.isFlash = false;
+    beam.noDecay = noDecay;
     beam.timer = timer;
     beam.maxTimer = timer;
     beam.cx = cx;
@@ -778,7 +779,7 @@ export class ElectroVFX {
    * @param {number} y Position Y
    * @param {number} angle Swing direction
    */
-  triggerAfterimage(x, y, angle) {
+  triggerAfterimage(x, y, angle, noDecay = false) {
     let afterimage = this._afterimages.find(ai => !ai.active);
     if (!afterimage) {
       const g = new Graphics();
@@ -788,6 +789,7 @@ export class ElectroVFX {
     }
 
     afterimage.active = true;
+    afterimage.noDecay = noDecay;
     afterimage.timer = 0.28; // 280ms lifespan
     afterimage.maxTimer = 0.28;
     afterimage.x = x;
@@ -802,7 +804,7 @@ export class ElectroVFX {
    * @param {number} x2 End X
    * @param {number} y2 End Y
    */
-  triggerLightningTendril(x1, y1, x2, y2) {
+  triggerLightningTendril(x1, y1, x2, y2, noDecay = false) {
     let tendril = this._tendrils.find(t => !t.active);
     if (!tendril) {
       const g = new Graphics();
@@ -812,6 +814,7 @@ export class ElectroVFX {
     }
 
     tendril.active = true;
+    tendril.noDecay = noDecay;
     tendril.timer = 0.12; // 120ms lifespan
     tendril.maxTimer = 0.12;
 
@@ -908,7 +911,11 @@ export class ElectroVFX {
     // 1. Update and draw active beams and shockwave flashes
     for (const beam of this._beams) {
       if (!beam.active) continue;
-      beam.timer -= delta * 0.016;
+      if (beam.noDecay) {
+        beam.timer = beam.maxTimer;
+      } else {
+        beam.timer -= delta * 0.016;
+      }
       if (beam.timer <= 0) {
         beam.active = false;
         beam.gfx.clear();
@@ -976,7 +983,11 @@ export class ElectroVFX {
     // 2. Update and draw active afterimages
     for (const ai of this._afterimages) {
       if (!ai.active) continue;
-      ai.timer -= delta * 0.016;
+      if (ai.noDecay) {
+        ai.timer = ai.maxTimer;
+      } else {
+        ai.timer -= delta * 0.016;
+      }
       if (ai.timer <= 0) {
         ai.active = false;
         ai.gfx.clear();
@@ -1035,7 +1046,11 @@ export class ElectroVFX {
     // 3. Update and draw active lightning tendrils
     for (const tendril of this._tendrils) {
       if (!tendril.active) continue;
-      tendril.timer -= delta * 0.016;
+      if (tendril.noDecay) {
+        tendril.timer = tendril.maxTimer;
+      } else {
+        tendril.timer -= delta * 0.016;
+      }
       if (tendril.timer <= 0) {
         tendril.active = false;
         tendril.gfx.clear();
@@ -1111,5 +1126,11 @@ export class ElectroVFX {
 
     this._skill.update(delta);
     this._burst.update(delta);
+  }
+
+  clearPersistentBurstVFX() {
+    this._beams.forEach(b => { if (b.noDecay) b.noDecay = false; });
+    this._afterimages.forEach(ai => { if (ai.noDecay) ai.noDecay = false; });
+    this._tendrils.forEach(t => { if (t.noDecay) t.noDecay = false; });
   }
 }
