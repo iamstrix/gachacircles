@@ -1602,7 +1602,7 @@ export class GameLoop {
             
             const dx2 = effect.target.body.x - effect.owner.body.x;
             const dy2 = effect.target.body.y - effect.owner.body.y;
-            const aoeR = 120;
+            const aoeR = maxR;
 
             if (Math.sqrt(dx2 * dx2 + dy2 * dy2) < aoeR) {
               const slashResult = effect.target.takeDamage(slashDmg);
