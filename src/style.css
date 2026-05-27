@@ -838,20 +838,35 @@ body {
   transition: opacity 0.5s ease;
 }
 
-.hud-winner-side-left .ghud-name-pyro,
 .hud-winner-side-left .ghud-hp-wrap.right,
-.hud-winner-side-left .ghud-sidebar.right {
+.hud-winner-side-left .ghud-sidebar.right,
+.hud-winner-side-left .ghud-name-pyro,
+.hud-winner-side-left .ghud-name-electro,
+.hud-winner-side-left .ghud-name-cryo:not(.hud-winner-cryo *) {
+  /* This is tricky because we need to hide the generic name tags. 
+     Better approach: hide the side-specific wrappers if we had them.
+     Since we don't, we hide all name tags that don't match the winner's element. */
+}
+
+/* Redefined more accurately: hide EVERYTHING on the opposite side */
+.hud-winner-side-left .ghud-hp-wrap.right,
+.hud-winner-side-left .ghud-sidebar.right,
+.hud-winner-side-left .ghud-banner > div:nth-child(3) { /* nth-child(3) is the right name */
   opacity: 0 !important;
   pointer-events: none;
   transition: opacity 0.5s ease;
 }
 
-.hud-winner-side-right .ghud-name-cryo,
 .hud-winner-side-right .ghud-hp-wrap.left,
-.hud-winner-side-right .ghud-sidebar.left {
+.hud-winner-side-right .ghud-sidebar.left,
+.hud-winner-side-right .ghud-banner > div:nth-child(1) { /* nth-child(1) is the left name */
   opacity: 0 !important;
   pointer-events: none;
   transition: opacity 0.5s ease;
+}
+
+.hud-winner-electro {
+  /* Future expansion for electro-specific HUD victory styles */
 }
 
 /* ========================================

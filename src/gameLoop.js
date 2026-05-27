@@ -1894,6 +1894,7 @@ export class GameLoop {
     if (canActivateSkill) {
       const activated = fighter.activateSkill();
       if (activated) {
+        fighter.stats.casts.skill++;
         // Delegate to behavior module
         if (beh && typeof beh.onSkillActivate === 'function') {
           beh.onSkillActivate(fighter, opponent, this, Graphics, Sprite, Assets);
@@ -1905,6 +1906,7 @@ export class GameLoop {
     if (fighter.burstCDTimer <= 0) {
       const activated = fighter.activateBurst();
       if (activated) {
+        fighter.stats.casts.burst++;
         if (!this.replayMode && this.recordReplayEnabled) {
           this.replaySFXEvents.push({
             type: 'portrait_ult',

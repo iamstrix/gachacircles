@@ -384,7 +384,9 @@ function showWinScreen(winner) {
   textPanel.appendChild(statsContainer);
 
   // Layout logic: Always align splash to the side the fighter was on
-  const isLeftWinner = (winner === fighter1);
+  // Use global fighter1/fighter2 references or fallback to gameLoop references
+  const f1 = fighter1 || (gameLoop ? gameLoop.fighter1 : null);
+  const isLeftWinner = (winner === f1);
 
   if (isLeftWinner) {
     imgPanel.classList.add('win-screen__panel--left');
