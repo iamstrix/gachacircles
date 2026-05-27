@@ -180,7 +180,7 @@ export const CHARACTERS = {
       slashMultiplier: 0.41,    // Hits 2-9
       explosionMultiplier: 3.39, // Hit 10
       slashCount: 8,
-      aoeRadius: 225,
+      aoeRadius: 187.5,
       cooldown: 12,
       emoji: '🗡️',
       icon: '/keqing-ultimate_icon.png'
