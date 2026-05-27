@@ -34,13 +34,16 @@ let gameLoop;
 let fighter1, fighter2;
 
 async function init() {
+  // Clear any residual custom color customization keys so original colors are applied immediately
+  localStorage.removeItem('dev-bg-color');
+  localStorage.removeItem('dev-arena-color');
+
   // Create PixiJS application
-  const savedBG = localStorage.getItem('dev-bg-color') || '#a8f5b4';
   app = new Application();
   await app.init({
     width: GAME_WIDTH,
     height: GAME_HEIGHT,
-    backgroundColor: savedBG,
+    backgroundColor: 0xa8f5b4,
     antialias: true,
     resolution: window.devicePixelRatio || 1,
     autoDensity: true,
@@ -190,10 +193,9 @@ async function init() {
 function createArenaBackground() {
   const bg = new Graphics();
 
-  // Arena floor — clean light mint/pastel green or custom dev color
-  const arenaHex = localStorage.getItem('dev-arena-color') || '#e2fde6';
+  // Arena floor — clean light mint/pastel green
   bg.rect(ARENA.x, ARENA.y, ARENA.width, ARENA.height);
-  bg.fill({ color: arenaHex });
+  bg.fill({ color: 0xe2fde6 });
 
   // Arena border — crisp solid black
   bg.rect(ARENA.x, ARENA.y, ARENA.width, ARENA.height);
