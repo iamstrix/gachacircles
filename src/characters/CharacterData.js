@@ -195,7 +195,7 @@ export const CHARACTERS = {
     // Visual config
     circleRadius: 42,
     portrait: '/characters/keqing.png',
-    splash: '/characters/keqing-splash.png',
+    splash: '/keqing-splash.png',
     ultAnimation: '/characters/keqing-ultimate_animation.mp4',
     weaponSprite: '/weapons/sword.png',
     colors: {
