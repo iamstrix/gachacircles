@@ -91,6 +91,23 @@ export const ELECTRO_TELEPORT_GRADIENT = [
   { t: 1.0,  color: 0x1a0a2e },
 ];
 
+export const HYDRO_COLORS = {
+  white:       0xffffff,
+  lightCyan:   0xe0f7fa, // pale water cyan
+  cyan:        0x00acc1, // vibrant cyan
+  deepTeal:    0x006064, // dark water teal
+  accent:      0x80deea, // aquamarine highlight
+  dark:        0x0a232e, // deep marine abyss
+};
+
+export const HYDRO_GRADIENT = [
+  { t: 0.0,  color: HYDRO_COLORS.white },
+  { t: 0.20, color: HYDRO_COLORS.accent },
+  { t: 0.50, color: HYDRO_COLORS.cyan },
+  { t: 0.80, color: HYDRO_COLORS.deepTeal },
+  { t: 1.0,  color: HYDRO_COLORS.dark },
+];
+
 // ── Helpers ──────────────────────────────────────────────────
 
 /** Linearly interpolate a single 0-255 channel. */
@@ -153,6 +170,7 @@ export function getParticleColor(element, lifeFraction) {
   let gradient;
   if (element === 'cryo') gradient = CRYO_GRADIENT;
   else if (element === 'electro') gradient = ELECTRO_GRADIENT;
+  else if (element === 'hydro') gradient = HYDRO_GRADIENT;
   else gradient = PYRO_GRADIENT;
   return sampleGradient(gradient, lifeFraction);
 }
@@ -163,6 +181,7 @@ export function getParticleColor(element, lifeFraction) {
 export function getPalette(element) {
   if (element === 'cryo') return CRYO_COLORS;
   if (element === 'electro') return ELECTRO_COLORS;
+  if (element === 'hydro') return HYDRO_COLORS;
   return PYRO_COLORS;
 }
 

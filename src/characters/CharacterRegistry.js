@@ -5,12 +5,14 @@
 import { AyakaBehavior } from './behaviors/AyakaBehavior.js';
 import { YoimiyaBehavior } from './behaviors/YoimiyaBehavior.js';
 import { KeqingBehavior } from './behaviors/KeqingBehavior.js';
+import { AyatoBehavior } from './behaviors/AyatoBehavior.js';
 import { getCharacter } from './CharacterData.js';
 
 const BEHAVIORS = {
   ayaka: AyakaBehavior,
   yoimiya: YoimiyaBehavior,
   keqing: KeqingBehavior,
+  ayato: AyatoBehavior,
 };
 
 /**

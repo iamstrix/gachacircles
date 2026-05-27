@@ -405,12 +405,33 @@ export class ElectroVFX {
    * Radial teleport arrival slash: V-shaped crescent beams, particle burst, lightning tendrils.
    */
   triggerTeleportArrivalSlash(x, y, angle) {
-    // 1. V-shaped arrival crescent beam slashes (±30 degrees offset)
-    const angleOffset = Math.PI / 6;
-    this.triggerBeamSlash(x, y, angle - angleOffset, 200, 7.5, 0.18);
-    this.triggerBeamSlash(x, y, angle + angleOffset, 200, 7.5, 0.18);
+    // 1. Large expanding radial electro shockwave flash ring
+    let flash = this._beams.find(f => f.isFlash && !f.active);
+    if (!flash) {
+      const g = new Graphics();
+      this._vfxGraphicsContainer.addChild(g);
+      flash = { gfx: g, active: false, isFlash: true };
+      this._beams.push(flash);
+    }
+    flash.active = true;
+    flash.timer = 0.22; // 220ms
+    flash.maxTimer = 0.22;
+    flash.x = x;
+    flash.y = y;
+    flash.minRadius = 30;
+    flash.maxRadius = 140;
+    flash.strokeWidth = 3.5;
 
-    // 2. Burst of 25 particles outward
+    // Perpendicular angle: 90 degrees to Keqing's momentum/blink approach direction
+    const perpAngle = angle + Math.PI / 2;
+
+    // 2. Large perpendicular vector-drawn beam slash (highly visible, thick white/neon laser)
+    this.triggerBeamSlash(x, y, perpAngle, 260, 9.0, 0.18);
+
+    // 3. Large crescent electro slash particle arc aligned perpendicular to momentum
+    this.triggerSlashArc(x, y, perpAngle);
+
+    // 4. Burst of 25 particles outward
     this._skill.emit(x, y, {
       count: 25,
       speedMin: 2.0,
@@ -428,7 +449,7 @@ export class ElectroVFX {
       shrink: true,
     });
 
-    // 3. 1-2 lightning tendrils radiating outward
+    // 5. 1-2 lightning tendrils radiating outward
     const tendrilCount = 1 + Math.floor(Math.random() * 2);
     for (let i = 0; i < tendrilCount; i++) {
       const tendrilAngle = angle + Math.PI + (Math.random() - 0.5) * Math.PI; // back-ish or random side
@@ -636,6 +657,27 @@ export class ElectroVFX {
   triggerSlashArc(x, y, angle) {
     const spread = Math.PI * 0.55;
     
+    // 0. Dark-Purple Shadow/Contrast Layer (Thicker Elongated Rects - Normal Blend for maximum contrast)
+    this._burst.emit(x, y, {
+      count: 35,
+      speedMin: 11.0,
+      speedMax: 21.0,
+      spreadAngle: spread,
+      angleCenter: angle,
+      lifetimeMin: 12,
+      lifetimeMax: 24,
+      sizeMin: 2.2,      // Thicker than bright layers to create a visible outline backing
+      sizeMax: 4.0,      // Thicker than bright layers to create a visible outline backing
+      scaleX: 20.0,      // Slightly longer for solid contrast contour
+      scaleY: 1.25,
+      shape: 'rect',
+      autoRotate: true,
+      startAlpha: 0.75,  // Strong, rich dark backing
+      endAlpha: 0,
+      color: 0x1a0a2e,   // Dark void-purple for ultimate contrast against the cream arena
+      shrink: true,
+    });
+
     // 1. Sharp White-Hot Cut (Elongated Rects)
     this._burst.emit(x, y, {
       count: 40,

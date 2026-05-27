@@ -54,6 +54,10 @@ export class Fighter {
     this.stilettoTimer = 0;
     this.stilettoVisual = null;
 
+    // Ayato-specific: Kyouka Elemental Skill stance shift state
+    this.kyoukaStanceActive = false;
+    this.kyoukaTimer = 0;
+
     // Statistics tracking
     this.stats = {
       damageDealt: {
@@ -351,6 +355,7 @@ export class Fighter {
             if (p < 0.6) {
               // Windup/Blinking: weapon stays behind
               offRot = Math.PI; 
+              orbitDist -= 10;
             } else {
               // Reappear and strike instantly
               const p2 = (p - 0.6) / 0.4; // 0 to 1
@@ -359,9 +364,14 @@ export class Fighter {
             }
             if (p > 0.55 && !this.hasThrustedThisSwing && opponent) {
               this.hasThrustedThisSwing = true;
-              const impulse = 9.5; // Massive dash forward
+              const impulse = 28.0; // Replicates original game's lightning-fast blink lunge
               this.body.vx += Math.cos(targetAngle) * impulse;
               this.body.vy += Math.sin(targetAngle) * impulse;
+
+              // Trigger a ghostly afterimage at her departure coordinates
+              if (this.vfx && typeof this.vfx.triggerAfterimage === 'function') {
+                this.vfx.triggerAfterimage(this.body.x, this.body.y, targetAngle);
+              }
             }
             break;
           case 5: // CA: Charged Attack
@@ -369,6 +379,118 @@ export class Fighter {
             offRot = Math.sin(p * Math.PI * 5) * Math.PI * 0.6;
             orbitDist += Math.sin(p * Math.PI) * 25;
             break;
+        }
+      } else if (this.id === 'ayato') {
+        if (this.kyoukaStanceActive) {
+          // Kamisato Art: Kyouka — Shunsuiken rapid 3-hit repeating loop slashes (Stationary)
+          switch(this.comboIndex) {
+            case 0: // Shunsuiken 1: Broad horizontal right-to-left sweep
+              offRot = -0.75 * Math.PI + p * 1.35 * Math.PI;
+              orbitDist += Math.sin(p * Math.PI) * 32;
+              break;
+            case 1: // Shunsuiken 2: Broad horizontal left-to-right sweep
+              offRot = 0.75 * Math.PI - p * 1.35 * Math.PI;
+              orbitDist += Math.sin(p * Math.PI) * 32;
+              break;
+            case 2: // Shunsuiken 3: Overhead vertical downward chop
+              offRot = -0.5 * Math.PI + p * 1.0 * Math.PI;
+              orbitDist += Math.sin(p * Math.PI) * 40;
+              break;
+          }
+        } else {
+          // Kamisato Art: Marobashi combo for Kamisato Ayato (Composed, Upright stance)
+          switch(this.comboIndex) {
+            case 0: // Strike 1: The Cross-Body Draw (Left-to-right swift diagonal slash)
+              // Snaps instantly. Composed vertical posture. Tight frontal arc.
+              offRot = -0.4 * Math.PI + p * 0.7 * Math.PI;
+              orbitDist += Math.sin(p * Math.PI) * 14;
+              // Extremely subtle composed weight shift forward
+              if (p > 0.05 && !this.hasThrustedThisSwing && opponent) {
+                this.hasThrustedThisSwing = true;
+                const impulse = 0.8;
+                this.body.vx += Math.cos(targetAngle) * impulse;
+                this.body.vy += Math.sin(targetAngle) * impulse;
+              }
+              break;
+            case 1: // Strike 2: The Rebound (Right-to-left swift ascending slash)
+              // Barely shifts weight, elegant upright stance.
+              offRot = 0.3 * Math.PI - p * 0.6 * Math.PI;
+              orbitDist += Math.sin(p * Math.PI) * 14;
+              if (p > 0.05 && !this.hasThrustedThisSwing && opponent) {
+                this.hasThrustedThisSwing = true;
+                const impulse = 0.6;
+                this.body.vx += Math.cos(targetAngle) * impulse;
+                this.body.vy += Math.sin(targetAngle) * impulse;
+              }
+              break;
+            case 2: // Strike 3: The Sweeping Spin (Fluid 360-degree horizontal rotation)
+              // Steps slightly forward, extending arm letting blade trail behind to maximize reach
+              offRot = p * Math.PI * 2;
+              orbitDist += Math.sin(p * Math.PI) * 28; // Wide, circular AoE reach
+              if (p > 0.05 && !this.hasThrustedThisSwing && opponent) {
+                this.hasThrustedThisSwing = true;
+                const impulse = 1.8; // Moderate composed step forward
+                this.body.vx += Math.cos(targetAngle) * impulse;
+                this.body.vy += Math.sin(targetAngle) * impulse;
+              }
+              break;
+            case 3: // Strike 4: The Rapid Flurry (Horizontal cut then downward cleave)
+              // Plants feet firmly. Extremely tight multi-hit timing. Saturated wide sweeps.
+              if (p < 0.5) {
+                // Wide horizontal cut (left-to-right sweep)
+                const p2 = p * 2;
+                offRot = -0.6 * Math.PI + p2 * 1.1 * Math.PI;
+                orbitDist += Math.sin(p2 * Math.PI) * 28;
+              } else {
+                // Wide vertical downward cleave (top-right to bottom-left)
+                const p2 = (p - 0.5) * 2;
+                offRot = 0.6 * Math.PI - p2 * 1.1 * Math.PI;
+                orbitDist += Math.sin(p2 * Math.PI) * 32;
+              }
+              if (p > 0.05 && !this.hasThrustedThisSwing && opponent) {
+                this.hasThrustedThisSwing = true;
+                const impulse = 0.3; // Tiny weight shift downward
+                this.body.vx += Math.cos(targetAngle) * impulse;
+                this.body.vy += Math.sin(targetAngle) * impulse;
+              }
+              break;
+            case 4: // Strike 5: The Composed Step & Sheathing Flourish (Finisher)
+              // Deliberate step forward, drop center of gravity, straight spine.
+              // Followed by a slow sheathing flourish to gracefully return blade to side.
+              if (p < 0.5) {
+                // Action phase (Overhead vertical downward drop: first 50% of swing)
+                const p2 = p / 0.5;
+                offRot = -0.6 * Math.PI + p2 * 1.0 * Math.PI; // Dramatic 180-degree overhead cut
+                orbitDist += Math.sin(p2 * Math.PI) * 36;
+                if (!this.hasThrustedThisSwing && opponent) {
+                  this.hasThrustedThisSwing = true;
+                  const impulse = 3.5; // Composed step forward (no blink/teleport)
+                  this.body.vx += Math.cos(targetAngle) * impulse;
+                  this.body.vy += Math.sin(targetAngle) * impulse;
+                }
+              } else {
+                // Recovery phase (Slow sheathing flourish: final 50% of swing)
+                const pRec = (p - 0.5) / 0.5; // 0 to 1
+                const cutEndRot = 0.4 * Math.PI;
+                const sheathedRot = 0.75 * Math.PI; // Sheathed angle
+                // Interpolate slowly to sheathed angle
+                offRot = (1 - pRec) * cutEndRot + pRec * sheathedRot;
+                // Pull blade tight to his left side
+                orbitDist = this.weaponOrbitRadius - pRec * 18;
+              }
+              break;
+            case 5: // CA: Charged Attack
+              // Fast drawing slash with +35px reach
+              offRot = 0.8 * Math.PI * (1 - p);
+              orbitDist += Math.sin(p * Math.PI) * 35;
+              if (p > 0.1 && !this.hasThrustedThisSwing && opponent) {
+                this.hasThrustedThisSwing = true;
+                const impulse = 4.5;
+                this.body.vx += Math.cos(targetAngle) * impulse;
+                this.body.vy += Math.sin(targetAngle) * impulse;
+              }
+              break;
+          }
         }
       } else {
         // Ayaka Animation Logic per N-step

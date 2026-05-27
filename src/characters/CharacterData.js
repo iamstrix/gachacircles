@@ -207,6 +207,63 @@ export const CHARACTERS = {
       circleStroke: '#c77dff',
     },
   },
+
+  ayato: {
+    id: 'ayato',
+    name: 'Kamisato Ayato',
+    title: 'Pillar of Fortitude',
+    element: ELEMENTS.HYDRO,
+    weapon: WEAPONS.SWORD,
+    attackType: ATTACK_TYPE.MELEE,
+
+    // Combat stats
+    hp: 520,
+    damage: 7,
+    attackSpeed: 1.1,       // Quick strikes
+    speed: 3.2,             // Solid movement speed
+    comboDurationMs: 1900,
+    delayBetweenCombosMs: 1600,
+
+    // Skills & Burst
+    skillE: {
+      name: 'Kamisato Art: Kyouka',
+      description: 'Enters the Soukai Kaha state, shifting to swift Hydro slashes.',
+      damageMultiplier: 2.2,
+      cooldown: 12,
+      duration: 6000,
+      emoji: '🌊',
+      icon: '/ayato-skill_icon.png'
+    },
+    burstQ: {
+      name: 'Kamisato Art: Suiyuu',
+      description: 'Unleashes a garden of purity that rains down Bloomwater Blades in an AoE.',
+      damageMultiplier: 2.2,
+      duration: 5000,
+      aoeRadius: 180,
+      cooldown: 20,
+      emoji: '🌸',
+      icon: '/ayato-ultimate_icon.png'
+    },
+    passive: {
+      name: 'Michiyuku Hagetsu',
+      description: 'Under Kyouka state, Normal Attack DMG increases.',
+      emoji: '🍵'
+    },
+
+    // Visual config
+    circleRadius: 42,
+    portrait: '/characters/ayato.png',
+    splash: '/characters/ayato.png',
+    weaponSprite: '/weapons/haran-geppaku-futsu.png',
+    colors: {
+      primary: '#00acc1',
+      light: '#80deea',
+      dark: '#006064',
+      glow: 'rgba(0, 172, 193, 0.45)',
+      circle: '#0a232e',
+      circleStroke: '#00acc1',
+    },
+  },
 };
 
 /**
