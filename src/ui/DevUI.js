@@ -107,6 +107,12 @@ export class DevUI {
       setMasterVolume(val);
     }, 0, 1, 0.05);
 
+    const arenaColor = localStorage.getItem('dev-arena-color') || '#e2fde6';
+    this.addColorInput(leftCol, 'Arena Color', arenaColor, 'arena_color');
+
+    const bgColor = localStorage.getItem('dev-bg-color') || '#a8f5b4';
+    this.addColorInput(rightCol, 'Website BG Color', bgColor, 'bg_color');
+
     this.addButton(leftCol, 'Save & Restart', () => {
       const hp = this.container.querySelector('[data-key="hp"]').value;
       const dmg = this.container.querySelector('[data-key="dmg"]').value;
@@ -114,6 +120,8 @@ export class DevUI {
       const s2 = this.container.querySelector('[data-key="score2"]').value;
       const f1 = this.container.querySelector('[data-key="f1_id"]').value.toLowerCase().trim();
       const f2 = this.container.querySelector('[data-key="f2_id"]').value.toLowerCase().trim();
+      const arena = this.container.querySelector('[data-key="arena_color"]').value;
+      const bg = this.container.querySelector('[data-key="bg_color"]').value;
 
       localStorage.setItem('dev-hp-config', hp);
       localStorage.setItem('dev-dmg-multiplier', dmg);
@@ -121,6 +129,8 @@ export class DevUI {
       localStorage.setItem('match-score-pyro', s2);
       localStorage.setItem('dev-fighter1-id', f1);
       localStorage.setItem('dev-fighter2-id', f2);
+      localStorage.setItem('dev-arena-color', arena);
+      localStorage.setItem('dev-bg-color', bg);
 
       location.reload();
     }, '#2e7d32'); // Green for Save
@@ -344,5 +354,34 @@ export class DevUI {
 
     btn.addEventListener('click', callback);
     parent.appendChild(btn);
+  }
+
+  addColorInput(parent, label, defaultValue, key = '') {
+    const row = document.createElement('div');
+    row.style.display = 'flex';
+    row.style.flexDirection = 'column';
+    row.style.gap = '6px';
+    row.style.marginTop = '10px';
+
+    const labelText = document.createElement('span');
+    labelText.innerText = label;
+    labelText.style.fontSize = '10px';
+    labelText.style.fontWeight = '900';
+    labelText.style.color = '#8888aa';
+    labelText.style.textTransform = 'uppercase';
+
+    const input = document.createElement('input');
+    input.type = 'color';
+    input.value = defaultValue;
+    if (key) input.setAttribute('data-key', key);
+    input.style.width = '100%';
+    input.style.height = '30px';
+    input.style.backgroundColor = '#1a1a2e';
+    input.style.border = '2px solid #000';
+    input.style.cursor = 'pointer';
+
+    row.appendChild(labelText);
+    row.appendChild(input);
+    parent.appendChild(row);
   }
 }

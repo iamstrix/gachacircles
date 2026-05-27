@@ -35,11 +35,12 @@ let fighter1, fighter2;
 
 async function init() {
   // Create PixiJS application
+  const savedBG = localStorage.getItem('dev-bg-color') || '#a8f5b4';
   app = new Application();
   await app.init({
     width: GAME_WIDTH,
     height: GAME_HEIGHT,
-    backgroundColor: 0xa8f5b4,
+    backgroundColor: savedBG,
     antialias: true,
     resolution: window.devicePixelRatio || 1,
     autoDensity: true,
@@ -189,9 +190,10 @@ async function init() {
 function createArenaBackground() {
   const bg = new Graphics();
 
-  // Arena floor — clean light mint/pastel green
+  // Arena floor — clean light mint/pastel green or custom dev color
+  const arenaHex = localStorage.getItem('dev-arena-color') || '#e2fde6';
   bg.rect(ARENA.x, ARENA.y, ARENA.width, ARENA.height);
-  bg.fill({ color: 0xe2fde6 });
+  bg.fill({ color: arenaHex });
 
   // Arena border — crisp solid black
   bg.rect(ARENA.x, ARENA.y, ARENA.width, ARENA.height);
