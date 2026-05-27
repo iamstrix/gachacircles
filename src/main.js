@@ -264,12 +264,18 @@ function showWinScreen(winner) {
   const skillPct = totalDmg > 0 ? (skillDmg / totalDmg) * 100 : 0;
   const burstPct = totalDmg > 0 ? (burstDmg / totalDmg) * 100 : 0;
 
-  // Segment colors based on element (Cryo Blue vs Pyro Red/Orange)
-  const isCryo = winner.element === 'cryo';
+  // Segment colors based on element
+  const elementColors = {
+    cryo: { enhanced: '#00e5ff', skill: '#00838f', burst: '#ffd600' },
+    pyro: { enhanced: '#ff3d00', skill: '#ff9100', burst: '#ffea00' },
+    electro: { enhanced: '#e040fb', skill: '#7b2d8b', burst: '#f48dff' }
+  };
+  const eColors = elementColors[winner.element] || elementColors.cryo;
+
   const cNormal = '#78909c'; // Cool slate grey
-  const cEnhanced = isCryo ? '#00e5ff' : '#ff3d00'; // Cryo Cyan vs Pyro Red
-  const cSkill = isCryo ? '#00838f' : '#ff9100'; // Deep Teal vs Flame Orange
-  const cBurst = isCryo ? '#ffd600' : '#ffea00'; // Soumetsu Gold vs Ryuukin Amber
+  const cEnhanced = eColors.enhanced;
+  const cSkill = eColors.skill;
+  const cBurst = eColors.burst;
 
   // Build the breakdown bar html segments
   let barHtml = '';
@@ -377,8 +383,10 @@ function showWinScreen(winner) {
   textPanel.appendChild(subtitle);
   textPanel.appendChild(statsContainer);
 
-  // Layout logic: Cryo (Ayaka) is left, Pyro (Yoimiya) is right
-  if (winner.element === 'cryo') {
+  // Layout logic: Always align splash to the side the fighter was on
+  const isLeftWinner = (winner === fighter1);
+
+  if (isLeftWinner) {
     imgPanel.classList.add('win-screen__panel--left');
     textPanel.classList.add('win-screen__panel--right');
     overlay.appendChild(imgPanel);
@@ -399,7 +407,13 @@ function showWinScreen(winner) {
   const hudElement = document.getElementById('gacha-hud');
   if (hudElement) {
     hudElement.classList.add('hud-active-win');
-    hudElement.classList.add(winner.element === 'cryo' ? 'hud-winner-cryo' : 'hud-winner-pyro');
+    hudElement.classList.add(`hud-winner-${winner.element}`);
+    // Hide the losing side's name/hp/sidebar based on winner side
+    if (isLeftWinner) {
+      hudElement.classList.add('hud-winner-side-left');
+    } else {
+      hudElement.classList.add('hud-winner-side-right');
+    }
   }
 
   // Enable the Dev Panel rematch button

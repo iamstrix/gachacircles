@@ -2267,6 +2267,20 @@ export class GameLoop {
     if (this.onGameOver) {
       this.onGameOver(winner);
     }
+
+    // Fade out irrelevant HUD parts based on winner side
+    const hudElement = document.getElementById('gacha-hud');
+    if (hudElement) {
+      hudElement.classList.add('hud-active-win');
+      hudElement.classList.add(`hud-winner-${this.winner.element}`);
+      
+      const isLeftWinner = (this.winner === this.fighter1);
+      if (isLeftWinner) {
+        hudElement.classList.add('hud-winner-side-left');
+      } else {
+        hudElement.classList.add('hud-winner-side-right');
+      }
+    }
   }
 
   /**
@@ -3256,7 +3270,7 @@ export class GameLoop {
     // Remove victory styling hooks from HUD so health bars don't disappear during replay
     const hudElement = document.getElementById('gacha-hud');
     if (hudElement) {
-      hudElement.classList.remove('hud-active-win', 'hud-winner-cryo', 'hud-winner-pyro');
+      hudElement.classList.remove('hud-active-win', 'hud-winner-cryo', 'hud-winner-pyro', 'hud-winner-electro', 'hud-winner-side-left', 'hud-winner-side-right');
     }
 
     // Reset loop pausing and gameover triggers
@@ -3328,7 +3342,14 @@ export class GameLoop {
       const hudElement = document.getElementById('gacha-hud');
       if (hudElement) {
         hudElement.classList.add('hud-active-win');
-        hudElement.classList.add(this.winner.element === 'cryo' ? 'hud-winner-cryo' : 'hud-winner-pyro');
+        hudElement.classList.add(`hud-winner-${this.winner.element}`);
+        
+        const isLeftWinner = (this.winner === this.fighter1);
+        if (isLeftWinner) {
+          hudElement.classList.add('hud-winner-side-left');
+        } else {
+          hudElement.classList.add('hud-winner-side-right');
+        }
       }
       // Restore standard win overlay
       const winScreen = document.getElementById('win-screen');

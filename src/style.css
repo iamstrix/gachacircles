@@ -19,6 +19,11 @@
   --pyro-light: #FFE082;
   --pyro-dark: #E65100;
   --pyro-glow: rgba(255, 152, 0, 0.4);
+
+  --electro-primary: #c77dff;
+  --electro-light: #e0b0ff;
+  --electro-dark: #7b2d8b;
+  --electro-glow: rgba(199, 125, 255, 0.4);
   
   /* UI Colors */
   --bg-dark: #0a0a14;
@@ -143,6 +148,15 @@ body {
   background-clip: text;
   text-shadow: none;
   filter: drop-shadow(0 0 8px var(--pyro-glow));
+}
+
+.hud-banner__name--electro {
+  background: linear-gradient(135deg, var(--electro-light), var(--electro-primary));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-shadow: none;
+  filter: drop-shadow(0 0 8px var(--electro-glow));
 }
 
 .hud-banner__vs {
@@ -824,17 +838,17 @@ body {
   transition: opacity 0.5s ease;
 }
 
-.hud-winner-cryo .ghud-name-pyro,
-.hud-winner-cryo .ghud-hp-wrap.right,
-.hud-winner-cryo .ghud-sidebar.right {
+.hud-winner-side-left .ghud-name-pyro,
+.hud-winner-side-left .ghud-hp-wrap.right,
+.hud-winner-side-left .ghud-sidebar.right {
   opacity: 0 !important;
   pointer-events: none;
   transition: opacity 0.5s ease;
 }
 
-.hud-winner-pyro .ghud-name-cryo,
-.hud-winner-pyro .ghud-hp-wrap.left,
-.hud-winner-pyro .ghud-sidebar.left {
+.hud-winner-side-right .ghud-name-cryo,
+.hud-winner-side-right .ghud-hp-wrap.left,
+.hud-winner-side-right .ghud-sidebar.left {
   opacity: 0 !important;
   pointer-events: none;
   transition: opacity 0.5s ease;
