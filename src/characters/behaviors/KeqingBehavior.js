@@ -47,10 +47,9 @@ export const KeqingBehavior = {
       const angle = Math.atan2(dy, dx);
       const dist = Math.sqrt(dx * dx + dy * dy);
       
-      // Target destination for the mark (up to 200px away)
-      const travelDist = Math.min(200, dist * 0.8);
-      const targetX = startX + Math.cos(angle) * travelDist;
-      const targetY = startY + Math.sin(angle) * travelDist;
+      // Target destination for the mark (exactly at the opponent's coordinates to close the full gap)
+      const targetX = opponent.body.x;
+      const targetY = opponent.body.y;
 
       // Create stiletto projectile visual
       const visual = new Graphics();
@@ -142,8 +141,8 @@ export const KeqingBehavior = {
         target: opponent
       });
 
-      // Put skill on a very short internal CD for the recast window
-      fighter.skillCDTimer = 0.2; 
+      // Put skill on a 0.5s internal ready CD for the teleport window
+      fighter.skillCDTimer = 0.5; 
     } else {
       // ── Phase 2: Teleport & Recast Slash ────────────────────
       this._teleportToStiletto(fighter, opponent, gameLoop, Graphics);
@@ -174,8 +173,10 @@ export const KeqingBehavior = {
       visual: fighter.stilettoVisual
     });
 
-    // Reset skill CD to allow for recast or CA detonation
-    fighter.skillCDTimer = 0;
+    // Reset skill CD to allow for recast once the ready window (0.5s) completes
+    if (fighter.skillCDTimer <= 0) {
+      fighter.skillCDTimer = 0;
+    }
   },
 
   /**
@@ -187,7 +188,7 @@ export const KeqingBehavior = {
     const destX = fighter.stilettoX;
     const destY = fighter.stilettoY;
 
-    // VFX: Lightning streak between start and end
+    // VFX: Lightning streak between start and end (immediate on teleport)
     if (fighter.vfx && typeof fighter.vfx.triggerTeleportStreak === 'function') {
       fighter.vfx.triggerTeleportStreak(startX, startY, destX, destY);
     }
@@ -198,39 +199,29 @@ export const KeqingBehavior = {
     fighter.body.vx = 0;
     fighter.body.vy = 0;
 
-    // Trigger arrival slash VFX
+    // Calculate blink approach angle for the arrival slash
     const dxBlink = destX - startX;
     const dyBlink = destY - startY;
     const blinkAngle = (dxBlink === 0 && dyBlink === 0)
       ? Math.atan2(opponent.body.y - destY, opponent.body.x - destX)
       : Math.atan2(dyBlink, dxBlink);
 
-    if (fighter.vfx && typeof fighter.vfx.triggerTeleportArrivalSlash === 'function') {
-      fighter.vfx.triggerTeleportArrivalSlash(destX, destY, blinkAngle);
-    }
-
     this._cleanupMark(fighter);
-    gameLoop._playSFX('/audio/keqing/keqing-skill2.wav', 0.9);
+    
+    // Set invincible during teleport slash pause
+    fighter.isInvincible = true;
 
-    // E2 AoE Slash Damage
-    const dx = opponent.body.x - destX;
-    const dy = opponent.body.y - destY;
-    const dist = Math.sqrt(dx * dx + dy * dy);
-    if (dist < 130) {
-      const dmg = Math.round(fighter.data.damage * 2.5);
-      const res = opponent.takeDamage(dmg);
-      fighter.stats.damageDealt.skill += res.actualDamage;
-      if (gameLoop.damageNumbers) {
-        gameLoop.damageNumbers.spawn(destX, destY - 30, res.actualDamage, fighter.element, true);
-      }
-    }
+    // Put skill on 0.5s CD during the windup so Keqing's AI cannot double-cast E
+    fighter.skillCDTimer = 0.5;
 
-    // Trigger Electro Infusion
-    fighter.passiveTimer = 5000; // 5 seconds in ms
-    gameLoop._screenShake();
-
-    // Start full cooldown
-    fighter.skillCDTimer = fighter.data.skillE.cooldown;
+    // Push delayed slash effect to gameLoop (0.5s delay)
+    gameLoop.activeEffects.push({
+      type: 'keqing_teleport_slash',
+      owner: fighter,
+      target: opponent,
+      timer: 0.5,
+      angle: blinkAngle
+    });
   },
 
   /**
@@ -309,6 +300,8 @@ export const KeqingBehavior = {
 
     fighter.isInvincible = true;
     fighter.isBurstActive = true;
+    fighter.body.vx = 0;
+    fighter.body.vy = 0;
     fighter.container.alpha = 0; // Keqing disappears
 
     // A4 Passive: Aristocratic Dignity (+15% CRIT Rate for 8s)

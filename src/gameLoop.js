@@ -1366,6 +1366,49 @@ export class GameLoop {
         }
         return true;
       }
+      else if (effect.type === 'keqing_teleport_slash') {
+        if (effect.timer <= 0) {
+          const fighter = effect.owner;
+          const opponent = effect.target;
+          
+          fighter.isInvincible = false;
+          
+          // E2 AoE Slash Damage
+          const dx = opponent.body.x - fighter.body.x;
+          const dy = opponent.body.y - fighter.body.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < 130) {
+            const dmg = Math.round(fighter.data.damage * 2.5);
+            const res = opponent.takeDamage(dmg);
+            fighter.stats.damageDealt.skill += res.actualDamage;
+            if (this.damageNumbers) {
+              this.damageNumbers.spawn(fighter.body.x, fighter.body.y - 30, res.actualDamage, fighter.element, true);
+            }
+          }
+
+          // VFX Arrival Slash
+          if (fighter.vfx && typeof fighter.vfx.triggerTeleportArrivalSlash === 'function') {
+            fighter.vfx.triggerTeleportArrivalSlash(fighter.body.x, fighter.body.y, effect.angle);
+          }
+
+          this._playSFX('/audio/keqing/keqing-skill2.wav', 0.9);
+          
+          // Trigger Electro Infusion
+          fighter.passiveTimer = 5000; // 5 seconds in ms
+          this._screenShake();
+
+          // Start full cooldown
+          fighter.skillCDTimer = fighter.data.skillE.cooldown;
+
+          return false; // remove effect
+        }
+        
+        // Emits charging sparks around Keqing during the 0.5s ready windup pause
+        if (effect.owner.vfx && typeof effect.owner.vfx.triggerWindupSparks === 'function') {
+          effect.owner.vfx.triggerWindupSparks(effect.owner.body.x, effect.owner.body.y);
+        }
+        return true;
+      }
       // ── Keqing: Starward Sword slash sequence ──────────────
       else if (effect.type === 'starward_cast') {
         if (effect.timer <= 0) {
@@ -1546,7 +1589,7 @@ export class GameLoop {
       [this.fighter1, this.fighter2].forEach((fighter, idx) => {
         const opponent = idx === 0 ? this.fighter2 : this.fighter1;
         const beh = fighter.behavior;
-        if (!fighter.alive) return;
+        if (!fighter.alive || fighter.isBurstActive) return;
 
         if (beh && beh.isRanged) {
           // Ranged auto-attack scheduling
@@ -1580,10 +1623,12 @@ export class GameLoop {
     updatePosition(this.fighter1.body, delta * this.fighter1.slowMultiplier);
     updatePosition(this.fighter2.body, delta * this.fighter2.slowMultiplier);
 
-    // 5. Wall bouncing (skip if untouchable in burst)
-    const b1 = !this.fighter1.isBurstActive ? bounceOffWalls(this.fighter1.body, this.bounds) : false;
-    const b2 = !this.fighter2.isBurstActive ? bounceOffWalls(this.fighter2.body, this.bounds) : false;
-    if ((b1 || b2) && this.soundCooldown <= 0) {
+    // 5. Wall bouncing (Always run to clamp position, but skip sound if in burst)
+    const b1 = bounceOffWalls(this.fighter1.body, this.bounds);
+    const b2 = bounceOffWalls(this.fighter2.body, this.bounds);
+    const shouldPlayBounceSFX = (b1 && !this.fighter1.isBurstActive) || (b2 && !this.fighter2.isBurstActive);
+
+    if (shouldPlayBounceSFX && this.soundCooldown <= 0) {
       playSynthBounce();
       this.soundCooldown = 100; // 100ms throttle
     }
@@ -1845,7 +1890,7 @@ export class GameLoop {
    * Auto-activate skills and bursts when ready (AI)
    */
   _checkAbilityActivation(fighter, opponent) {
-    if (this.gameOver) return;
+    if (this.gameOver || fighter.isBurstActive) return;
     const beh = fighter.behavior;
 
     // ── Check Elemental Skill (E) ────────────────
